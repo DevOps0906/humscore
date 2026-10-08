@@ -18,7 +18,7 @@ export interface BuildScoreResult {
   meanAbsCents: number;
 }
 
-const newId = () =>
+export const newId = () =>
   typeof crypto !== "undefined" && "randomUUID" in crypto
     ? crypto.randomUUID()
     : `s_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;

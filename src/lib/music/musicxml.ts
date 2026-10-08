@@ -1,4 +1,5 @@
 import { octaveOf, pitchClass } from "./frequency";
+import { scoreMeasureCount } from "./edit";
 import { chordToMidi, transposeChordSymbol, transposeKey } from "./theory";
 import type { NoteEvent, Score } from "./types";
 
@@ -110,7 +111,7 @@ export function scoreToMusicXML(score: Score, layout: ScoreLayout = "lead"): str
   const notes = score.notes.map((n) => ({ ...n, midi: n.midi === null ? null : n.midi + tp }));
   const chords = score.chords.map((c) => ({ ...c, symbol: transposeChordSymbol(c.symbol, tp, preferFlats) }));
   const bpm = score.beatsPerMeasure;
-  const measures = Math.max(1, Math.ceil((notes.reduce((m, n) => Math.max(m, n.startBeat + n.durationBeats), 0) - 1e-6) / bpm));
+  const measures = scoreMeasureCount(score);
   const measureDivs = bpm * DIVISIONS;
 
   // 남성 음역(가온 도 아래 중심)이면 옥타브 낮춘 높은음자리표(테너 표기)
@@ -135,7 +136,19 @@ export function scoreToMusicXML(score: Score, layout: ScoreLayout = "lead"): str
     }
     const chord = chords.find((c) => Math.abs(c.startBeat - m * bpm) < 1e-6);
     if (chord) parts.push(harmonyXml(chord.symbol));
-    for (const p of measurePieces(notes, m, bpm)) parts.push(noteXml(p, preferFlats, 1, 1));
+    const pieces = measurePieces(notes, m, bpm);
+    const filled = pieces.reduce((s, p) => s + p.divs, 0);
+    if (pieces.length === 0) {
+      parts.push(`<note><rest measure="yes"/><duration>${measureDivs}</duration><voice>1</voice><staff>1</staff></note>`);
+    } else {
+      for (const p of pieces) parts.push(noteXml(p, preferFlats, 1, 1));
+      // 덜 찬 마디는 남은 길이를 쉼표로 채움
+      if (filled < measureDivs) {
+        for (const [d] of decompose(measureDivs - filled)) {
+          parts.push(noteXml({ midi: null, divs: d, tieStart: false, tieStop: false }, preferFlats, 1, 1));
+        }
+      }
+    }
 
     if (piano) {
       parts.push(`<backup><duration>${measureDivs}</duration></backup>`);

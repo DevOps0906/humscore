@@ -135,4 +135,25 @@ describe("scoreToMusicXML", () => {
       expect(xml).toContain("clef-octave-change");
     });
   });
+
+  describe("미완성 마디 / 빈 마디", () => {
+    const total = (m: string) => [...m.matchAll(/<duration>(\d+)<\/duration>/g)].reduce((s, x) => s + Number(x[1]), 0);
+    it("빈 notes: 온쉼표", () => {
+      expect(scoreToMusicXML(makeScore([]))).toContain('<rest measure="yes"/>');
+    });
+    it("마지막 마디 덜 차면 쉼표로 채움", () => {
+      const xml = scoreToMusicXML(makeScore([n(60, 0, 4), n(62, 4, 1)]));
+      const ms = xml.split("<measure ").slice(1);
+      expect(ms).toHaveLength(2);
+      for (const m of ms) expect(total(m)).toBe(16);
+      expect(count(xml, /<rest\/>/g)).toBe(1);
+    });
+    it("코드가 있는 뒤쪽 마디도 출력 (쉼표 채움)", () => {
+      const xml = scoreToMusicXML(makeScore([n(60, 0, 4)], { chords: [{ startBeat: 8, symbol: "G" }] }));
+      const ms = xml.split("<measure ").slice(1);
+      expect(ms).toHaveLength(3);
+      for (const m of ms) expect(total(m)).toBe(16);
+      expect(ms[2]).toContain("<root-step>G</root-step>");
+    });
+  });
 });
