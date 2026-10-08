@@ -59,7 +59,7 @@ export default function ScorePage() {
     return (
       <div className="py-20 text-center">
         <p className="text-ink-soft">악보를 찾을 수 없어요.</p>
-        <Link href="/" className="mt-4 inline-block text-accent underline">내 악보로</Link>
+        <Link href="/library/" className="mt-4 inline-block text-accent underline">내 악보로</Link>
       </div>
     );
 
@@ -187,7 +187,7 @@ export default function ScorePage() {
           onClick={() => {
             if (!confirm("이 악보를 삭제할까요?")) return;
             deleteScore(score.id);
-            router.push("/");
+            router.push("/library/");
           }}
           className="justify-self-start text-xs text-tune-bad"
         >

@@ -1,7 +1,6 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { markWelcomed } from "@/hooks/use-welcomed";
 
 const STATS = [
   { num: "88건반", label: "피아노 건반 입력" },
@@ -19,8 +18,7 @@ const STEPS = [
 export default function WelcomePage() {
   const router = useRouter();
   const start = () => {
-    markWelcomed();
-    router.replace("/");
+    router.replace("/library/");
   };
 
   return (

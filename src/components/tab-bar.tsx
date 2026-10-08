@@ -5,19 +5,19 @@ import { usePathname } from "next/navigation";
 
 const TABS = [
   { href: "/record/", label: "녹음", icon: MicIcon },
-  { href: "/", label: "내 악보", icon: LibraryIcon },
+  { href: "/library/", label: "내 악보", icon: LibraryIcon },
   { href: "/keys/", label: "88건반", icon: KeysIcon },
 ] as const;
 
 export function TabBar() {
   const pathname = usePathname();
-  if (pathname.startsWith("/perform") || pathname.startsWith("/welcome")) return null; // 공연 모드·소개 화면은 전체 화면
+  if (pathname.startsWith("/perform") || pathname.startsWith("/welcome") || pathname === "/") return null; // 공연 모드·소개·랜딩 이동 화면은 전체 화면
   return (
     <nav className="no-print safe-bottom fixed inset-x-0 bottom-0 z-20 bg-paper/95 backdrop-blur">
       <div className="hr-fade" aria-hidden />
       <ul className="mx-auto flex max-w-md justify-around pt-2">
         {TABS.map(({ href, label, icon: Icon }) => {
-          const active = href === "/" ? pathname === "/" || pathname.startsWith("/score") : pathname.startsWith(href.slice(0, -1));
+          const active = href === "/library/" ? pathname.startsWith("/library") || pathname.startsWith("/score") : pathname.startsWith(href.slice(0, -1));
           return (
             <li key={href}>
               <Link
