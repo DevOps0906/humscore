@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { Capacitor } from "@capacitor/core";
+import { loadManualLatencyMs, saveManualLatencyMs } from "@/lib/audio/latency";
 import { startPitchTracking, type TrackerSession } from "@/lib/audio/pitch-tracker";
 import { getAudioContext } from "@/lib/audio/context";
 import { centsOff, freqToNearestMidi, freqToMidiFloat, midiToName } from "@/lib/music/frequency";
@@ -20,6 +22,7 @@ export default function RecordPage() {
   const [beat, setBeat] = useState<number | null>(null);
   const [live, setLive] = useState<PitchFrame | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [latencyMs, setLatencyMs] = useState(0);
   const session = useRef<TrackerSession | null>(null);
   const trace = useRef<PitchFrame[]>([]);
   const canvas = useRef<HTMLCanvasElement>(null);
@@ -61,6 +64,17 @@ export default function RecordPage() {
 
   useEffect(() => () => void session.current?.stop(), []);
 
+  // 저장된 지연 보정값 복원 (hydration 불일치 방지를 위해 마운트 후 읽음)
+  useEffect(() => {
+    const t = setTimeout(() => setLatencyMs(loadManualLatencyMs()), 0);
+    return () => clearTimeout(t);
+  }, []);
+
+  function changeLatency(ms: number) {
+    setLatencyMs(ms);
+    saveManualLatencyMs(ms);
+  }
+
   async function start() {
     setError(null);
     trace.current = [];
@@ -72,6 +86,11 @@ export default function RecordPage() {
         beatsPerMeasure: beats,
         countInMeasures: 1,
         metronome,
+        manualLatencyMs: latencyMs,
+        onEnded: () => {
+          // 마이크 track이 끊김 → 녹음 정리. 프레임이 있으면 거기까지 저장
+          void finish(true);
+        },
         onBeat: (b) => {
           setBeat(b);
           if (b >= 0) setStatus("recording");
@@ -87,7 +106,9 @@ export default function RecordPage() {
       const name = e instanceof DOMException ? e.name : "";
       setError(
         name === "NotAllowedError"
-          ? "마이크 권한이 필요합니다. 설정 > 앱(또는 브라우저) > 마이크를 허용해 주세요."
+          ? Capacitor.isNativePlatform()
+            ? "마이크 권한이 필요합니다. 설정 > 앱 > HumScore > 권한에서 마이크를 허용해 주세요."
+            : "마이크 권한이 필요합니다. 주소창의 사이트 설정에서 마이크를 허용해 주세요."
           : name === "NotFoundError"
             ? "마이크를 찾을 수 없습니다. 기기에 마이크가 연결되어 있는지 확인해 주세요."
             : name === "NotSupportedError"
@@ -99,18 +120,33 @@ export default function RecordPage() {
     }
   }
 
-  async function stop() {
+  async function finish(interrupted: boolean) {
     const frames = session.current?.stop() ?? [];
     session.current = null;
+    setBeat(null);
+    if (interrupted && frames.length === 0) {
+      setStatus("idle");
+      setError("마이크 연결이 끊겼어요. 연결을 확인하고 다시 녹음해 주세요.");
+      return;
+    }
     setStatus("processing");
     const { score } = buildScoreFromFrames(frames, { bpm, beatsPerMeasure: beats });
     if (!score.notes.some((n) => n.midi !== null)) {
       setStatus("idle");
-      setError("음이 감지되지 않았어요. 조용한 곳에서 '라~' 또는 '음~'으로 또렷하게 불러 주세요.");
+      setError(
+        interrupted
+          ? "마이크 연결이 끊겼어요. 음이 감지되지 않아 저장하지 못했어요."
+          : "음이 감지되지 않았어요. 조용한 곳에서 '라~' 또는 '음~'으로 또렷하게 불러 주세요.",
+      );
       return;
     }
     await saveScore(score);
+    if (interrupted) window.alert("마이크 연결이 끊겨 여기까지 저장했어요.");
     router.push(`/score/?id=${score.id}`);
+  }
+
+  function stop() {
+    return finish(false);
   }
 
   const voiced = live?.freq && live.clarity >= 0.88 ? live.freq : null;
@@ -199,6 +235,14 @@ export default function RecordPage() {
               {b}/4
             </button>
           ))}
+        </div>
+        <div className="grid gap-1 text-sm">
+          <label className="flex items-center gap-3">
+            <span className="w-20 shrink-0 text-ink-soft">지연 보정(ms)</span>
+            <input type="range" min={0} max={400} step={10} value={latencyMs} onChange={(e) => changeLatency(+e.target.value)} className="flex-1 accent-accent" />
+            <span className="w-16 text-right tabular-nums">{latencyMs} ms</span>
+          </label>
+          <p className="text-xs text-ink-soft">블루투스 이어폰이면 올려 주세요. 박자가 밀려 보일 때 조정합니다.</p>
         </div>
         <label className="flex items-center justify-between text-sm">
           <span className="text-ink-soft">녹음 중 메트로놈</span>

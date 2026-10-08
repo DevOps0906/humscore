@@ -1,12 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ScoreView } from "@/components/score-view";
 import { TransposeBar } from "@/components/transpose-bar";
 import { useScoreParam } from "@/hooks/use-score-param";
-import { getAudioContext } from "@/lib/audio/context";
+import { getAudioContext, setAudioSessionType } from "@/lib/audio/context";
 import { playScore, type Playback } from "@/lib/audio/piano-synth";
 import { GM_INSTRUMENTS, scoreToMidi, type InstrumentId } from "@/lib/music/midi";
 import { scoreToMusicXML, type ScoreLayout } from "@/lib/music/musicxml";
@@ -35,6 +35,20 @@ export default function ScorePage() {
   const playback = useRef<Playback | null>(null);
   const stopTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const pendingCleanup = useRef<(() => void) | null>(null);
+
+  /** 재생·타이머·대기 중 리스너를 모두 정리 */
+  const clearPlayback = useCallback(() => {
+    pendingCleanup.current?.();
+    pendingCleanup.current = null;
+    playback.current?.stop();
+    playback.current = null;
+    if (stopTimer.current) clearTimeout(stopTimer.current);
+    stopTimer.current = null;
+  }, []);
+
+  useEffect(() => clearPlayback, [clearPlayback]);
+
   const xml = useMemo(() => (score ? scoreToMusicXML(score, layout) : ""), [score, layout]);
 
   if (score === undefined) return <p className="text-ink-soft">불러오는 중…</p>;
@@ -49,17 +63,43 @@ export default function ScorePage() {
   const shownKey = transposeKey(score.key, score.transpose);
   const preferFlats = shownKey.fifths < 0;
 
-  async function togglePlay() {
+  function togglePlay() {
     if (playing) {
-      playback.current?.stop();
-      if (stopTimer.current) clearTimeout(stopTimer.current);
+      clearPlayback();
       setPlaying(false);
       return;
     }
-    const ctx = await getAudioContext();
-    playback.current = playScore(ctx, score!);
+    clearPlayback(); // 기존 재생·타이머·리스너 정리 후 시작
+    setAudioSessionType("playback");
+    const ctx = getAudioContext(); // 제스처 핸들러 안에서 동기 호출 (await 금지)
+    const target = score!;
+    const doPlay = () => {
+      playback.current = playScore(ctx, target);
+      stopTimer.current = setTimeout(() => setPlaying(false), (playback.current.durationSec + 2.5) * 1000);
+    };
     setPlaying(true);
-    stopTimer.current = setTimeout(() => setPlaying(false), (playback.current.durationSec + 2.5) * 1000);
+    if (ctx.state === "running") {
+      doPlay();
+    } else {
+      let giveUp: ReturnType<typeof setTimeout> | null = null;
+      const release = () => {
+        ctx.removeEventListener("statechange", h);
+        if (giveUp) clearTimeout(giveUp);
+        pendingCleanup.current = null;
+      };
+      function h() {
+        if (ctx.state === "running") {
+          release();
+          doPlay();
+        }
+      }
+      ctx.addEventListener("statechange", h);
+      giveUp = setTimeout(() => {
+        release();
+        setPlaying(false);
+      }, 3000);
+      pendingCleanup.current = release;
+    }
   }
 
   function editChord(index: number) {

@@ -1,5 +1,6 @@
 import UIKit
 import Capacitor
+import AVFoundation
 
 @UIApplicationMain
 class AppDelegate: UIResponder, UIApplicationDelegate {
@@ -8,7 +9,38 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
         // Override point for customization after application launch.
+        configureAudioSession()
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleAudioInterruption(_:)),
+            name: AVAudioSession.interruptionNotification,
+            object: AVAudioSession.sharedInstance()
+        )
         return true
+    }
+
+    /// playAndRecord도 무음 스위치를 무시하고 소리가 나며, 웹뷰 마이크 녹음과 충돌하지 않는다.
+    /// 에코 처리가 피치를 망치므로 voiceChat/videoChat 모드는 쓰지 않는다.
+    private func configureAudioSession() {
+        do {
+            let session = AVAudioSession.sharedInstance()
+            try session.setCategory(.playAndRecord, mode: .default, options: [.defaultToSpeaker, .allowBluetoothA2DP])
+            try session.setActive(true)
+        } catch {
+            print("AVAudioSession 설정 실패: \(error)")
+        }
+    }
+
+    /// 인터럽션(전화, 알람 등)이 끝났을 때만 세션을 다시 활성화한다. 카테고리는 바꾸지 않는다.
+    @objc private func handleAudioInterruption(_ notification: Notification) {
+        guard let raw = notification.userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt,
+              let type = AVAudioSession.InterruptionType(rawValue: raw),
+              type == .ended else { return }
+        do {
+            try AVAudioSession.sharedInstance().setActive(true)
+        } catch {
+            print("AVAudioSession 재활성화 실패: \(error)")
+        }
     }
 
     func applicationWillResignActive(_ application: UIApplication) {

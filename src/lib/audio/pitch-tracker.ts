@@ -1,5 +1,6 @@
 import { PitchDetector } from "pitchy";
-import { getAudioContext } from "./context";
+import { getAudioContext, setAudioSessionType } from "./context";
+import { computeLatencySec, outputLatencySec } from "./latency";
 import { playClick } from "./piano-synth";
 import type { PitchFrame } from "../music/types";
 
@@ -18,6 +19,10 @@ export interface TrackerOptions {
   onFrame?: (frame: PitchFrame) => void;
   /** 현재 박(카운트인 중에는 음수) */
   onBeat?: (beat: number) => void;
+  /** 사용자 지연 보정값(ms) */
+  manualLatencyMs?: number;
+  /** 마이크 track이 외부 요인으로 끊김(권한 회수, 기기 분리 등) */
+  onEnded?: () => void;
 }
 
 export interface TrackerSession {
@@ -52,15 +57,35 @@ async function requestMicStream(): Promise<MediaStream> {
 
 export async function startPitchTracking(opts: TrackerOptions): Promise<TrackerSession> {
   const ctx = getAudioContext();
-  // 마이크 요청과 동시에 AudioContext resume 완료를 보장
-  const [stream] = await Promise.all([
-    requestMicStream(),
-    ctx.state !== "running" ? ctx.resume() : Promise.resolve(),
-  ]);
+  setAudioSessionType("play-and-record"); // 동기 호출: 제스처 체인 유지
+  let stream: MediaStream;
+  try {
+    stream = await requestMicStream(); // resume은 await 금지 (iOS/Safari 제스처 체인)
+  } catch (e) {
+    setAudioSessionType("playback");
+    throw e;
+  }
+  if (ctx.state !== "running") void ctx.resume();
   const source = ctx.createMediaStreamSource(stream);
   const analyser = ctx.createAnalyser();
   analyser.fftSize = FFT_SIZE;
   source.connect(analyser);
+
+  let stopped = false;
+  const onTrackEnded = () => {
+    if (!stopped) opts.onEnded?.();
+  };
+  stream.getTracks().forEach((t) => t.addEventListener("ended", onTrackEnded));
+
+  // 지연값은 녹음 시작 시 한 번만 계산해 고정 (연결 상태 변화로 time이 거꾸로 가는 것 방지)
+  const outLatency = outputLatencySec({ outputLatency: ctx.outputLatency, baseLatency: ctx.baseLatency });
+  const latency = computeLatencySec({
+    outputLatency: ctx.outputLatency,
+    baseLatency: ctx.baseLatency,
+    fftSize: analyser.fftSize,
+    sampleRate: ctx.sampleRate,
+    manualMs: opts.manualLatencyMs,
+  });
 
   const detector = PitchDetector.forFloat32Array(FFT_SIZE);
   detector.minVolumeDecibels = -45;
@@ -84,10 +109,13 @@ export async function startPitchTracking(opts: TrackerOptions): Promise<TrackerS
   const frames: PitchFrame[] = [];
   let lastBeat = -Infinity;
   let raf = 0;
+  let lastTime = -Infinity;
   const tick = () => {
     const now = ctx.currentTime;
-    const beat = Math.floor((now - recordStart) / spb);
-    if (beat !== lastBeat && now >= t0) {
+    // 박자 표시는 출력 지연만큼 늦춰 실제로 들리는 클릭에 맞춤
+    const heard = now - outLatency;
+    const beat = Math.floor((heard - recordStart) / spb);
+    if (beat !== lastBeat && heard >= t0) {
       lastBeat = beat;
       opts.onBeat?.(beat);
     }
@@ -97,10 +125,11 @@ export async function startPitchTracking(opts: TrackerOptions): Promise<TrackerS
     const rms = Math.sqrt(sum / buf.length);
     const [pitch, clarity] = rms > MIN_RMS ? detector.findPitch(buf, ctx.sampleRate) : [0, 0];
     const frame: PitchFrame = {
-      time: now - recordStart,
+      time: Math.max(lastTime, now - recordStart - latency), // 단조 증가 보장
       freq: pitch > 0 && clarity > 0 ? pitch : null,
       clarity,
     };
+    lastTime = frame.time;
     opts.onFrame?.(frame);
     if (frame.time >= 0) frames.push(frame);
     raf = requestAnimationFrame(tick);
@@ -109,6 +138,8 @@ export async function startPitchTracking(opts: TrackerOptions): Promise<TrackerS
 
   return {
     stop: () => {
+      stopped = true;
+      setAudioSessionType("playback");
       cancelAnimationFrame(raf);
       clearInterval(scheduler);
       source.disconnect();

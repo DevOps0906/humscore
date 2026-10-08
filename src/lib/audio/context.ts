@@ -8,8 +8,30 @@
  */
 let ctx: AudioContext | null = null;
 
+type AudioSessionType = "playback" | "play-and-record";
+
+/** iOS 16.4+ Audio Session API 최소 타입 */
+interface NavigatorWithAudioSession {
+  audioSession?: { type: string };
+}
+
+/**
+ * 오디오 세션 종류 설정 (무음 스위치에서도 재생되게 "playback", 녹음 중엔 "play-and-record").
+ * 동기 호출이며 미지원 환경에서는 아무 일도 하지 않습니다.
+ */
+export function setAudioSessionType(type: AudioSessionType): void {
+  if (typeof navigator === "undefined") return;
+  try {
+    const session = (navigator as unknown as NavigatorWithAudioSession).audioSession;
+    if (session && session.type !== type) session.type = type;
+  } catch {
+    /* 미지원/거부는 무시 */
+  }
+}
+
 export function getAudioContext(): AudioContext {
   if (!ctx) {
+    setAudioSessionType("playback");
     const Ctor = window.AudioContext ?? (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
     ctx = new Ctor({ latencyHint: "interactive" });
   }
