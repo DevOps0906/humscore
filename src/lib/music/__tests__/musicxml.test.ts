@@ -75,8 +75,7 @@ describe("scoreToMusicXML", () => {
     const flat = scoreToMusicXML(makeScore([n(60, 0, 4)], { key: { tonic: 5, mode: "major", fifths: -1 }, chords: [{ startBeat: 0, symbol: "Bb" }] }));
     expect(flat).toContain("<root-alter>-1</root-alter>");
   });
-  // 의심 동작: transpose=0 이어도 코드 기호를 키의 철자 규칙으로 재표기 (Bb -> A#, 샵 키에서). musicxml.ts:111, theory.ts:142
-  it.skip("transpose 0 이면 코드 기호 철자 보존 (C장조에서 Bb 유지)", () => {
+  it("transpose 0 이면 코드 기호 철자 보존 (C장조에서 Bb 유지)", () => {
     const xml = scoreToMusicXML(makeScore([n(60, 0, 4)], { chords: [{ startBeat: 0, symbol: "Bb" }] }));
     expect(xml).toContain("<root-alter>-1</root-alter>");
   });

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { Midi } from "@tonejs/midi";
-import { GM_INSTRUMENTS, scoreToMidi } from "../midi";
+import { GM_INSTRUMENTS, latin1AsUtf8, scoreToMidi } from "../midi";
 import { makeScore } from "./helpers";
 import type { NoteEvent } from "../types";
 
@@ -67,10 +67,14 @@ describe("scoreToMidi", () => {
     expect(parsed.header.timeSignatures[0].timeSignature).toEqual([3, 4]);
     expect(parsed.header.name).toBe("Waltz");
   });
-  // 의심 버그: 한글 제목이 MIDI 헤더에서 깨짐 (midi.ts:31 header.name 대입, 라이브러리가 1바이트 문자로 기록). 소스 수정 금지라 skip
-  it.skip("한글 제목이 MIDI 헤더 왕복 후 유지", () => {
-    const parsed = new Midi(scoreToMidi(makeScore(melody, { title: "왈츠" })));
-    expect(parsed.header.name).toBe("왈츠");
+  // midi-file 파서는 메타 텍스트를 1바이트 문자열로 돌려주므로 UTF-8 로 다시 디코딩해 비교
+  it("한글 제목이 MIDI 헤더 왕복 후 유지", () => {
+    const bytes = scoreToMidi(makeScore(melody, { title: "왈츠" }));
+    const parsed = new Midi(bytes);
+    expect(latin1AsUtf8(parsed.header.name)).toBe("왈츠");
+    // 파일에 UTF-8 바이트(왈 = EC 99 88)가 그대로 기록됨
+    const hex = Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
+    expect(hex).toContain("ec9988" + "ecb8a0");
   });
   it("템포가 시간 환산에 반영 (60bpm: 1박 = 1초)", () => {
     const parsed = new Midi(scoreToMidi(makeScore([n(60, 2, 1)], { bpm: 60 }), { withChords: false }));

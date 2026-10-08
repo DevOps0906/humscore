@@ -140,6 +140,7 @@ const LETTER_PC: Record<string, number> = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, 
 
 /** "F#m7/A" 같은 코드 기호를 반음 이동 (분수 코드의 베이스음도 함께) */
 export function transposeChordSymbol(symbol: string, semitones: number, preferFlats: boolean): string {
+  if (semitones === 0) return symbol; // 이동 없음: 사용자가 입력한 철자 보존
   const [main, bass] = symbol.split("/");
   const shift = (s: string) => {
     const m = ROOT_RE.exec(s);

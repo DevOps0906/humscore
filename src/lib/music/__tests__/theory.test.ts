@@ -110,6 +110,11 @@ describe("transposeChordSymbol", () => {
     expect(transposeChordSymbol("Am7", -12, false)).toBe("Am7");
     expect(transposeChordSymbol("C", 0, false)).toBe("C");
   });
+  it("semitones 0 이면 철자 그대로 보존", () => {
+    expect(transposeChordSymbol("Bb", 0, false)).toBe("Bb");
+    expect(transposeChordSymbol("A#", 0, true)).toBe("A#");
+    expect(transposeChordSymbol("F#m7/Bb", 0, true)).toBe("F#m7/Bb");
+  });
   it("음수 이동 래핑", () => {
     expect(transposeChordSymbol("C", -1, false)).toBe("B");
     expect(transposeChordSymbol("C", -13, false)).toBe("B");
