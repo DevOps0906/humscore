@@ -1,0 +1,80 @@
+@import "tailwindcss";
+
+/*
+ * HumScore 디자인 토큰
+ * 악보는 '종이'처럼 밝게 유지하고(음악인 가독성), 크롬(UI)만 다크모드를 따릅니다.
+ */
+:root {
+  --paper: #fbf8f1;
+  --ink: #1c1b18;
+  --ink-soft: #6b665c;
+  --line: #e6dfd0;
+  --surface: #ffffff;
+  --accent: #d94f2b; /* 녹음 · 핵심 동작 */
+  --accent-ink: #ffffff;
+  --tune-good: #1f8a5b; /* 음정 정확 */
+  --tune-warn: #c98a12;
+  --tune-bad: #c0392b;
+  --score-paper: #fffdf8;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --paper: #151412;
+    --ink: #f1ede4;
+    --ink-soft: #a39d91;
+    --line: #2e2b26;
+    --surface: #1e1c19;
+  }
+}
+
+@theme inline {
+  --color-paper: var(--paper);
+  --color-ink: var(--ink);
+  --color-ink-soft: var(--ink-soft);
+  --color-line: var(--line);
+  --color-surface: var(--surface);
+  --color-accent: var(--accent);
+  --color-accent-ink: var(--accent-ink);
+  --color-tune-good: var(--tune-good);
+  --color-tune-warn: var(--tune-warn);
+  --color-tune-bad: var(--tune-bad);
+  --color-score-paper: var(--score-paper);
+  --font-sans: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", system-ui, sans-serif;
+}
+
+html,
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior-y: none; /* 앱에서 바운스 스크롤 방지 */
+}
+
+/* Capacitor/노치 대응: 하단 탭바가 홈 인디케이터에 가리지 않도록 */
+.safe-bottom {
+  padding-bottom: max(env(safe-area-inset-bottom), 8px);
+}
+.safe-top {
+  padding-top: env(safe-area-inset-top);
+}
+
+/* 악보 영역은 다크모드에서도 종이색 유지 */
+.score-sheet {
+  background: var(--score-paper);
+  color: #111;
+}
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  body {
+    background: #fff;
+  }
+  .score-sheet {
+    box-shadow: none !important;
+    border: 0 !important;
+  }
+}

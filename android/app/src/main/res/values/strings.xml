@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">HumScore</string>
+    <string name="title_activity_main">HumScore</string>
+    <string name="package_name">com.nomadaifactory.humscore</string>
+    <string name="custom_url_scheme">com.nomadaifactory.humscore</string>
+</resources>
