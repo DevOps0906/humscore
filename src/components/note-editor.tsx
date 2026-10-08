@@ -219,15 +219,15 @@ export function NoteEditor({ score, onChange }: { score: Score; onChange: (notes
         </div>
       </div>
 
+      <label className="flex items-center gap-2 text-sm">
+        <input type="checkbox" checked={sustain} onChange={(e) => setSustain(e.target.checked)} className="h-5 w-5 accent-accent" />
+        서스테인 페달
+      </label>
       <PianoKeyboard
         onPress={onKey}
         active={shownMidi !== null && inRange(shownMidi) ? shownMidi : null}
         highlight={shownMidi !== null ? new Set([shownMidi]) : undefined}
       />
-      <label className="flex items-center gap-2 text-sm">
-        <input type="checkbox" checked={sustain} onChange={(e) => setSustain(e.target.checked)} className="h-5 w-5 accent-accent" />
-        서스테인 페달
-      </label>
     </section>
   );
 }

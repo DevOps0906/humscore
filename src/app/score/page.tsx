@@ -136,7 +136,7 @@ export default function ScorePage() {
         </span>
       </div>
 
-      <ScoreView xml={xml} />
+      {!editNotes && <ScoreView xml={xml} />}
 
       <div className="no-print">
         <button
@@ -149,6 +149,7 @@ export default function ScorePage() {
         </button>
       </div>
       {editNotes && <NoteEditor score={score} onChange={(notes) => update({ notes })} />}
+      {editNotes && <ScoreView xml={xml} />}
 
       <ChordEditor score={score} onChange={(chords) => update({ chords })} />
 

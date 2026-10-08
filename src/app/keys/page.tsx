@@ -234,16 +234,6 @@ export default function KeysPage() {
         </button>
       </header>
 
-      {/* 오선지 + 정보 카드 */}
-      <div className="flex items-center gap-4 rounded-3xl border border-line bg-surface p-4">
-        <NoteStaff midi={active} />
-        <div className="flex min-w-0 flex-col gap-1">
-          <p className="text-4xl font-bold tabular-nums">{key.name}</p>
-          <p className="tabular-nums text-sm text-ink-soft">{key.freq.toFixed(2)} Hz</p>
-          <p className="tabular-nums text-sm text-ink-soft">MIDI {key.midi} · {key.keyNumber}/88</p>
-        </div>
-      </div>
-
       {/* 입력 도구 */}
       {entry && (
         <section className="grid gap-3 rounded-2xl border border-line bg-surface p-4">
@@ -291,6 +281,26 @@ export default function KeysPage() {
       {/* 건반 */}
       <PianoKeyboard active={active} pressed={pressed} onPress={(m) => handler.current(m)} />
 
+      {/* 악보 미리보기 (건반 바로 아래) */}
+      {entry &&
+        (notes.length > 0 ? (
+          <ScoreView xml={xml} />
+        ) : (
+          <p className="rounded-2xl border border-dashed border-line p-6 text-center text-sm text-ink-soft">
+            건반을 누르면 여기에 악보가 그려져요.
+          </p>
+        ))}
+
+      {/* 오선지 + 정보 카드 */}
+      <div className="flex items-center gap-4 rounded-3xl border border-line bg-surface p-4">
+        <NoteStaff midi={active} />
+        <div className="flex min-w-0 flex-col gap-1">
+          <p className="text-4xl font-bold tabular-nums">{key.name}</p>
+          <p className="tabular-nums text-sm text-ink-soft">{key.freq.toFixed(2)} Hz</p>
+          <p className="tabular-nums text-sm text-ink-soft">MIDI {key.midi} · {key.keyNumber}/88</p>
+        </div>
+      </div>
+
       <label className="flex items-center gap-2 text-sm">
         <input
           type="checkbox"
@@ -301,25 +311,15 @@ export default function KeysPage() {
         서스테인 페달 (감쇠 2.5배)
       </label>
 
-      {/* 악보 미리보기 (건반 바로 아래) + 저장 */}
       {entry && (
-        <section className="grid gap-3">
-          {notes.length > 0 ? (
-            <ScoreView xml={xml} />
-          ) : (
-            <p className="rounded-2xl border border-dashed border-line p-6 text-center text-sm text-ink-soft">
-              건반을 누르면 여기에 악보가 그려져요.
-            </p>
-          )}
-          <button
-            type="button"
-            disabled={notes.length === 0}
-            onClick={() => void save()}
-            className="rounded-full bg-ink px-5 py-3 text-paper disabled:opacity-40"
-          >
-            악보로 저장
-          </button>
-        </section>
+        <button
+          type="button"
+          disabled={notes.length === 0}
+          onClick={() => void save()}
+          className="rounded-full bg-ink px-5 py-3 text-paper disabled:opacity-40"
+        >
+          악보로 저장
+        </button>
       )}
 
       <details className="rounded-2xl border border-line bg-surface p-4 text-sm">
