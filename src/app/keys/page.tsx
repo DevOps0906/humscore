@@ -102,7 +102,9 @@ export default function KeysPage() {
   const [sustain, setSustain] = useState(false);
 
   const sustainRef = useRef(sustain);
-  sustainRef.current = sustain;
+  useEffect(() => {
+    sustainRef.current = sustain;
+  }, [sustain]);
 
   const whites = PIANO_KEYS.filter((k) => !k.isBlack);
   const w      = 100 / whites.length;
