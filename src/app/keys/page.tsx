@@ -147,6 +147,7 @@ export default function KeysPage() {
         setBeats(d.beatsPerMeasure === 3 ? 3 : 4);
         setEntry(true);
       }
+      if (new URLSearchParams(window.location.search).get("entry") === "1") setEntry(true);
       setLoaded(true);
     }, 0);
     return () => clearTimeout(t);

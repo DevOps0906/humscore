@@ -11,7 +11,7 @@ const TABS = [
 
 export function TabBar() {
   const pathname = usePathname();
-  if (pathname.startsWith("/perform")) return null; // 공연 모드는 전체 화면
+  if (pathname.startsWith("/perform") || pathname.startsWith("/welcome")) return null; // 공연 모드·소개 화면은 전체 화면
   return (
     <nav className="no-print safe-bottom fixed inset-x-0 bottom-0 z-20 bg-paper/95 backdrop-blur">
       <div className="hr-fade" aria-hidden />
