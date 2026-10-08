@@ -6,6 +6,30 @@ import type { NoteEvent } from "../types";
 const n = (midi: number | null, startBeat: number, durationBeats: number): NoteEvent => ({ midi, startBeat, durationBeats });
 const count = (s: string, re: RegExp) => (s.match(re) ?? []).length;
 
+describe("scoreToMusicXML 옵션", () => {
+  it("minMeasures 8 → 마디 8개, 빈 마디는 온쉼표", () => {
+    const xml = scoreToMusicXML(makeScore([n(60, 0, 1)]), "lead", { minMeasures: 8 });
+    expect(count(xml, /<measure /g)).toBe(8);
+    expect(count(xml, /<rest measure="yes"\/>/g)).toBe(7);
+  });
+  it("piano 레이아웃도 빈 마디 정상", () => {
+    const xml = scoreToMusicXML(makeScore([]), "piano", { minMeasures: 3 });
+    expect(count(xml, /<measure /g)).toBe(3);
+    expect(count(xml, /<backup>/g)).toBe(3);
+  });
+  it("음표가 9마디면 minMeasures 8 이어도 9마디", () => {
+    const xml = scoreToMusicXML(makeScore([n(60, 32, 1)]), "lead", { minMeasures: 8 });
+    expect(count(xml, /<measure /g)).toBe(9);
+  });
+  it("measuresPerSystem 4 → 마디 5, 9에서만 print", () => {
+    const xml = scoreToMusicXML(makeScore([]), "lead", { minMeasures: 9, measuresPerSystem: 4 });
+    expect(count(xml, /<print new-system="yes"\/>/g)).toBe(2);
+    expect(xml).toContain(`<measure number="5"><print new-system="yes"/>`);
+    expect(xml).toContain(`<measure number="9"><print new-system="yes"/>`);
+    expect(scoreToMusicXML(makeScore([]), "lead", { minMeasures: 9 })).not.toContain("<print");
+  });
+});
+
 describe("scoreToMusicXML", () => {
   it("빈 notes 도 1마디 생성, 유효한 헤더", () => {
     const xml = scoreToMusicXML(makeScore([]));

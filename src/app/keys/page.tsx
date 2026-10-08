@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { DurationPicker } from "@/components/note-editor";
 import { PianoKeyboard } from "@/components/piano-keyboard";
+import { BASS_CLEF_PATH, CLEF_UNITS_PER_SPACE, TREBLE_CLEF_PATH } from "@/components/clef-glyphs";
 import { ScoreView } from "@/components/score-view";
 import { usePianoSound } from "@/hooks/use-piano-sound";
 import { appendNote, createBlankScore, deleteNote } from "@/lib/music/edit";
@@ -82,16 +83,11 @@ function NoteStaff({ midi }: { midi: number }) {
       ))}
 
       {/* 음자리표 */}
-      <text
-        x={40}
-        y={clef === "treble" ? BOT_Y + HALF * 1.4 : BOT_Y - GAP + 4}
-        fontSize={clef === "treble" ? GAP * 4.6 : GAP * 2.9}
-        fontFamily="serif"
+      <path
+        d={clef === "treble" ? TREBLE_CLEF_PATH : BASS_CLEF_PATH}
+        transform={`translate(42 ${clef === "treble" ? BOT_Y - GAP : BOT_Y - 3 * GAP}) scale(${GAP / CLEF_UNITS_PER_SPACE})`}
         fill="#555"
-        style={{ userSelect: "none" }}
-      >
-        {clef === "treble" ? "𝄞" : "𝄢"}
-      </text>
+      />
 
       {/* 보조선 */}
       {ledgers.map((y, i) => (
@@ -170,8 +166,8 @@ export default function KeysPage() {
     [base, notes, bpm, beats],
   );
   const xml = useMemo(
-    () => (entry && notes.length > 0 ? scoreToMusicXML(draftScore, "lead") : ""),
-    [entry, notes.length, draftScore],
+    () => (entry ? scoreToMusicXML(draftScore, "lead", { minMeasures: 8, measuresPerSystem: 4 }) : ""),
+    [entry, draftScore],
   );
 
   // PC 키보드/건반 핸들러가 최신 상태를 보도록 ref 사용
@@ -282,14 +278,7 @@ export default function KeysPage() {
       <PianoKeyboard active={active} pressed={pressed} onPress={(m) => handler.current(m)} />
 
       {/* 악보 미리보기 (건반 바로 아래) */}
-      {entry &&
-        (notes.length > 0 ? (
-          <ScoreView xml={xml} />
-        ) : (
-          <p className="rounded-2xl border border-dashed border-line p-6 text-center text-sm text-ink-soft">
-            건반을 누르면 여기에 악보가 그려져요.
-          </p>
-        ))}
+      {entry && <ScoreView xml={xml} />}
 
       {/* 오선지 + 정보 카드 */}
       <div className="flex items-center gap-4 rounded-3xl border border-line bg-surface p-4">

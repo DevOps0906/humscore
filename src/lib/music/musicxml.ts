@@ -104,14 +104,22 @@ function noteXml(p: Piece, preferFlats: boolean, staff: number, voice: number): 
   return `<note>${head}<duration>${p.divs}</duration>${ties}<voice>${voice}</voice><type>${t[1]}</type>${t[2] ? "<dot/>" : ""}<staff>${staff}</staff>${tied ? `<notations>${tied}</notations>` : ""}</note>`;
 }
 
-export function scoreToMusicXML(score: Score, layout: ScoreLayout = "lead"): string {
+export interface MusicXmlOptions {
+  /** 최소 마디 수 — 모자라면 뒤를 온쉼표 마디로 채움(출력 전용). 기본 1 */
+  minMeasures?: number;
+  /** 지정 시 N마디마다 줄바꿈 힌트(<print new-system="yes"/>)를 넣음 */
+  measuresPerSystem?: number;
+}
+
+export function scoreToMusicXML(score: Score, layout: ScoreLayout = "lead", opts: MusicXmlOptions = {}): string {
   const tp = score.transpose;
   const key = transposeKey(score.key, tp);
   const preferFlats = key.fifths < 0;
   const notes = score.notes.map((n) => ({ ...n, midi: n.midi === null ? null : n.midi + tp }));
   const chords = score.chords.map((c) => ({ ...c, symbol: transposeChordSymbol(c.symbol, tp, preferFlats) }));
   const bpm = score.beatsPerMeasure;
-  const measures = scoreMeasureCount(score);
+  const measures = Math.max(scoreMeasureCount(score), opts.minMeasures ?? 1);
+  const perSystem = opts.measuresPerSystem;
   const measureDivs = bpm * DIVISIONS;
 
   // 남성 음역(가온 도 아래 중심)이면 옥타브 낮춘 높은음자리표(테너 표기)
@@ -125,6 +133,7 @@ export function scoreToMusicXML(score: Score, layout: ScoreLayout = "lead"): str
   const body: string[] = [];
   for (let m = 0; m < measures; m++) {
     const parts: string[] = [];
+    if (perSystem && perSystem > 0 && m > 0 && m % perSystem === 0) parts.push(`<print new-system="yes"/>`);
     if (m === 0) {
       parts.push(
         `<attributes><divisions>${DIVISIONS}</divisions><key><fifths>${key.fifths}</fifths><mode>${key.mode}</mode></key>` +

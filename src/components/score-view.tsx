@@ -33,6 +33,7 @@ export function ScoreView({ xml, zoom = 1, className = "" }: { xml: string; zoom
             if (!isLatest() || !ref.current) return;
             osmdRef.current = new OpenSheetMusicDisplay(ref.current, {
               autoResize: true,
+              newSystemFromXML: true,
               backend: "svg",
               drawTitle: false,
               drawComposer: false,
