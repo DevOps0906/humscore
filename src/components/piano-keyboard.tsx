@@ -64,17 +64,17 @@ export function PianoKeyboard({ onPress, active = null, highlight, pressed: exte
               onPointerLeave={() => release(k.midi)}
               onPointerCancel={() => release(k.midi)}
               className={[
-                "relative flex-1 rounded-b border border-line transition-all duration-75",
+                "relative flex-1 rounded-b border border-neutral-800 transition-all duration-75",
                 down
-                  ? "translate-y-0.5 bg-accent/30 shadow-[inset_0_3px_6px_rgba(0,0,0,0.15)]"
+                  ? "translate-y-0.5 bg-accent shadow-[inset_0_3px_6px_rgba(0,0,0,0.25)]"
                   : isActive || hl
-                    ? "bg-accent/25"
-                    : "bg-white hover:bg-neutral-50",
+                    ? "bg-accent/60"
+                    : "bg-[#f3f5fe] hover:bg-[#e4e7f5]",
               ].join(" ")}
               aria-label={`${k.name} ${k.freq.toFixed(2)}Hz`}
             >
               {k.name.startsWith("C") && (
-                <span className="absolute inset-x-0 bottom-1 text-[10px] text-neutral-400">{k.name}</span>
+                <span className="absolute inset-x-0 bottom-1 text-[10px] text-[#595d6c]">{k.name}</span>
               )}
             </button>
           );
@@ -94,10 +94,10 @@ export function PianoKeyboard({ onPress, active = null, highlight, pressed: exte
               className={[
                 "absolute top-0 z-10 h-24 rounded-b transition-all duration-75",
                 down
-                  ? "translate-y-1 bg-neutral-600"
+                  ? "translate-y-1 bg-accent"
                   : active === k.midi || highlight?.has(k.midi)
                     ? "bg-accent"
-                    : "bg-neutral-900 hover:bg-neutral-700",
+                    : "bg-[#161826] hover:bg-[#292b31] ring-1 ring-neutral-700",
               ].join(" ")}
               style={{ left: `${(i + 1) * W - W * 0.32}%`, width: `${W * 0.64}%` }}
               aria-label={`${k.name} ${k.freq.toFixed(2)}Hz`}

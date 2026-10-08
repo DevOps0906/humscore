@@ -48,7 +48,7 @@ export default function RecordPage() {
           const y = h - ((m - lo) / (hi - lo)) * h;
           g.beginPath(); g.moveTo(0, y); g.lineTo(w, y); g.stroke();
         }
-        g.fillStyle = "#d94f2b";
+        g.fillStyle = "#f07a6e";
         for (const p of pts) {
           if (p.freq === null || p.clarity < 0.88 || now - p.time > span) continue;
           const x = w - ((now - p.time) / span) * w;
@@ -202,7 +202,7 @@ export default function RecordPage() {
         type="button"
         onClick={recording ? stop : start}
         disabled={status === "processing"}
-        className={`mx-auto flex h-24 w-24 items-center justify-center rounded-full text-accent-ink shadow-lg transition active:scale-95 ${recording ? "bg-ink" : "bg-accent"}`}
+        className={`mx-auto flex h-24 w-24 items-center justify-center rounded-full text-accent-ink shadow-md transition active:scale-95 ${recording ? "bg-tune-bad" : "bg-accent"}`}
         aria-label={recording ? "녹음 끝내고 악보 만들기" : "녹음 시작"}
       >
         {recording ? (
@@ -230,7 +230,7 @@ export default function RecordPage() {
               key={b}
               type="button"
               onClick={() => setBeats(b)}
-              className={`rounded-full border px-4 py-1.5 ${beats === b ? "border-ink bg-ink text-paper" : "border-line"}`}
+              className={`rounded-full border px-4 py-1.5 ${beats === b ? "border-accent bg-accent/15 text-accent" : "border-line"}`}
             >
               {b}/4
             </button>

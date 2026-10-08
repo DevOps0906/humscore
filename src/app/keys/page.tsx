@@ -79,40 +79,40 @@ function NoteStaff({ midi }: { midi: number }) {
       {/* 5선 */}
       {[0, 1, 2, 3, 4].map((i) => (
         <line key={i} x1={38} y1={BOT_Y - i * GAP} x2={220} y2={BOT_Y - i * GAP}
-          stroke="#999" strokeWidth="1.2" />
+          stroke="var(--ink-soft)" strokeWidth="1.2" />
       ))}
 
       {/* 음자리표 */}
       <path
         d={clef === "treble" ? TREBLE_CLEF_PATH : BASS_CLEF_PATH}
         transform={`translate(42 ${clef === "treble" ? BOT_Y - GAP : BOT_Y - 3 * GAP}) scale(${GAP / CLEF_UNITS_PER_SPACE})`}
-        fill="#555"
+        fill="currentColor"
       />
 
       {/* 보조선 */}
       {ledgers.map((y, i) => (
         <line key={i} x1={NX - 16} y1={y} x2={NX + 16} y2={y}
-          stroke="#999" strokeWidth="1.2" />
+          stroke="var(--ink-soft)" strokeWidth="1.2" />
       ))}
 
       {/* 임시표 */}
       {sharp && (
-        <text x={NX - 22} y={noteY + 5} fontSize={15} fontFamily="serif" fill="#333">♯</text>
+        <text x={NX - 22} y={noteY + 5} fontSize={15} fontFamily="serif" fill="currentColor">♯</text>
       )}
 
       {/* 음표 머리 */}
       <ellipse
         cx={NX} cy={noteY} rx={9} ry={6.5}
-        fill="#111"
+        fill="currentColor"
         transform={`rotate(-18 ${NX} ${noteY})`}
       />
 
       {/* 기둥 */}
       {stemUp
         ? <line x1={NX + 8} y1={noteY} x2={NX + 8} y2={noteY - HALF * 6.5}
-            stroke="#111" strokeWidth="1.6" />
+            stroke="currentColor" strokeWidth="1.6" />
         : <line x1={NX - 8} y1={noteY} x2={NX - 8} y2={noteY + HALF * 6.5}
-            stroke="#111" strokeWidth="1.6" />
+            stroke="currentColor" strokeWidth="1.6" />
       }
     </svg>
   );
@@ -224,7 +224,7 @@ export default function KeysPage() {
           type="button"
           onClick={() => setEntry((v) => !v)}
           aria-pressed={entry}
-          className={`shrink-0 rounded-full border px-4 py-2 text-sm ${entry ? "border-ink bg-ink text-paper" : "border-line"}`}
+          className={`shrink-0 rounded-full border px-4 py-2 text-sm ${entry ? "border-accent bg-accent/15 text-accent" : "border-line"}`}
         >
           악보 입력
         </button>
@@ -264,7 +264,7 @@ export default function KeysPage() {
                 key={b}
                 type="button"
                 onClick={() => setBeats(b)}
-                className={`rounded-full border px-3 py-1.5 ${beats === b ? "border-ink bg-ink text-paper" : "border-line"}`}
+                className={`rounded-full border px-3 py-1.5 ${beats === b ? "border-accent bg-accent/15 text-accent" : "border-line"}`}
               >
                 {b}/4
               </button>
@@ -305,7 +305,7 @@ export default function KeysPage() {
           type="button"
           disabled={notes.length === 0}
           onClick={() => void save()}
-          className="rounded-full bg-ink px-5 py-3 text-paper disabled:opacity-40"
+          className="rounded-full border border-accent px-5 py-3 text-accent disabled:opacity-40"
         >
           악보로 저장
         </button>

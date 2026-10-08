@@ -28,7 +28,7 @@ function parseSymbol(sym: string): { root: number; quality: string; bass: number
 }
 
 const pill = (on: boolean) =>
-  `rounded-lg border px-2 py-1.5 text-sm ${on ? "border-ink bg-ink text-paper" : "border-line bg-paper"}`;
+  `rounded-lg border px-2 py-1.5 text-sm ${on ? "border-accent bg-accent/15 text-accent" : "border-line bg-paper"}`;
 
 /** 마디별 코드 추가·수정. 화면은 전조된 기호, 저장은 원키 기호 */
 export function ChordEditor({ score, onChange }: { score: Score; onChange: (chords: ChordEvent[]) => void }) {
@@ -142,7 +142,7 @@ export function ChordEditor({ score, onChange }: { score: Score; onChange: (chor
             </div>
           </div>
           <div className="flex flex-wrap gap-2 text-sm">
-            <button type="button" onClick={apply} className="rounded-full bg-ink px-4 py-2 text-paper">
+            <button type="button" onClick={apply} className="rounded-full border border-accent px-4 py-2 text-accent">
               적용
             </button>
             <button type="button" onClick={preview} className="rounded-full border border-line px-4 py-2">

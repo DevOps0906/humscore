@@ -29,7 +29,7 @@ export const DURATION_LABELS: Record<number, string> = {
 };
 
 const chipBtn = (on: boolean) =>
-  `rounded-full border px-3 py-1.5 text-sm ${on ? "border-ink bg-ink text-paper" : "border-line bg-surface"}`;
+  `rounded-full border px-3 py-1.5 text-sm ${on ? "border-accent bg-accent/15 text-accent" : "border-line bg-surface"}`;
 const actBtn = "rounded-full border border-line bg-surface px-3 py-1.5 text-sm disabled:opacity-40";
 
 /** 음가 선택 (16분~온음표 + 점) */

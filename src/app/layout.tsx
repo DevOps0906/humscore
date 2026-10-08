@@ -12,7 +12,7 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover", // 노치 영역까지 사용 (safe-area로 여백 처리)
-  themeColor: "#fbf8f1",
+  themeColor: "#161826",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

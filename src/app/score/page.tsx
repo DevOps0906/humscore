@@ -126,7 +126,7 @@ export default function ScorePage() {
             key={l}
             type="button"
             onClick={() => setLayout(l)}
-            className={`rounded-full border px-4 py-1.5 ${layout === l ? "border-ink bg-ink text-paper" : "border-line"}`}
+            className={`rounded-full border px-4 py-1.5 ${layout === l ? "border-accent bg-accent/15 text-accent" : "border-line"}`}
           >
             {l === "lead" ? "코드 악보" : "피아노"}
           </button>
@@ -143,7 +143,7 @@ export default function ScorePage() {
           type="button"
           onClick={() => setEditNotes((v) => !v)}
           aria-pressed={editNotes}
-          className={`rounded-full border px-4 py-2 text-sm ${editNotes ? "border-ink bg-ink text-paper" : "border-line"}`}
+          className={`rounded-full border px-4 py-2 text-sm ${editNotes ? "border-accent bg-accent/15 text-accent" : "border-line"}`}
         >
           음표 편집
         </button>
@@ -176,7 +176,7 @@ export default function ScorePage() {
             <button
               type="button"
               onClick={() => exportFile(`${base}_${instrument}.mid`, scoreToMidi(score, { melodyInstrument: instrument }), "audio/midi")}
-              className="rounded-full bg-ink px-4 py-2 text-paper"
+              className="rounded-full border border-accent px-4 py-2 text-accent"
             >
               MIDI
             </button>
@@ -201,7 +201,7 @@ export default function ScorePage() {
           <button
             type="button"
             onClick={togglePlay}
-            className={`h-14 w-14 shrink-0 rounded-full text-accent-ink shadow ${playing ? "bg-ink" : "bg-accent"}`}
+            className={`h-14 w-14 shrink-0 rounded-full text-accent-ink shadow-md ${playing ? "bg-tune-bad" : "bg-accent"}`}
             aria-label={playing ? "정지" : "재생"}
           >
             {playing ? "■" : "▶"}

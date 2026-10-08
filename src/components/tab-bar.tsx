@@ -13,7 +13,8 @@ export function TabBar() {
   const pathname = usePathname();
   if (pathname.startsWith("/perform")) return null; // 공연 모드는 전체 화면
   return (
-    <nav className="no-print safe-bottom fixed inset-x-0 bottom-0 z-20 border-t border-line bg-paper/95 backdrop-blur">
+    <nav className="no-print safe-bottom fixed inset-x-0 bottom-0 z-20 bg-paper/95 backdrop-blur">
+      <div className="hr-fade" aria-hidden />
       <ul className="mx-auto flex max-w-md justify-around pt-2">
         {TABS.map(({ href, label, icon: Icon }) => {
           const active = href === "/" ? pathname === "/" || pathname.startsWith("/score") : pathname.startsWith(href.slice(0, -1));
