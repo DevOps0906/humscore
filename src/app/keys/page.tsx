@@ -1,9 +1,36 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { getAudioContext } from "@/lib/audio/context";
-import { playPianoNote } from "@/lib/audio/piano-synth";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import { DurationPicker } from "@/components/note-editor";
+import { PianoKeyboard } from "@/components/piano-keyboard";
+import { ScoreView } from "@/components/score-view";
+import { usePianoSound } from "@/hooks/use-piano-sound";
+import { appendNote, createBlankScore, deleteNote } from "@/lib/music/edit";
 import { PIANO_KEYS } from "@/lib/music/frequency";
+import { scoreToMusicXML } from "@/lib/music/musicxml";
+import { estimateKey } from "@/lib/music/theory";
+import type { NoteEvent } from "@/lib/music/types";
+import { saveScore } from "@/lib/storage/scores";
+
+const DRAFT_KEY = "humscore.keysDraft";
+
+interface Draft {
+  notes: NoteEvent[];
+  bpm: number;
+  beatsPerMeasure: number;
+}
+
+function loadDraft(): Draft | null {
+  try {
+    const raw = localStorage.getItem(DRAFT_KEY);
+    if (!raw) return null;
+    const d = JSON.parse(raw) as Draft;
+    return Array.isArray(d.notes) ? d : null;
+  } catch {
+    return null;
+  }
+}
 
 // ── 오선지 컴포넌트 ──────────────────────────────────────────────────────
 // pc(0~11) → 온음계 단계 C=0,D=1,E=2,F=3,G=4,A=5,B=6 (샤프은 아랫 음으로)
@@ -95,86 +122,116 @@ function NoteStaff({ midi }: { midi: number }) {
   );
 }
 
-// ── 메인 컴포넌트 ────────────────────────────────────────────────────────
+const PC_MAP: Record<string, number> = {
+  a: 60, w: 61, s: 62, e: 63, d: 64, f: 65, t: 66,
+  g: 67, y: 68, h: 69, u: 70, j: 71, k: 72,
+};
+
 export default function KeysPage() {
-  const [active,  setActive]  = useState(69);
+  const router = useRouter();
+  const { playNote, sustain, setSustain } = usePianoSound();
+  const [active, setActive] = useState(69);
   const [pressed, setPressed] = useState<Set<number>>(new Set());
-  const [sustain, setSustain] = useState(false);
 
-  const sustainRef = useRef(sustain);
+  const [entry, setEntry] = useState(false);
+  const [notes, setNotes] = useState<NoteEvent[]>([]);
+  const [bpm, setBpm] = useState(90);
+  const [beats, setBeats] = useState(4);
+  const [dur, setDur] = useState(1);
+  const [loaded, setLoaded] = useState(false);
+  const [base] = useState(() => createBlankScore());
+
+  // 초안 복원 / 저장 (음표 숫자만, 오디오 아님)
   useEffect(() => {
-    sustainRef.current = sustain;
-  }, [sustain]);
-
-  const whites = PIANO_KEYS.filter((k) => !k.isBlack);
-  const w      = 100 / whites.length;
-  const key    = PIANO_KEYS[active - 21];
-
-  function playNote(midi: number) {
-    const ctx = getAudioContext(); // 사용자 제스처 안에서 resume() 시작
-    const doPlay = () =>
-      playPianoNote(ctx, midi, ctx.currentTime + 0.015, { sustainPedal: sustainRef.current });
-
-    if (ctx.state === "running") {
-      doPlay();
-    } else {
-      // context가 resume될 때까지 기다렸다가 재생
-      const onState = () => {
-        if (ctx.state === "running") {
-          ctx.removeEventListener("statechange", onState);
-          doPlay();
-        }
-      };
-      ctx.addEventListener("statechange", onState);
+    const t = setTimeout(() => {
+      const d = loadDraft();
+      if (d && d.notes.length > 0) {
+        setNotes(d.notes);
+        setBpm(d.bpm || 90);
+        setBeats(d.beatsPerMeasure === 3 ? 3 : 4);
+        setEntry(true);
+      }
+      setLoaded(true);
+    }, 0);
+    return () => clearTimeout(t);
+  }, []);
+  useEffect(() => {
+    if (!loaded) return;
+    try {
+      if (notes.length === 0) localStorage.removeItem(DRAFT_KEY);
+      else localStorage.setItem(DRAFT_KEY, JSON.stringify({ notes, bpm, beatsPerMeasure: beats }));
+    } catch {
+      /* 저장 불가 환경 무시 */
     }
-  }
+  }, [notes, bpm, beats, loaded]);
 
-  function pressKey(midi: number) {
-    setActive(midi);
-    setPressed((p) => new Set([...p, midi]));
-    playNote(midi);
-  }
+  const draftScore = useMemo(
+    () => ({ ...base, notes, bpm, beatsPerMeasure: beats, key: estimateKey(notes) }),
+    [base, notes, bpm, beats],
+  );
+  const xml = useMemo(
+    () => (entry && notes.length > 0 ? scoreToMusicXML(draftScore, "lead") : ""),
+    [entry, notes.length, draftScore],
+  );
 
-  function releaseKey(midi: number) {
-    setPressed((p) => { const n = new Set(p); n.delete(midi); return n; });
-  }
+  // PC 키보드/건반 핸들러가 최신 상태를 보도록 ref 사용
+  const handler = useRef<(midi: number) => void>(() => {});
+  useEffect(() => {
+    handler.current = (midi: number) => {
+      setActive(midi);
+      playNote(midi);
+      if (entry) setNotes((n) => appendNote(n, midi, dur));
+    };
+  });
 
   useEffect(() => {
-    const MAP: Record<string, number> = {
-      a:60, w:61, s:62, e:63, d:64, f:65, t:66,
-      g:67, y:68, h:69, u:70, j:71, k:72,
-    };
     const down = (e: KeyboardEvent) => {
-      const m = MAP[e.key.toLowerCase()];
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
+      const t = e.target as HTMLElement | null;
+      if (t && (t.tagName === "INPUT" || t.tagName === "SELECT" || t.tagName === "TEXTAREA")) return;
+      const m = PC_MAP[e.key.toLowerCase()];
       if (m && !e.repeat) {
-        setActive(m);
         setPressed((p) => new Set([...p, m]));
-        const ctx = getAudioContext();
-        const doPlay = () =>
-          playPianoNote(ctx, m, ctx.currentTime + 0.015, { sustainPedal: sustainRef.current });
-        if (ctx.state === "running") doPlay();
-        else {
-          const h = () => { if (ctx.state === "running") { ctx.removeEventListener("statechange", h); doPlay(); } };
-          ctx.addEventListener("statechange", h);
-        }
+        handler.current(m);
       }
     };
     const up = (e: KeyboardEvent) => {
-      const m = MAP[e.key.toLowerCase()];
+      const m = PC_MAP[e.key.toLowerCase()];
       if (m) setPressed((p) => { const n = new Set(p); n.delete(m); return n; });
     };
     window.addEventListener("keydown", down);
     window.addEventListener("keyup", up);
     return () => { window.removeEventListener("keydown", down); window.removeEventListener("keyup", up); };
-  }, []); // sustainRef로 sustain 값 참조 — [] 안전
+  }, []);
+
+  const key = PIANO_KEYS[active - 21];
+
+  async function save() {
+    if (notes.length === 0) return;
+    const saved = await saveScore({ ...draftScore, title: `건반 입력 ${new Date().toLocaleString("ko-KR")}` });
+    try { localStorage.removeItem(DRAFT_KEY); } catch { /* 무시 */ }
+    router.push(`/score/?id=${saved.id}`);
+  }
+
+  const btn = "rounded-full border border-line bg-surface px-4 py-2 text-sm disabled:opacity-40";
 
   return (
     <div className="flex flex-col gap-5">
-      <header>
-        <h1 className="text-2xl font-bold">피아노 88건반 주파수</h1>
-        <p className="text-sm text-ink-soft">
-          f = 440 × 2^((n − 49) / 12) · 건반을 누르거나 PC 키보드 A~K
-        </p>
+      <header className="flex items-start justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold">피아노 88건반 주파수</h1>
+          <p className="text-sm text-ink-soft">
+            f = 440 × 2^((n − 49) / 12) · 건반을 누르거나 PC 키보드 A~K
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => setEntry((v) => !v)}
+          aria-pressed={entry}
+          className={`shrink-0 rounded-full border px-4 py-2 text-sm ${entry ? "border-ink bg-ink text-paper" : "border-line"}`}
+        >
+          악보 입력
+        </button>
       </header>
 
       {/* 오선지 + 정보 카드 */}
@@ -187,68 +244,52 @@ export default function KeysPage() {
         </div>
       </div>
 
-      {/* 건반 */}
-      <div className="overflow-x-auto pb-2">
-        <div className="relative flex h-40 min-w-[900px] select-none touch-manipulation">
-
-          {/* 흰 건반 */}
-          {whites.map((k) => {
-            const isPressed = pressed.has(k.midi);
-            const isActive  = active === k.midi;
-            return (
-              <button
-                key={k.midi}
-                type="button"
-                onPointerDown={() => pressKey(k.midi)}
-                onPointerUp={() => releaseKey(k.midi)}
-                onPointerLeave={() => releaseKey(k.midi)}
-                onPointerCancel={() => releaseKey(k.midi)}
-                className={[
-                  "relative flex-1 rounded-b border border-line transition-all duration-75",
-                  isPressed
-                    ? "translate-y-0.5 bg-accent/30 shadow-[inset_0_3px_6px_rgba(0,0,0,0.15)]"
-                    : isActive
-                    ? "bg-accent/15"
-                    : "bg-white hover:bg-neutral-50",
-                ].join(" ")}
-                aria-label={`${k.name} ${k.freq.toFixed(2)}Hz`}
-              >
-                {k.name.startsWith("C") && (
-                  <span className="absolute inset-x-0 bottom-1 text-[10px] text-neutral-400">
-                    {k.name}
-                  </span>
-                )}
-              </button>
-            );
-          })}
-
-          {/* 검은 건반 */}
-          {PIANO_KEYS.filter((k) => k.isBlack).map((k) => {
-            const i = whites.findIndex((x) => x.midi === k.midi - 1);
-            const isPressed = pressed.has(k.midi);
-            return (
-              <button
-                key={k.midi}
-                type="button"
-                onPointerDown={() => pressKey(k.midi)}
-                onPointerUp={() => releaseKey(k.midi)}
-                onPointerLeave={() => releaseKey(k.midi)}
-                onPointerCancel={() => releaseKey(k.midi)}
-                className={[
-                  "absolute top-0 z-10 h-24 rounded-b transition-all duration-75",
-                  isPressed
-                    ? "translate-y-1 bg-neutral-600"
-                    : active === k.midi
-                    ? "bg-accent"
-                    : "bg-neutral-900 hover:bg-neutral-700",
-                ].join(" ")}
-                style={{ left: `${(i + 1) * w - w * 0.32}%`, width: `${w * 0.64}%` }}
-                aria-label={`${k.name} ${k.freq.toFixed(2)}Hz`}
+      {/* 입력 도구 */}
+      {entry && (
+        <section className="grid gap-3 rounded-2xl border border-line bg-surface p-4">
+          <p className="text-xs text-ink-soft">음 길이를 고르고 건반을 누르면 악보에 추가돼요.</p>
+          <DurationPicker value={dur} onChange={setDur} />
+          <div className="flex flex-wrap items-center gap-2 text-sm">
+            <button type="button" className={btn} onClick={() => setNotes((n) => appendNote(n, null, dur))}>쉼표 추가</button>
+            <button type="button" className={btn} disabled={notes.length === 0} onClick={() => setNotes((n) => deleteNote(n, n.length - 1))}>되돌리기</button>
+            <button
+              type="button"
+              className={`${btn} text-tune-bad`}
+              disabled={notes.length === 0}
+              onClick={() => { if (confirm("작성 중인 음표를 모두 지울까요?")) setNotes([]); }}
+            >
+              전체 지우기
+            </button>
+          </div>
+          <div className="flex flex-wrap items-center gap-3 text-sm">
+            <label className="flex items-center gap-2">
+              BPM
+              <input
+                type="number"
+                min={30}
+                max={240}
+                value={bpm}
+                onChange={(e) => setBpm(Math.min(240, Math.max(30, Number(e.target.value) || 90)))}
+                className="w-20 rounded-lg border border-line bg-paper px-2 py-1"
               />
-            );
-          })}
-        </div>
-      </div>
+            </label>
+            {[3, 4].map((b) => (
+              <button
+                key={b}
+                type="button"
+                onClick={() => setBeats(b)}
+                className={`rounded-full border px-3 py-1.5 ${beats === b ? "border-ink bg-ink text-paper" : "border-line"}`}
+              >
+                {b}/4
+              </button>
+            ))}
+            <span className="text-ink-soft">{notes.length}개 음표</span>
+          </div>
+        </section>
+      )}
+
+      {/* 건반 */}
+      <PianoKeyboard active={active} pressed={pressed} onPress={(m) => handler.current(m)} />
 
       <label className="flex items-center gap-2 text-sm">
         <input
@@ -259,6 +300,27 @@ export default function KeysPage() {
         />
         서스테인 페달 (감쇠 2.5배)
       </label>
+
+      {/* 악보 미리보기 (건반 바로 아래) + 저장 */}
+      {entry && (
+        <section className="grid gap-3">
+          {notes.length > 0 ? (
+            <ScoreView xml={xml} />
+          ) : (
+            <p className="rounded-2xl border border-dashed border-line p-6 text-center text-sm text-ink-soft">
+              건반을 누르면 여기에 악보가 그려져요.
+            </p>
+          )}
+          <button
+            type="button"
+            disabled={notes.length === 0}
+            onClick={() => void save()}
+            className="rounded-full bg-ink px-5 py-3 text-paper disabled:opacity-40"
+          >
+            악보로 저장
+          </button>
+        </section>
+      )}
 
       <details className="rounded-2xl border border-line bg-surface p-4 text-sm">
         <summary className="cursor-pointer font-semibold">전체 주파수 표 보기</summary>

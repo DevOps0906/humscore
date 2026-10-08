@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { ChordEditor } from "@/components/chord-editor";
+import { NoteEditor } from "@/components/note-editor";
 import { ScoreView } from "@/components/score-view";
 import { TransposeBar } from "@/components/transpose-bar";
 import { useScoreParam } from "@/hooks/use-score-param";
@@ -10,7 +12,7 @@ import { getAudioContext, setAudioSessionType } from "@/lib/audio/context";
 import { playScore, type Playback } from "@/lib/audio/piano-synth";
 import { GM_INSTRUMENTS, scoreToMidi, type InstrumentId } from "@/lib/music/midi";
 import { scoreToMusicXML, type ScoreLayout } from "@/lib/music/musicxml";
-import { keyName, transposeChordSymbol, transposeKey } from "@/lib/music/theory";
+import { keyName, transposeKey } from "@/lib/music/theory";
 import { exportFile, safeFileName } from "@/lib/platform/export-file";
 import { deleteScore } from "@/lib/storage/scores";
 
@@ -31,6 +33,7 @@ export default function ScorePage() {
   const { score, update } = useScoreParam();
   const [layout, setLayout] = useState<ScoreLayout>("lead");
   const [instrument, setInstrument] = useState<InstrumentId>("piano");
+  const [editNotes, setEditNotes] = useState(false);
   const [playing, setPlaying] = useState(false);
   const playback = useRef<Playback | null>(null);
   const stopTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -61,7 +64,6 @@ export default function ScorePage() {
     );
 
   const shownKey = transposeKey(score.key, score.transpose);
-  const preferFlats = shownKey.fifths < 0;
 
   function togglePlay() {
     if (playing) {
@@ -102,15 +104,6 @@ export default function ScorePage() {
     }
   }
 
-  function editChord(index: number) {
-    const current = transposeChordSymbol(score!.chords[index].symbol, score!.transpose, preferFlats);
-    const input = window.prompt(`${index + 1}마디 코드 (예: C, Am, G7, F/A)`, current)?.trim();
-    if (!input || !/^[A-G][#b]?[^\s]*$/.test(input)) return;
-    // 화면에는 전조된 코드를 보여주므로, 저장은 원키 기준으로 되돌려서
-    const original = transposeChordSymbol(input, -score!.transpose, score!.key.fifths < 0);
-    update({ chords: score!.chords.map((c, i) => (i === index ? { ...c, symbol: original } : c)) });
-  }
-
   const base = `${safeFileName(score.title)}_${keyName(shownKey)}`;
 
   return (
@@ -145,18 +138,19 @@ export default function ScorePage() {
 
       <ScoreView xml={xml} />
 
-      {/* 코드 수정 */}
-      <section className="no-print">
-        <p className="mb-2 text-xs text-ink-soft">코드를 눌러 수정 (AI 추천값 · 마디당 1개)</p>
-        <div className="flex flex-wrap gap-2">
-          {score.chords.map((c, i) => (
-            <button key={i} type="button" onClick={() => editChord(i)} className="rounded-lg border border-line bg-surface px-3 py-1.5 text-sm">
-              <span className="mr-1 text-xs text-ink-soft">{i + 1}</span>
-              {transposeChordSymbol(c.symbol, score.transpose, preferFlats)}
-            </button>
-          ))}
-        </div>
-      </section>
+      <div className="no-print">
+        <button
+          type="button"
+          onClick={() => setEditNotes((v) => !v)}
+          aria-pressed={editNotes}
+          className={`rounded-full border px-4 py-2 text-sm ${editNotes ? "border-ink bg-ink text-paper" : "border-line"}`}
+        >
+          음표 편집
+        </button>
+      </div>
+      {editNotes && <NoteEditor score={score} onChange={(notes) => update({ notes })} />}
+
+      <ChordEditor score={score} onChange={(chords) => update({ chords })} />
 
       {/* 내보내기 */}
       <section className="no-print grid gap-3 rounded-2xl border border-line bg-surface p-4">
