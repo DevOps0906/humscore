@@ -10,7 +10,8 @@
     "cap:sync": "next build && cap sync",
     "cap:android": "npm run cap:sync && cap open android",
     "cap:ios": "npm run cap:sync && cap open ios",
-    "native:permissions": "node scripts/native-permissions.mjs"
+    "native:permissions": "node scripts/native-permissions.mjs",
+    "agents:check": "node scripts/check-ownership.mjs"
   },
   "dependencies": {
     "@capacitor/android": "^8.5.3",
