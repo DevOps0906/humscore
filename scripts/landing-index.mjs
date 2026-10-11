@@ -16,5 +16,5 @@ if (!existsSync(SRC)) throw new Error(`${SRC} 이 없습니다`);
 if (!existsSync("out")) throw new Error("out/ 이 없습니다 — next build 를 먼저 실행하세요");
 
 copyFileSync(SRC, DEST);
-if (!readFileSync(DEST, "utf8").includes("__bundler/template")) throw new Error(`${DEST} 복사 확인 실패`);
+if (!readFileSync(DEST, "utf8").includes('href="/library/"')) throw new Error(`${DEST} 복사 확인 실패 (앱 진입 링크 없음)`);
 console.log(`✓ ${DEST} ← ${SRC}`);

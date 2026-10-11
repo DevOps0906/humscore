@@ -111,6 +111,13 @@ describe("scoreToMusicXML", () => {
     expect(count(xml, /<chord\/>/g)).toBe(4); // 마디당 2개 (3화음 중 2번째·3번째)
     expect(count(xml, /<staff>2<\/staff>/g)).toBe(6);
   });
+  it("피아노: 한 음가로 안 되는 박자(6/4)는 왼손 코드를 온음표+2분음표 붙임줄로", () => {
+    const xml = scoreToMusicXML(makeScore([n(60, 0, 4)], { beatsPerMeasure: 6, chords: [{ startBeat: 0, symbol: "C" }] }), "piano");
+    expect(count(xml, /<staff>2<\/staff>/g)).toBe(6); // 3화음 × 2조각
+    expect(count(xml, /<tie type="start"\/>/g)).toBe(3);
+    expect(count(xml, /<tie type="stop"\/>/g)).toBe(3);
+    expect(xml).not.toContain("undefined");
+  });
   it("피아노: 코드 없으면 마디 쉼표", () => {
     const xml = scoreToMusicXML(makeScore([n(60, 0, 4)]), "piano");
     expect(xml).toContain('<rest measure="yes"/>');

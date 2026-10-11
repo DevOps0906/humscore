@@ -7,10 +7,10 @@ import { PianoKeyboard } from "@/components/piano-keyboard";
 import { BASS_CLEF_PATH, CLEF_UNITS_PER_SPACE, TREBLE_CLEF_PATH } from "@/components/clef-glyphs";
 import { ScoreView } from "@/components/score-view";
 import { usePianoSound } from "@/hooks/use-piano-sound";
-import { appendNote, createBlankScore, deleteNote } from "@/lib/music/edit";
+import { appendNote, createBlankScore, deleteNote, scoreMeasureCount } from "@/lib/music/edit";
 import { PIANO_KEYS } from "@/lib/music/frequency";
 import { scoreToMusicXML } from "@/lib/music/musicxml";
-import { estimateKey } from "@/lib/music/theory";
+import { estimateKey, suggestChords } from "@/lib/music/theory";
 import type { NoteEvent } from "@/lib/music/types";
 import { saveScore } from "@/lib/storage/scores";
 
@@ -205,7 +205,9 @@ export default function KeysPage() {
 
   async function save() {
     if (notes.length === 0) return;
-    const saved = await saveScore({ ...draftScore, title: `건반 입력 ${new Date().toLocaleString("ko-KR")}` });
+    // 허밍 채보와 동일하게 마디별 코드를 추천해 둠 (악보 화면에서 수정 가능)
+    const chords = suggestChords(notes, draftScore.key, beats, scoreMeasureCount(draftScore));
+    const saved = await saveScore({ ...draftScore, chords, title: `건반 입력 ${new Date().toLocaleString("ko-KR")}` });
     try { localStorage.removeItem(DRAFT_KEY); } catch { /* 무시 */ }
     router.push(`/score/?id=${saved.id}`);
   }

@@ -39,6 +39,7 @@ export function ScoreView({ xml, zoom = 1, className = "" }: { xml: string; zoom
               drawComposer: false,
               drawPartNames: false,
               drawingParameters: "compacttight",
+              autoGenerateMultipleRestMeasuresFromRestMeasures: false, // 빈 마디를 "7" 식 다중쉼표로 합치지 않음 (8마디 미리보기)
             });
           }
           const osmd = osmdRef.current;

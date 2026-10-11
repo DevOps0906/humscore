@@ -162,15 +162,20 @@ export function scoreToMusicXML(score: Score, layout: ScoreLayout = "lead", opts
     if (piano) {
       parts.push(`<backup><duration>${measureDivs}</duration></backup>`);
       const tones = chord ? chordToMidi(chord.symbol, 3) : [];
-      const t = DURATION_TYPES.find(([d]) => d === measureDivs)!;
       if (tones.length === 0) {
         parts.push(`<note><rest measure="yes"/><duration>${measureDivs}</duration><voice>5</voice><staff>2</staff></note>`);
       } else {
-        tones.forEach((midi, i) =>
-          parts.push(
-            `<note>${i > 0 ? "<chord/>" : ""}${pitchXml(midi, preferFlats)}<duration>${measureDivs}</duration><voice>5</voice><type>${t[1]}</type>${t[2] ? "<dot/>" : ""}<staff>2</staff></note>`,
-          ),
-        );
+        // 마디 길이가 한 음가로 안 되는 박자(6/4 등)는 여러 음가로 나누고 붙임줄로 연결
+        const spans = decompose(measureDivs);
+        spans.forEach(([d, type, dotted], si) => {
+          const tie = (si > 0 ? `<tie type="stop"/>` : "") + (si < spans.length - 1 ? `<tie type="start"/>` : "");
+          const tied = (si > 0 ? `<tied type="stop"/>` : "") + (si < spans.length - 1 ? `<tied type="start"/>` : "");
+          tones.forEach((midi, i) =>
+            parts.push(
+              `<note>${i > 0 ? "<chord/>" : ""}${pitchXml(midi, preferFlats)}<duration>${d}</duration>${tie}<voice>5</voice><type>${type}</type>${dotted ? "<dot/>" : ""}<staff>2</staff>${tied ? `<notations>${tied}</notations>` : ""}</note>`,
+            ),
+          );
+        });
       }
     }
     body.push(`<measure number="${m + 1}">${parts.join("")}</measure>`);

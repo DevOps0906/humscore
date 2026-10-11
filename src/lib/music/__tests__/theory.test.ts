@@ -141,6 +141,7 @@ describe("chordToMidi", () => {
   it("G7", () => expect(chordToMidi("G7")).toEqual([55, 59, 62, 65]));
   it("Cmaj7 은 장7도(+11)", () => expect(chordToMidi("Cmaj7")).toEqual([48, 52, 55, 59]));
   it("Bdim", () => expect(chordToMidi("Bdim")).toEqual([59, 62, 65]));
+  it("Csus4 는 3도 대신 4도", () => expect(chordToMidi("Csus4")).toEqual([48, 53, 55]));
   it("F#m / Bb", () => {
     expect(chordToMidi("F#m")).toEqual([54, 57, 61]);
     expect(chordToMidi("Bb")).toEqual([58, 62, 65]);

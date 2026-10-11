@@ -159,8 +159,10 @@ export function chordToMidi(symbol: string, octave = 3): number[] {
   const rest = m[3];
   const minor = rest.startsWith("m") && !rest.startsWith("maj");
   const dim = rest.includes("dim");
+  const sus4 = rest.includes("sus4");
   const base = (octave + 1) * 12 + pitchClass(root);
-  const tones = [base, base + (minor || dim ? 3 : 4), base + (dim ? 6 : 7)];
+  const third = sus4 ? 5 : minor || dim ? 3 : 4;
+  const tones = [base, base + third, base + (dim ? 6 : 7)];
   if (rest.includes("maj7")) tones.push(base + 11);
   else if (rest.includes("7")) tones.push(base + 10);
   return tones;
