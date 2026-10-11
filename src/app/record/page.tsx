@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Capacitor } from "@capacitor/core";
 import { loadManualLatencyMs, saveManualLatencyMs } from "@/lib/audio/latency";
-import { startPitchTracking, type TrackerSession } from "@/lib/audio/pitch-tracker";
+import { MIN_RMS, startPitchTracking, type TrackerSession } from "@/lib/audio/pitch-tracker";
 import { getAudioContext } from "@/lib/audio/context";
 import { centsOff, freqToNearestMidi, freqToMidiFloat, midiToName } from "@/lib/music/frequency";
 import { buildScoreFromFrames } from "@/lib/music/pipeline";
@@ -23,14 +23,26 @@ export default function RecordPage() {
   const [live, setLive] = useState<PitchFrame | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [latencyMs, setLatencyMs] = useState(0);
+  const [noInput, setNoInput] = useState(false);
   const session = useRef<TrackerSession | null>(null);
+  /** 진행 중인 start() 식별자. 마이크 권한 대기 중 정지를 누르면 null 이 되어 늦게 열린 세션을 바로 닫음 */
+  const starting = useRef<object | null>(null);
   const trace = useRef<PitchFrame[]>([]);
+  const level = useRef(0);
+  const peakLevel = useRef(0);
   const canvas = useRef<HTMLCanvasElement>(null);
+  const meter = useRef<HTMLDivElement>(null);
 
-  // 실시간 음정 궤적 (최근 6초)
+  // 실시간 음정 궤적 (최근 6초) + 입력 레벨 미터
   useEffect(() => {
     let raf = 0;
     const draw = () => {
+      const m = meter.current;
+      if (m) {
+        // RMS → dBFS(-60~0) → 0~100%
+        const db = level.current > 0 ? 20 * Math.log10(level.current) : -60;
+        m.style.width = `${Math.max(0, Math.min(100, ((db + 60) / 60) * 100))}%`;
+      }
       const c = canvas.current;
       if (c) {
         const g = c.getContext("2d")!;
@@ -62,7 +74,14 @@ export default function RecordPage() {
     return () => cancelAnimationFrame(raf);
   }, []);
 
-  useEffect(() => () => void session.current?.stop(), []);
+  useEffect(
+    () => () => {
+      starting.current = null; // 권한 대기 중 화면을 떠나면 늦게 열린 세션을 start()가 닫음
+      session.current?.stop();
+      session.current = null;
+    },
+    [],
+  );
 
   // 저장된 지연 보정값 복원 (hydration 불일치 방지를 위해 마운트 후 읽음)
   useEffect(() => {
@@ -76,12 +95,18 @@ export default function RecordPage() {
   }
 
   async function start() {
+    if (session.current || starting.current) return; // 이미 녹음 중이거나 시작 대기 중
     setError(null);
+    setNoInput(false);
     trace.current = [];
+    level.current = 0;
+    peakLevel.current = 0;
+    const token = {};
+    starting.current = token;
     try {
       getAudioContext(); // iOS: 터치 핸들러 동기 흐름 안에서 resume() 시작 (await 금지)
       setStatus("countin");
-      session.current = await startPitchTracking({
+      const s = await startPitchTracking({
         bpm,
         beatsPerMeasure: beats,
         countInMeasures: 1,
@@ -94,6 +119,12 @@ export default function RecordPage() {
         onBeat: (b) => {
           setBeat(b);
           if (b >= 0) setStatus("recording");
+          // 녹음 2박이 지나도록 입력 레벨이 게이트 아래면 마이크가 소리를 못 받는 상태
+          if (b >= 2 && peakLevel.current < MIN_RMS) setNoInput(true);
+        },
+        onLevel: (rms) => {
+          level.current = rms;
+          if (rms > peakLevel.current) peakLevel.current = rms;
         },
         onFrame: (f) => {
           trace.current.push(f);
@@ -101,7 +132,15 @@ export default function RecordPage() {
           setLive(f);
         },
       });
+      if (starting.current !== token) {
+        // 권한 대기 중에 정지를 눌렀거나 화면을 떠남 → 늦게 열린 세션 즉시 정리
+        s.stop();
+        return;
+      }
+      starting.current = null;
+      session.current = s;
     } catch (e) {
+      if (starting.current === token) starting.current = null;
       setStatus("idle");
       const name = e instanceof DOMException ? e.name : "";
       setError(
@@ -121,9 +160,18 @@ export default function RecordPage() {
   }
 
   async function finish(interrupted: boolean) {
-    const frames = session.current?.stop() ?? [];
+    if (!session.current) {
+      // 아직 마이크 권한 대기 중(세션 없음)에 정지 → 시작 취소만 하고 조용히 대기 상태로
+      starting.current = null;
+      setBeat(null);
+      setStatus("idle");
+      return;
+    }
+    const frames = session.current.stop();
     session.current = null;
     setBeat(null);
+    setLive(null);
+    level.current = 0;
     if (interrupted && frames.length === 0) {
       setStatus("idle");
       setError("마이크 연결이 끊겼어요. 연결을 확인하고 다시 녹음해 주세요.");
@@ -185,6 +233,16 @@ export default function RecordPage() {
           )}
         </div>
         <canvas ref={canvas} className="mt-4 h-32 w-full rounded-xl bg-paper" />
+        {/* 마이크 입력 레벨 — 소리가 들어오는지 바로 확인 (값은 저장되지 않음) */}
+        <div className="mt-3 flex items-center gap-3 text-xs text-ink-soft">
+          <span className="w-14 shrink-0">마이크</span>
+          <div className="relative h-1.5 flex-1 overflow-hidden rounded-full bg-line" aria-hidden>
+            <div ref={meter} className="h-full w-0 rounded-full bg-accent" />
+          </div>
+        </div>
+        {noInput && recording && (
+          <p className="mt-2 text-xs text-tune-warn">마이크 입력이 거의 없어요. 다른 앱이 마이크를 쓰고 있지 않은지, 시스템 입력 음량이 0이 아닌지 확인해 주세요.</p>
+        )}
       </section>
 
       {/* 박자 표시 */}

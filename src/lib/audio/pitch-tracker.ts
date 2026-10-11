@@ -17,6 +17,8 @@ export interface TrackerOptions {
   /** 녹음 중 메트로놈 클릭 */
   metronome: boolean;
   onFrame?: (frame: PitchFrame) => void;
+  /** 마이크 입력 레벨(RMS, 0~1). 입력이 들어오는지 확인하는 미터 표시용 — 어디에도 저장되지 않음 */
+  onLevel?: (rms: number) => void;
   /** 현재 박(카운트인 중에는 음수) */
   onBeat?: (beat: number) => void;
   /** 사용자 지연 보정값(ms) */
@@ -31,7 +33,13 @@ export interface TrackerSession {
 }
 
 const FFT_SIZE = 2048;
-const MIN_RMS = 0.01;
+/**
+ * 피치 분석을 시도하는 최소 입력 레벨(RMS). 약 -56 dBFS.
+ * autoGainControl 을 끈 실제 마이크(특히 휴대폰)의 허밍은 -50 ~ -35 dBFS 수준이라
+ * 예전 값 0.01(-40 dBFS)에서는 또렷한 허밍도 통째로 버려져 "음이 감지되지 않았어요"가 났습니다.
+ * 잡음 걸러내기는 레벨이 아니라 clarity(≥0.88)·목소리 음역 필터가 담당합니다.
+ */
+export const MIN_RMS = 0.0015;
 
 /** 마이크 스트림 요청. 비-HTTPS 환경 가드 + 제약 미지원 기기 자동 폴백 포함 */
 async function requestMicStream(): Promise<MediaStream> {
@@ -88,7 +96,7 @@ export async function startPitchTracking(opts: TrackerOptions): Promise<TrackerS
   });
 
   const detector = PitchDetector.forFloat32Array(FFT_SIZE);
-  detector.minVolumeDecibels = -45;
+  detector.minVolumeAbsolute = MIN_RMS; // 우리 RMS 게이트와 같은 기준 (pitchy의 dB 환산식은 전력 기준이라 직접 지정)
   const buf = new Float32Array(FFT_SIZE);
 
   const spb = 60 / opts.bpm;
@@ -123,6 +131,7 @@ export async function startPitchTracking(opts: TrackerOptions): Promise<TrackerS
     let sum = 0;
     for (let i = 0; i < buf.length; i++) sum += buf[i] * buf[i];
     const rms = Math.sqrt(sum / buf.length);
+    opts.onLevel?.(rms);
     const [pitch, clarity] = rms > MIN_RMS ? detector.findPitch(buf, ctx.sampleRate) : [0, 0];
     const frame: PitchFrame = {
       time: Math.max(lastTime, now - recordStart - latency), // 단조 증가 보장
