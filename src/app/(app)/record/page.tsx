@@ -298,7 +298,7 @@ function RecordPageInner() {
     setPending({ score, interrupted });
   }
 
-  async function confirmSave(title: string) {
+  async function confirmSave({ title, composer }: { title: string; composer?: string }) {
     if (!pending) return;
     const { score, interrupted } = pending;
     await saveScore({ ...score, title });

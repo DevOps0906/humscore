@@ -244,12 +244,13 @@ function KeysPageInner() {
     setTitleOpen(true);
   }
 
-  async function save(title: string) {
+  async function save({ title, composer }: { title: string; composer?: string }) {
     if (notes.length === 0) return;
     // 허밍 채보와 동일하게 마디별 코드를 추천해 둠 (악보 화면에서 수정 가능)
     const chords = suggestChords(notes, draftScore.key, beats, scoreMeasureCount(draftScore));
-    const saved = await saveScore({ ...draftScore, chords, title });
+    const saved = await saveScore({ ...draftScore, chords, title, composer });
     try { localStorage.removeItem(DRAFT_KEY); } catch { /* 무시 */ }
+    setTitleOpen(false); // 이동 전에 닫아 대화상자가 DOM 에 남지 않게 함
     router.push(`/scores/${saved.id}`);
   }
 

@@ -13,6 +13,8 @@ export function useScoreEditKeys(opts: {
   setSelected: (i: number | null) => void;
   onChange: (notes: NoteEvent[]) => void;
   playNote: (midi: number, o?: { duration?: number }) => void;
+  /** 지정하면 Esc 로 호출 (편집 도구 모음 닫기 등) */
+  onEscape?: () => void;
 }) {
   const ref = useRef(opts);
   ref.current = opts;
@@ -33,6 +35,13 @@ export function useScoreEditKeys(opts: {
         (d) => d.getAttribute("data-state") !== "closed" && d.checkVisibility?.({ opacityProperty: true, visibilityProperty: true }) !== false && d.getClientRects().length > 0,
       );
       if (openDialog) return;
+      if (e.key === "Escape") {
+        if (o.onEscape) {
+          e.preventDefault();
+          o.onEscape();
+        }
+        return;
+      }
       const r = applyEditKey(o.notes, o.selected, e.key, e.shiftKey);
       if (!r) return;
       e.preventDefault();

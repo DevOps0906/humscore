@@ -1,4 +1,5 @@
 import { deleteNote, insertNote, STEP_DURATIONS, updateNote } from "@/lib/music/edit";
+import { intervalName } from "@/lib/music/spelling";
 import { midiToName, PIANO_MAX_MIDI, PIANO_MIN_MIDI } from "@/lib/music/frequency";
 import type { NoteEvent } from "@/lib/music/types";
 
@@ -145,4 +146,34 @@ export function hitTestMarks(marks: (MarkRect | undefined)[], x: number, y: numb
     }
   });
   return best;
+}
+
+/** 드래그 한 칸(반음)당 픽셀 */
+export const DRAG_STEP_PX = 10;
+
+/** 위로 끌면 양수. startY - y 를 반음 수로 */
+export function dragSteps(startY: number, y: number, stepPx = DRAG_STEP_PX): number {
+  return Math.round((startY - y) / stepPx) || 0;
+}
+
+/** 드래그 결과 midi (저장 midi 기준, 피아노 범위로 clamp) */
+export function dragTargetMidi(startMidi: number, steps: number): number {
+  return Math.min(PIANO_MAX_MIDI, Math.max(PIANO_MIN_MIDI, startMidi + steps));
+}
+
+/** 앞 음과의 음정 안내. 예: "앞 음과 장3도 ↑". 쉼표이거나 앞이 쉼표/없음이면 null. 화면 키(transpose 적용) 기준 */
+export function describeInterval(
+  notes: NoteEvent[],
+  index: number,
+  transpose: number,
+  key: { fifths: number; mode: "major" | "minor" },
+): string | null {
+  const cur = notes[index];
+  const prev = notes[index - 1];
+  if (!cur || !prev || cur.midi === null || prev.midi === null) return null;
+  const a = prev.midi + transpose;
+  const b = cur.midi + transpose;
+  const name = intervalName(Math.min(a, b), Math.max(a, b), key);
+  const dir = b > a ? " ↑" : b < a ? " ↓" : "";
+  return `앞 음과 ${name}${dir}`;
 }

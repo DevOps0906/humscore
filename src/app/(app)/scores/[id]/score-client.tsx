@@ -7,12 +7,13 @@ import { toast } from "sonner";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { ChordEditor } from "@/components/chord-editor";
 import { NoteEditor } from "@/components/note-editor";
 import { ScoreView } from "@/components/score-view";
 import { TransposeBar } from "@/components/transpose-bar";
-import { describeNote } from "@/components/score-cursor";
+import { InlineField } from "@/components/inline-field";
+import { ScoreEditToolbar } from "@/components/score-edit-toolbar";
+import { applyEditKey, describeInterval, describeNote, dragTargetMidi } from "@/components/score-cursor";
 import { usePianoSound } from "@/hooks/use-piano-sound";
 import { useScoreEditKeys } from "@/hooks/use-score-edit-keys";
 import { useScore } from "@/hooks/use-score-param";
@@ -20,6 +21,8 @@ import { getAudioContext, setAudioSessionType } from "@/lib/audio/context";
 import { playScore, type Playback } from "@/lib/audio/piano-synth";
 import { GM_INSTRUMENTS, scoreToMidi, type InstrumentId } from "@/lib/music/midi";
 import { scoreToMusicXML, type ScoreLayout } from "@/lib/music/musicxml";
+import { updateNote } from "@/lib/music/edit";
+import { midiToName } from "@/lib/music/frequency";
 import { keyName, transposeKey } from "@/lib/music/theory";
 import { exportFile, safeFileName } from "@/lib/platform/export-file";
 import { deleteScore } from "@/lib/storage/scores";
@@ -43,6 +46,7 @@ export function ScoreClient({ id }: { id: string }) {
   const [instrument, setInstrument] = useState<InstrumentId>("piano");
   const [editNotes, setEditNotes] = useState(false);
   const [selectedRaw, setSelected] = useState<number | null>(null);
+  const [toolbarOpen, setToolbarOpen] = useState(false);
   const sound = usePianoSound();
   const [playing, setPlaying] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -76,6 +80,7 @@ export function ScoreClient({ id }: { id: string }) {
     setSelected,
     onChange: (notes) => update({ notes }),
     playNote: sound.playNote,
+    onEscape: toolbarOpen ? () => setToolbarOpen(false) : undefined,
   });
 
   if (score === undefined) return <p className="text-ink-soft" role="status">불러오는 중…</p>;
@@ -133,17 +138,59 @@ export function ScoreClient({ id }: { id: string }) {
       ? describeNote(score.notes, selected, score.transpose, shownKey.fifths < 0)
       : "";
 
+  const flats = shownKey.fifths < 0;
+  const curNote = selected !== null ? score.notes[selected] : null;
+
+  /** 도구 모음 버튼도 키보드와 같은 편집 함수(applyEditKey)를 사용 */
+  function runKey(key: string) {
+    if (selected === null) return;
+    const r = applyEditKey(score!.notes, selected, key);
+    if (!r) return;
+    if (r.notes) update({ notes: r.notes });
+    setSelected(r.sel);
+    if (r.sel === null) setToolbarOpen(false);
+    if (r.play !== undefined) sound.playNote(r.play + score!.transpose, { duration: 0.4 }); // 버튼 탭 = 사용자 제스처
+  }
+
+  const dragLabel = (steps: number): string | null =>
+    curNote?.midi == null ? null : midiToName(dragTargetMidi(curNote.midi, steps) + score.transpose, flats);
+  const dragPreview = (steps: number) => {
+    if (curNote?.midi == null) return;
+    sound.playNote(dragTargetMidi(curNote.midi, steps) + score.transpose, { duration: 0.3 });
+  };
+  const dragCommit = (steps: number) => {
+    if (selected === null || curNote?.midi == null) return;
+    update({ notes: updateNote(score.notes, selected, { midi: dragTargetMidi(curNote.midi, steps) }) });
+  };
+
   const base = `${safeFileName(score.title)}_${keyName(shownKey)}`;
 
   return (
     <div className="flex flex-col gap-4">
       <div className="no-print flex items-start justify-between gap-3">
-        <Input
-          defaultValue={score.title}
-          onBlur={(e) => e.target.value.trim() && update({ title: e.target.value.trim() })}
-          className="h-11 border-transparent bg-transparent px-2 text-xl font-medium hover:border-input md:text-xl dark:bg-transparent"
-          aria-label="악보 제목"
-        />
+        <div className="min-w-0 flex-1">
+          <InlineField
+            label="제목"
+            ariaLabel="악보 제목"
+            value={score.title}
+            onCommit={(t) => {
+              update({ title: t });
+              toast.success("제목을 저장했어요");
+            }}
+            className="[&_input]:text-xl [&_input]:font-medium"
+          />
+          <InlineField
+            label="작곡·편곡"
+            ariaLabel="작곡·편곡"
+            placeholder="작곡·편곡자 (선택)"
+            allowEmpty
+            value={score.composer ?? ""}
+            onCommit={(t) => {
+              update({ composer: t || undefined });
+              toast.success("작곡·편곡자를 저장했어요");
+            }}
+          />
+        </div>
         <Button asChild variant="outline" className="h-11 shrink-0 rounded-full px-4 text-sm">
           <Link href={`/scores/${score.id}/perform`}>공연 모드</Link>
         </Button>
@@ -168,10 +215,39 @@ export function ScoreClient({ id }: { id: string }) {
       </div>
 
       <ScoreView
+        showHeader
         xml={xml}
         cursor={
           editNotes
-            ? { notes: score.notes, beatsPerMeasure: score.beatsPerMeasure, selected, onSelect: setSelected, announce }
+            ? {
+                notes: score.notes,
+                beatsPerMeasure: score.beatsPerMeasure,
+                selected,
+                onSelect: (i) => {
+                  setSelected(i);
+                  setToolbarOpen(true);
+                },
+                announce,
+                toolbarOpen,
+                onDismiss: () => setToolbarOpen(false),
+                dragLabel,
+                onDragPreview: dragPreview,
+                onDragCommit: dragCommit,
+                toolbar: curNote ? (
+                  <ScoreEditToolbar
+                    noteLabel={curNote.midi === null ? "쉼표" : midiToName(curNote.midi + score.transpose, flats)}
+                    interval={selected !== null ? describeInterval(score.notes, selected, score.transpose, shownKey) : null}
+                    isRest={curNote.midi === null}
+                    duration={curNote.durationBeats}
+                    onPitch={(d) => runKey(d === 1 ? "ArrowUp" : "ArrowDown")}
+                    onDuration={runKey}
+                    onDot={() => runKey(".")}
+                    onDuplicate={() => runKey("Enter")}
+                    onDelete={() => runKey("Delete")}
+                    onClose={() => setToolbarOpen(false)}
+                  />
+                ) : null,
+              }
             : undefined
         }
       />

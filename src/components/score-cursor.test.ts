@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { NoteEvent } from "@/lib/music/types";
-import { applyEditKey, beatKey, describeNote, hitTestMarks, noteIndexByStart, toggleDot, withBaseDuration } from "./score-cursor";
+import { applyEditKey, beatKey, describeInterval, describeNote, dragSteps, dragTargetMidi, hitTestMarks, noteIndexByStart, toggleDot, withBaseDuration } from "./score-cursor";
 
 const n = (midi: number | null, startBeat: number, durationBeats: number): NoteEvent => ({ midi, startBeat, durationBeats });
 
@@ -78,5 +78,24 @@ describe("describeNote / hitTestMarks", () => {
     expect(hitTestMarks(marks, 18, 10)).toBe(1);
     expect(hitTestMarks(marks, 3, 10)).toBe(0);
     expect(hitTestMarks(marks, 200, 10)).toBeNull();
+  });
+});
+
+describe("describeInterval / drag", () => {
+  const key = { fifths: 0, mode: "major" as const };
+  it("앞 음과의 음정", () => {
+    expect(describeInterval([n(60, 0, 1), n(64, 1, 1)], 1, 0, key)).toBe("앞 음과 장3도 ↑");
+    expect(describeInterval([n(64, 0, 1), n(60, 1, 1)], 1, 0, key)).toBe("앞 음과 장3도 ↓");
+    expect(describeInterval([n(60, 0, 1), n(60, 1, 1)], 1, 0, key)).toBe("앞 음과 완전1도");
+    expect(describeInterval([n(60, 0, 1)], 0, 0, key)).toBeNull();
+    expect(describeInterval([n(null, 0, 1), n(60, 1, 1)], 1, 0, key)).toBeNull();
+    expect(describeInterval([n(60, 0, 1), n(null, 1, 1)], 1, 0, key)).toBeNull();
+  });
+  it("드래그 단계", () => {
+    expect(dragSteps(100, 78)).toBe(2);
+    expect(dragSteps(100, 124)).toBe(-2);
+    expect(dragSteps(100, 103)).toBe(0);
+    expect(dragTargetMidi(60, 2)).toBe(62);
+    expect(dragTargetMidi(108, 5)).toBe(108);
   });
 });

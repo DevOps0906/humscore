@@ -17,20 +17,21 @@ interface TitleDialogProps {
   /** 입력칸 초기값이자 비워 두거나 건너뛸 때 쓰는 제목 */
   defaultTitle: string;
   /** 확정된 제목(trim 적용, 빈 값이면 defaultTitle). 저장이 끝날 때까지 기다림 */
-  onConfirm: (title: string) => void | Promise<void>;
+  onConfirm: (result: { title: string; composer?: string }) => void | Promise<void>;
   /** Esc / 닫기 버튼 / 바깥 클릭 — 저장하지 않음 */
   onCancel: () => void;
 }
 
 function TitleForm({ defaultTitle, onConfirm }: Pick<TitleDialogProps, "defaultTitle" | "onConfirm">) {
   const [value, setValue] = useState(defaultTitle);
+  const [composer, setComposer] = useState("");
   const [busy, setBusy] = useState(false);
 
   async function submit(title: string) {
     if (busy) return;
     setBusy(true);
     try {
-      await onConfirm(title.trim() || defaultTitle);
+      await onConfirm({ title: title.trim() || defaultTitle, composer: composer.trim() || undefined });
     } finally {
       setBusy(false);
     }
@@ -54,6 +55,18 @@ function TitleForm({ defaultTitle, onConfirm }: Pick<TitleDialogProps, "defaultT
           disabled={busy}
           onFocus={(e) => e.currentTarget.select()}
           onChange={(e) => setValue(e.target.value)}
+          className="h-11 text-base"
+        />
+      </label>
+      <label className="grid gap-1.5 text-sm">
+        <span className="text-ink-soft">작곡·편곡자 (선택)</span>
+        <Input
+          type="text"
+          value={composer}
+          maxLength={100}
+          disabled={busy}
+          onChange={(e) => setComposer(e.target.value)}
+          placeholder="작곡·편곡자 (선택)"
           className="h-11 text-base"
         />
       </label>
