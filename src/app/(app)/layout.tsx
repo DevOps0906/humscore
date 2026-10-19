@@ -4,7 +4,7 @@ import { TabBar } from "@/components/tab-bar";
 export default function AppLayout({ children }: LayoutProps<"/">) {
   return (
     <>
-      {children}
+      <main className="safe-top mx-auto w-full max-w-5xl flex-1 px-4 pb-28 pt-4 md:px-8">{children}</main>
       <Suspense fallback={null}>
         <TabBar />
       </Suspense>
