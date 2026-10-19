@@ -12,7 +12,10 @@ import { PianoKeyboard } from "@/components/piano-keyboard";
 import { BASS_CLEF_PATH, CLEF_UNITS_PER_SPACE, TREBLE_CLEF_PATH } from "@/components/clef-glyphs";
 import { ScoreView } from "@/components/score-view";
 import { TitleDialog } from "@/components/title-dialog";
+import { MidiConnectButton } from "@/components/midi-connect-button";
 import { usePianoSound } from "@/hooks/use-piano-sound";
+import { useMidiInput } from "@/hooks/use-midi-input";
+import { getAudioContext } from "@/lib/audio/context";
 import { appendNote, createBlankScore, deleteNote, scoreMeasureCount } from "@/lib/music/edit";
 import { PIANO_KEYS } from "@/lib/music/frequency";
 import { scoreToMusicXML } from "@/lib/music/musicxml";
@@ -190,6 +193,29 @@ function KeysPageInner() {
     };
   });
 
+  // 외부 MIDI 건반: 화면 건반을 누른 것과 같은 경로(handler)로 처리
+  const midi = useMidiInput({
+    onEvent: (e) => {
+      if (e.type === "pedal") {
+        setSustain(e.down);
+        return;
+      }
+      if (e.midi < 21 || e.midi > 108) return;
+      if (e.type === "on") {
+        setPressed((p) => new Set([...p, e.midi]));
+        handler.current(e.midi);
+      } else {
+        setPressed((p) => { const n = new Set(p); n.delete(e.midi); return n; });
+      }
+    },
+  });
+  function connectMidiKeyboard() {
+    // 사용자 제스처 안에서 동기 호출 — MIDI 이벤트는 제스처가 아니므로 미리 AudioContext를 깨워 둔다
+    const ctx = getAudioContext();
+    void ctx.resume();
+    void midi.connect();
+  }
+
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
       if (e.ctrlKey || e.metaKey || e.altKey) return;
@@ -248,6 +274,13 @@ function KeysPageInner() {
           악보 입력
         </Button>
       </header>
+
+      <MidiConnectButton
+        status={midi.supported ? midi.status : "unsupported"}
+        devices={midi.devices}
+        message={midi.message}
+        onConnect={connectMidiKeyboard}
+      />
 
       {/* 입력 도구 */}
       {entry && (
