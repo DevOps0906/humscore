@@ -1,5 +1,5 @@
 import { quantizeNotes, measureCount } from "./quantize";
-import { segmentFrames, type SegmentOptions } from "./segment";
+import { segmentFrames, type PitchRange, type SegmentOptions } from "./segment";
 import { estimateKey, suggestChords } from "./theory";
 import type { PitchFrame, RawNote, Score } from "./types";
 
@@ -9,6 +9,8 @@ export interface BuildScoreOptions {
   beatsPerMeasure: number;
   grid?: number;
   segment?: Partial<SegmentOptions>;
+  /** 음역 필터: "voice"(기본, 허밍) | "instrument"(피아노 A0~C8). segment.range 가 있으면 그쪽이 우선 */
+  range?: PitchRange;
 }
 
 export interface BuildScoreResult {
@@ -28,8 +30,16 @@ export const newId = () =>
  *   피치 프레임 → 음 구간 → 박자 정렬 → 조성 추정 → 코드 추천 → Score
  */
 export function buildScoreFromFrames(frames: PitchFrame[], opts: BuildScoreOptions): BuildScoreResult {
-  const raw = segmentFrames(frames, opts.segment);
-  const notes = quantizeNotes(raw, { bpm: opts.bpm, beatsPerMeasure: opts.beatsPerMeasure, grid: opts.grid ?? 0.5 });
+  const raw = segmentFrames(frames, { ...(opts.range ? { range: opts.range } : {}), ...opts.segment });
+  return buildScoreFromRawNotes(raw, opts);
+}
+
+/**
+ * 이미 음 구간(초 단위)이 있는 입력(예: MIDI 건반 녹음의 정확한 note on/off)으로 Score 생성.
+ * 박자 정렬(legato·쉼표) -> 조성 추정 -> 코드 추천 -> Score. buildScoreFromFrames 의 분할 이후 경로와 동일
+ */
+export function buildScoreFromRawNotes(raw: RawNote[], opts: BuildScoreOptions): BuildScoreResult {
+  const notes = quantizeNotes(raw, { bpm: opts.bpm, beatsPerMeasure: opts.beatsPerMeasure, grid: opts.grid ?? 0.25 });
   const key = estimateKey(notes);
   const measures = measureCount(notes, opts.beatsPerMeasure);
   const chords = suggestChords(notes, key, opts.beatsPerMeasure, measures);

@@ -1,7 +1,8 @@
-import { octaveOf, pitchClass } from "./frequency";
 import { scoreMeasureCount } from "./edit";
 import { chordToMidi, tempoTerm, transposeChordSymbol, transposeKey } from "./theory";
-import type { NoteEvent, Score } from "./types";
+import { splitForNotation, type NotationPiece } from "./notation";
+import { AccidentalTracker, spellPitch, type AccidentalName, type SpelledPitch } from "./spelling";
+import type { Score } from "./types";
 
 /**
  * Score → MusicXML 4.0
@@ -36,12 +37,8 @@ function decompose(divs: number): [number, string, boolean][] {
   return parts;
 }
 
-const SHARP_SPELL: [string, number][] = [["C", 0], ["C", 1], ["D", 0], ["D", 1], ["E", 0], ["F", 0], ["F", 1], ["G", 0], ["G", 1], ["A", 0], ["A", 1], ["B", 0]];
-const FLAT_SPELL: [string, number][] = [["C", 0], ["D", -1], ["D", 0], ["E", -1], ["E", 0], ["F", 0], ["G", -1], ["G", 0], ["A", -1], ["A", 0], ["B", -1], ["B", 0]];
-
-function pitchXml(midi: number, preferFlats: boolean): string {
-  const [step, alter] = (preferFlats ? FLAT_SPELL : SHARP_SPELL)[pitchClass(midi)];
-  return `<pitch><step>${step}</step>${alter ? `<alter>${alter}</alter>` : ""}<octave>${octaveOf(midi)}</octave></pitch>`;
+function pitchXml(p: SpelledPitch): string {
+  return `<pitch><step>${p.step}</step>${p.alter ? `<alter>${p.alter}</alter>` : ""}<octave>${p.octave}</octave></pitch>`;
 }
 
 const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
@@ -65,43 +62,12 @@ function harmonyXml(symbol: string): string {
   return `<harmony placement="above"><root><root-step>${m[1]}</root-step>${alter ? `<root-alter>${alter}</root-alter>` : ""}</root><kind text="${esc(kind[2])}">${kind[1]}</kind></harmony>`;
 }
 
-interface Piece {
-  midi: number | null;
-  divs: number;
-  tieStart: boolean;
-  tieStop: boolean;
-}
-
-/** 음표를 마디 단위로 자르고, 마디를 넘는 음은 붙임줄로 연결 */
-function measurePieces(notes: NoteEvent[], m: number, beatsPerMeasure: number): Piece[] {
-  const start = m * beatsPerMeasure;
-  const end = start + beatsPerMeasure;
-  const pieces: Piece[] = [];
-  for (const n of notes) {
-    const nEnd = n.startBeat + n.durationBeats;
-    if (nEnd <= start + 1e-6 || n.startBeat >= end - 1e-6) continue;
-    const s = Math.max(start, n.startBeat);
-    const e = Math.min(end, nEnd);
-    const parts = decompose((e - s) * DIVISIONS);
-    parts.forEach(([d], i) => {
-      const isNote = n.midi !== null;
-      pieces.push({
-        midi: n.midi,
-        divs: d,
-        tieStop: isNote && (i > 0 || n.startBeat < start - 1e-6),
-        tieStart: isNote && (i < parts.length - 1 || nEnd > end + 1e-6),
-      });
-    });
-  }
-  return pieces;
-}
-
-function noteXml(p: Piece, preferFlats: boolean, staff: number, voice: number): string {
-  const t = DURATION_TYPES.find(([d]) => d === p.divs)!;
+function noteXml(p: NotationPiece, pitch: SpelledPitch | null, accidental: AccidentalName | null, staff: number, voice: number): string {
   const ties = (p.tieStop ? `<tie type="stop"/>` : "") + (p.tieStart ? `<tie type="start"/>` : "");
   const tied = (p.tieStop ? `<tied type="stop"/>` : "") + (p.tieStart ? `<tied type="start"/>` : "");
-  const head = p.midi === null ? "<rest/>" : pitchXml(p.midi, preferFlats);
-  return `<note>${head}<duration>${p.divs}</duration>${ties}<voice>${voice}</voice><type>${t[1]}</type>${t[2] ? "<dot/>" : ""}<staff>${staff}</staff>${tied ? `<notations>${tied}</notations>` : ""}</note>`;
+  const head = pitch === null ? "<rest/>" : pitchXml(pitch);
+  const divs = Math.round(p.durationBeats * DIVISIONS);
+  return `<note>${head}<duration>${divs}</duration>${ties}<voice>${voice}</voice><type>${p.type}</type>${p.dots ? "<dot/>" : ""}${accidental ? `<accidental>${accidental}</accidental>` : ""}<staff>${staff}</staff>${tied ? `<notations>${tied}</notations>` : ""}</note>`;
 }
 
 export interface MusicXmlOptions {
@@ -116,6 +82,22 @@ export function scoreToMusicXML(score: Score, layout: ScoreLayout = "lead", opts
   const key = transposeKey(score.key, tp);
   const preferFlats = key.fifths < 0;
   const notes = score.notes.map((n) => ({ ...n, midi: n.midi === null ? null : n.midi + tp }));
+  // 음별 철자: 조의 음계음 우선, 음계 밖은 다음 음의 방향으로 결정
+  const order = notes.map((n, i) => i).filter((i) => notes[i].midi !== null).sort((x, y) => notes[x].startBeat - notes[y].startBeat);
+  const spelled = new Map<number, SpelledPitch>();
+  order.forEach((idx, k) => {
+    const nextIdx = order[k + 1];
+    const prevIdx = order[k - 1];
+    // 같은 음이 반복되면 앞 음의 철자를 그대로 (한 마디 안에서 C# 다음 Db 로 바뀌지 않게)
+    spelled.set(
+      idx,
+      prevIdx !== undefined && notes[prevIdx].midi === notes[idx].midi
+        ? spelled.get(prevIdx)!
+        : spellPitch(notes[idx].midi!, key, { next: nextIdx === undefined ? null : notes[nextIdx].midi }),
+    );
+  });
+  const tracker = new AccidentalTracker(key.fifths);
+  const handTracker = new AccidentalTracker(key.fifths);
   const chords = score.chords.map((c) => ({ ...c, symbol: transposeChordSymbol(c.symbol, tp, preferFlats) }));
   const bpm = score.beatsPerMeasure;
   const measures = Math.max(scoreMeasureCount(score), opts.minMeasures ?? 1);
@@ -130,6 +112,7 @@ export function scoreToMusicXML(score: Score, layout: ScoreLayout = "lead", opts
     : `<clef number="1"><sign>G</sign><line>2</line></clef>`;
 
   const piano = layout === "piano";
+  const allPieces = splitForNotation(notes, { beatsPerMeasure: bpm, measures });
   const body: string[] = [];
   for (let m = 0; m < measures; m++) {
     const parts: string[] = [];
@@ -145,18 +128,18 @@ export function scoreToMusicXML(score: Score, layout: ScoreLayout = "lead", opts
     }
     const chord = chords.find((c) => Math.abs(c.startBeat - m * bpm) < 1e-6);
     if (chord) parts.push(harmonyXml(chord.symbol));
-    const pieces = measurePieces(notes, m, bpm);
-    const filled = pieces.reduce((s, p) => s + p.divs, 0);
-    if (pieces.length === 0) {
-      parts.push(`<note><rest measure="yes"/><duration>${measureDivs}</duration><voice>1</voice><staff>1</staff></note>`);
-    } else {
-      for (const p of pieces) parts.push(noteXml(p, preferFlats, 1, 1));
-      // 덜 찬 마디는 남은 길이를 쉼표로 채움
-      if (filled < measureDivs) {
-        for (const [d] of decompose(measureDivs - filled)) {
-          parts.push(noteXml({ midi: null, divs: d, tieStart: false, tieStop: false }, preferFlats, 1, 1));
-        }
+    tracker.reset();
+    handTracker.reset();
+    for (const p of allPieces) {
+      if (p.measure !== m) continue;
+      if (p.measureRest) {
+        parts.push(`<note><rest measure="yes"/><duration>${measureDivs}</duration><voice>1</voice><staff>1</staff></note>`);
+        continue;
       }
+      const sp = p.source !== undefined ? spelled.get(p.source) ?? null : null;
+      // 붙임줄로 이어지는 뒤쪽 조각은 임시표를 반복하지 않음
+      const acc = sp && !p.tieStop ? tracker.next(sp) : null;
+      parts.push(noteXml(p, sp, acc, 1, 1));
     }
 
     if (piano) {
@@ -170,11 +153,13 @@ export function scoreToMusicXML(score: Score, layout: ScoreLayout = "lead", opts
         spans.forEach(([d, type, dotted], si) => {
           const tie = (si > 0 ? `<tie type="stop"/>` : "") + (si < spans.length - 1 ? `<tie type="start"/>` : "");
           const tied = (si > 0 ? `<tied type="stop"/>` : "") + (si < spans.length - 1 ? `<tied type="start"/>` : "");
-          tones.forEach((midi, i) =>
+          tones.forEach((midi, i) => {
+            const sp = spellPitch(midi, key);
+            const acc = si === 0 ? handTracker.next(sp) : null;
             parts.push(
-              `<note>${i > 0 ? "<chord/>" : ""}${pitchXml(midi, preferFlats)}<duration>${d}</duration>${tie}<voice>5</voice><type>${type}</type>${dotted ? "<dot/>" : ""}<staff>2</staff>${tied ? `<notations>${tied}</notations>` : ""}</note>`,
-            ),
-          );
+              `<note>${i > 0 ? "<chord/>" : ""}${pitchXml(sp)}<duration>${d}</duration>${tie}<voice>5</voice><type>${type}</type>${dotted ? "<dot/>" : ""}${acc ? `<accidental>${acc}</accidental>` : ""}<staff>2</staff>${tied ? `<notations>${tied}</notations>` : ""}</note>`,
+            );
+          });
         });
       }
     }

@@ -80,3 +80,6 @@ export const VOICE_MAX_FREQ = 1100;
 export function freqToNoteName(freq: number, preferFlats = false, a4 = A4_FREQ): string {
   return midiToName(freqToNearestMidi(freq, a4), preferFlats);
 }
+/** 악기(피아노 88건반) 음역: A0 ~ C8 */
+export const INSTRUMENT_MIN_FREQ = 27.5;
+export const INSTRUMENT_MAX_FREQ = 4186;

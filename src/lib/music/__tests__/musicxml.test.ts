@@ -49,7 +49,7 @@ describe("scoreToMusicXML", () => {
     expect(xml).toContain("<beats>3</beats>");
   });
   it("쉼표는 <rest/>, 음은 <pitch>", () => {
-    const xml = scoreToMusicXML(makeScore([n(null, 0, 1), n(60, 1, 3)]));
+    const xml = scoreToMusicXML(makeScore([n(null, 0, 2), n(60, 2, 2)]));
     expect(count(xml, /<rest\/>/g)).toBe(1);
     expect(count(xml, /<pitch>/g)).toBe(1);
     expect(xml).not.toContain("<tie ");
@@ -115,8 +115,9 @@ describe("scoreToMusicXML", () => {
   it("피아노: 한 음가로 안 되는 박자(6/4)는 왼손 코드를 온음표+2분음표 붙임줄로", () => {
     const xml = scoreToMusicXML(makeScore([n(60, 0, 4)], { beatsPerMeasure: 6, chords: [{ startBeat: 0, symbol: "C" }] }), "piano");
     expect(count(xml, /<staff>2<\/staff>/g)).toBe(6); // 3화음 × 2조각
-    expect(count(xml, /<tie type="start"\/>/g)).toBe(3);
-    expect(count(xml, /<tie type="stop"\/>/g)).toBe(3);
+    // 왼손 3화음 x 1 + 오른손 4박(6/4에서 온음표 불가 -> 점2분+4분 붙임줄) 1
+    expect(count(xml, /<tie type="start"\/>/g)).toBe(4);
+    expect(count(xml, /<tie type="stop"\/>/g)).toBe(4);
     expect(xml).not.toContain("undefined");
   });
   it("피아노: 코드 없으면 마디 쉼표", () => {
@@ -135,8 +136,8 @@ describe("scoreToMusicXML", () => {
     expect(xml).toContain("<mode>major</mode>");
     expect(xml).toContain("<step>B</step><alter>-1</alter>");
   });
-  it("샵 조는 샵 철자", () => {
-    const xml = scoreToMusicXML(makeScore([n(70, 0, 4)]));
+  it("샵 조는 샵 철자 (G장조의 A#은 위로 진행하면 A#)", () => {
+    const xml = scoreToMusicXML(makeScore([n(70, 0, 2), n(71, 2, 2)], { key: { tonic: 7, mode: "major", fifths: 1 } }));
     expect(xml).toContain("<step>A</step><alter>1</alter>");
   });
 
@@ -178,7 +179,7 @@ describe("scoreToMusicXML", () => {
       const ms = xml.split("<measure ").slice(1);
       expect(ms).toHaveLength(2);
       for (const m of ms) expect(total(m)).toBe(16);
-      expect(count(xml, /<rest\/>/g)).toBe(1);
+      expect(count(xml, /<rest\/>/g)).toBe(2); // 3박 쉼표 = 4분 + 2분 (점2분쉼표 안 씀)
     });
     it("코드가 있는 뒤쪽 마디도 출력 (쉼표 채움)", () => {
       const xml = scoreToMusicXML(makeScore([n(60, 0, 4)], { chords: [{ startBeat: 8, symbol: "G" }] }));
