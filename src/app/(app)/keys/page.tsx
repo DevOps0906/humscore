@@ -11,6 +11,7 @@ import { DurationPicker } from "@/components/note-editor";
 import { PianoKeyboard } from "@/components/piano-keyboard";
 import { BASS_CLEF_PATH, CLEF_UNITS_PER_SPACE, TREBLE_CLEF_PATH } from "@/components/clef-glyphs";
 import { ScoreView } from "@/components/score-view";
+import { TitleDialog } from "@/components/title-dialog";
 import { usePianoSound } from "@/hooks/use-piano-sound";
 import { appendNote, createBlankScore, deleteNote, scoreMeasureCount } from "@/lib/music/edit";
 import { PIANO_KEYS } from "@/lib/music/frequency";
@@ -141,6 +142,8 @@ function KeysPageInner() {
   const [dur, setDur] = useState(1);
   const [loaded, setLoaded] = useState(false);
   const [confirmClear, setConfirmClear] = useState(false);
+  const [titleOpen, setTitleOpen] = useState(false);
+  const [defaultTitle, setDefaultTitle] = useState("");
   const [base] = useState(() => createBlankScore());
 
   // 초안 복원 / 저장 (음표 숫자만, 오디오 아님)
@@ -209,11 +212,17 @@ function KeysPageInner() {
 
   const key = PIANO_KEYS[active - 21];
 
-  async function save() {
+  function openTitleDialog() {
+    if (notes.length === 0) return;
+    setDefaultTitle(`건반 입력 ${new Date().toLocaleString("ko-KR")}`);
+    setTitleOpen(true);
+  }
+
+  async function save(title: string) {
     if (notes.length === 0) return;
     // 허밍 채보와 동일하게 마디별 코드를 추천해 둠 (악보 화면에서 수정 가능)
     const chords = suggestChords(notes, draftScore.key, beats, scoreMeasureCount(draftScore));
-    const saved = await saveScore({ ...draftScore, chords, title: `건반 입력 ${new Date().toLocaleString("ko-KR")}` });
+    const saved = await saveScore({ ...draftScore, chords, title });
     try { localStorage.removeItem(DRAFT_KEY); } catch { /* 무시 */ }
     router.push(`/scores/${saved.id}`);
   }
@@ -323,10 +332,17 @@ function KeysPageInner() {
       </label>
 
       {entry && (
-        <Button type="button" disabled={notes.length === 0} onClick={() => void save()} className="h-11 w-full text-sm">
+        <Button type="button" disabled={notes.length === 0} onClick={openTitleDialog} className="h-11 w-full text-sm">
           악보로 저장
         </Button>
       )}
+      <TitleDialog
+        open={titleOpen}
+        defaultTitle={defaultTitle}
+        onConfirm={save}
+        onCancel={() => setTitleOpen(false)}
+      />
+
 
       <details className="rounded-2xl border border-line bg-surface p-4 text-sm">
         <summary className="cursor-pointer rounded-sm font-semibold outline-none focus-visible:ring-3 focus-visible:ring-ring/60">전체 주파수 표 보기</summary>

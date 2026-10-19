@@ -14,7 +14,8 @@ import { getAudioContext } from "@/lib/audio/context";
 import { centsOff, freqToNearestMidi, freqToMidiFloat, midiToName } from "@/lib/music/frequency";
 import { buildScoreFromFrames } from "@/lib/music/pipeline";
 import { saveScore } from "@/lib/storage/scores";
-import type { PitchFrame } from "@/lib/music/types";
+import type { PitchFrame, Score } from "@/lib/music/types";
+import { TitleDialog } from "@/components/title-dialog";
 
 type Status = "idle" | "countin" | "recording" | "processing";
 
@@ -29,6 +30,7 @@ function RecordPageInner() {
   const [error, setError] = useState<string | null>(null);
   const [latencyMs, setLatencyMs] = useState(0);
   const [noInput, setNoInput] = useState(false);
+  const [pending, setPending] = useState<{ score: Score; interrupted: boolean } | null>(null);
   const session = useRef<TrackerSession | null>(null);
   /** 진행 중인 start() 식별자. 마이크 권한 대기 중 정지를 누르면 null 이 되어 늦게 열린 세션을 바로 닫음 */
   const starting = useRef<object | null>(null);
@@ -193,9 +195,22 @@ function RecordPageInner() {
       );
       return;
     }
-    await saveScore(score);
+    // 마이크는 위에서 이미 정지됨. 제목을 받기 위해 음표 데이터(Score)만 보관 (오디오 없음)
+    setStatus("idle");
+    setPending({ score, interrupted });
+  }
+
+  async function confirmSave(title: string) {
+    if (!pending) return;
+    const { score, interrupted } = pending;
+    await saveScore({ ...score, title });
     if (interrupted) toast.info("마이크 연결이 끊겨 여기까지 저장했어요.");
     router.push(`/scores/${score.id}`);
+  }
+
+  function cancelSave() {
+    setPending(null);
+    toast.info("저장을 취소했어요");
   }
 
   function stop() {
@@ -312,6 +327,12 @@ function RecordPageInner() {
         </label>
       </Card>
       <p className="text-center text-xs text-ink-soft">녹음된 목소리는 기기 밖으로 전송·저장되지 않고, 음표 정보만 남습니다.</p>
+      <TitleDialog
+        open={pending !== null}
+        defaultTitle={pending?.score.title ?? ""}
+        onConfirm={confirmSave}
+        onCancel={cancelSave}
+      />
     </div>
   );
 }
