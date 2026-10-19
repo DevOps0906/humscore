@@ -12,6 +12,9 @@ import { ChordEditor } from "@/components/chord-editor";
 import { NoteEditor } from "@/components/note-editor";
 import { ScoreView } from "@/components/score-view";
 import { TransposeBar } from "@/components/transpose-bar";
+import { describeNote } from "@/components/score-cursor";
+import { usePianoSound } from "@/hooks/use-piano-sound";
+import { useScoreEditKeys } from "@/hooks/use-score-edit-keys";
 import { useScore } from "@/hooks/use-score-param";
 import { getAudioContext, setAudioSessionType } from "@/lib/audio/context";
 import { playScore, type Playback } from "@/lib/audio/piano-synth";
@@ -39,6 +42,8 @@ export function ScoreClient({ id }: { id: string }) {
   const [layout, setLayout] = useState<ScoreLayout>("lead");
   const [instrument, setInstrument] = useState<InstrumentId>("piano");
   const [editNotes, setEditNotes] = useState(false);
+  const [selectedRaw, setSelected] = useState<number | null>(null);
+  const sound = usePianoSound();
   const [playing, setPlaying] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const playback = useRef<Playback | null>(null);
@@ -59,6 +64,19 @@ export function ScoreClient({ id }: { id: string }) {
   useEffect(() => clearPlayback, [clearPlayback]);
 
   const xml = useMemo(() => (score ? scoreToMusicXML(score, layout) : ""), [score, layout]);
+
+  const noteCount = score?.notes.length ?? 0;
+  const selected = selectedRaw !== null && selectedRaw < noteCount ? selectedRaw : null;
+
+  useScoreEditKeys({
+    enabled: editNotes,
+    notes: score?.notes ?? [],
+    selected,
+    transpose: score?.transpose ?? 0,
+    setSelected,
+    onChange: (notes) => update({ notes }),
+    playNote: sound.playNote,
+  });
 
   if (score === undefined) return <p className="text-ink-soft" role="status">불러오는 중…</p>;
   if (score === null)
@@ -110,6 +128,11 @@ export function ScoreClient({ id }: { id: string }) {
     }
   }
 
+  const announce =
+    editNotes && selected !== null
+      ? describeNote(score.notes, selected, score.transpose, shownKey.fifths < 0)
+      : "";
+
   const base = `${safeFileName(score.title)}_${keyName(shownKey)}`;
 
   return (
@@ -144,7 +167,14 @@ export function ScoreClient({ id }: { id: string }) {
         </span>
       </div>
 
-      {!editNotes && <ScoreView xml={xml} />}
+      <ScoreView
+        xml={xml}
+        cursor={
+          editNotes
+            ? { notes: score.notes, beatsPerMeasure: score.beatsPerMeasure, selected, onSelect: setSelected, announce }
+            : undefined
+        }
+      />
 
       <div className="no-print">
         <Button
@@ -157,8 +187,9 @@ export function ScoreClient({ id }: { id: string }) {
           음표 편집
         </Button>
       </div>
-      {editNotes && <NoteEditor score={score} onChange={(notes) => update({ notes })} />}
-      {editNotes && <ScoreView xml={xml} />}
+      {editNotes && (
+        <NoteEditor score={score} onChange={(notes) => update({ notes })} selected={selected} onSelect={setSelected} sound={sound} />
+      )}
 
       <ChordEditor score={score} onChange={(chords) => update({ chords })} />
 

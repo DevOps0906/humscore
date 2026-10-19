@@ -2,6 +2,7 @@
 import { Suspense } from "react";
 
 import Link from "next/link";
+import { AppLogo } from "@/components/app-logo";
 import { AuthStatus } from "@/components/auth-status";
 import { StartCard } from "@/components/start-card";
 import { Card } from "@/components/ui/card";
@@ -16,6 +17,7 @@ function LibraryPageInner() {
 
   return (
     <div className="flex flex-col gap-5">
+      <AppLogo className="self-start" />
       <header className="flex flex-wrap items-end justify-between gap-2">
         <div>
           <h1 className="text-3xl font-medium tracking-tight sm:text-4xl">내 악보</h1>
