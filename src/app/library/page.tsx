@@ -2,6 +2,7 @@
 import { Suspense as __Suspense } from "react";
 
 import Link from "next/link";
+import { AuthStatus } from "@/components/auth-status";
 import { StartCard } from "@/components/start-card";
 import { keyName, transposeChordSymbol, transposeKey } from "@/lib/music/theory";
 import { measureCount } from "@/lib/music/quantize";
@@ -19,9 +20,12 @@ function LibraryPageInner() {
           <h1 className="text-4xl font-medium tracking-tight">내 악보</h1>
           <p className="text-sm text-ink-soft">허밍 → 악보 → 전조 → 내보내기</p>
         </div>
-        <Link href="/welcome/" className="shrink-0 pb-1 text-xs text-ink-soft underline underline-offset-4">
-          앱 소개
-        </Link>
+        <div className="flex shrink-0 items-center gap-3">
+          <AuthStatus />
+          <Link href="/welcome/" className="shrink-0 pb-1 text-xs text-ink-soft underline underline-offset-4">
+            앱 소개
+          </Link>
+        </div>
       </header>
 
       <StartCard />
