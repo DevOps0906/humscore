@@ -7,7 +7,7 @@
 
 ```bash
 npm install
-npm run dev          # http://localhost:3000  (마이크는 localhost 또는 https에서만 동작)
+npm run dev          # http://localhost:3100  (마이크는 localhost 또는 https에서만 동작)
 npm test             # 음악 코어 로직 단위 테스트
 ```
 
