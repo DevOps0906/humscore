@@ -30,11 +30,12 @@ export default function MarketingLayout({ children }: LayoutProps<"/">) {
       <footer className="mx-auto flex max-w-[1200px] flex-wrap justify-between gap-4 px-5 pb-14 pt-10 text-[13px] text-ink-soft md:px-[clamp(20px,5vw,72px)]">
         <span>© 2026 HumScore</span>
         <nav className="flex flex-wrap gap-5" aria-label="푸터">
-          {["이용약관", "개인정보처리방침"].map((t) => (
-            <a key={t} href="#" className="hover:text-accent">
-              {t}
-            </a>
-          ))}
+          <Link href="/terms" className="hover:text-accent">
+            이용약관
+          </Link>
+          <Link href="/privacy" className="hover:text-accent">
+            개인정보처리방침
+          </Link>
         </nav>
       </footer>
     </div>

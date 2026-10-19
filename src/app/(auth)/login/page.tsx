@@ -131,6 +131,18 @@ export default function LoginPage() {
           {message && <p role="alert" className="text-sm text-tune-bad">{message}</p>}
         </Card>
       )}
+
+      <p className="text-center text-xs leading-5 text-ink-soft">
+        로그인하면{" "}
+        <Link href="/terms" className="underline hover:text-accent">
+          이용약관
+        </Link>{" "}
+        및{" "}
+        <Link href="/privacy" className="underline hover:text-accent">
+          개인정보처리방침
+        </Link>
+        에 동의하는 것으로 봅니다.
+      </p>
     </div>
   );
 }
