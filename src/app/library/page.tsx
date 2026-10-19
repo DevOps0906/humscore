@@ -1,4 +1,5 @@
 "use client";
+import { Suspense as __Suspense } from "react";
 
 import Link from "next/link";
 import { StartCard } from "@/components/start-card";
@@ -7,7 +8,7 @@ import { measureCount } from "@/lib/music/quantize";
 import { sortByRecent } from "@/lib/storage/scores";
 import { useScores } from "@/hooks/use-score-param";
 
-export default function LibraryPage() {
+function LibraryPageInner() {
   const stored = useScores();
   const scores = stored && sortByRecent(stored);
 
@@ -43,5 +44,13 @@ export default function LibraryPage() {
         </ul>
       )}
     </div>
+  );
+}
+
+export default function LibraryPage() {
+  return (
+    <__Suspense fallback={null}>
+      <LibraryPageInner />
+    </__Suspense>
   );
 }

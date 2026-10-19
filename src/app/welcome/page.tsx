@@ -1,4 +1,5 @@
 "use client";
+import { Suspense as __Suspense } from "react";
 
 import { useRouter } from "next/navigation";
 
@@ -15,7 +16,7 @@ const STEPS = [
   { n: "03", title: "전조하고 내보내기", body: "원클릭으로 키를 옮기고 PDF, MIDI, MusicXML로 저장해요." },
 ];
 
-export default function WelcomePage() {
+function WelcomePageInner() {
   const router = useRouter();
   const start = () => {
     router.replace("/library/");
@@ -94,5 +95,13 @@ export default function WelcomePage() {
         </button>
       </section>
     </div>
+  );
+}
+
+export default function WelcomePage() {
+  return (
+    <__Suspense fallback={null}>
+      <WelcomePageInner />
+    </__Suspense>
   );
 }

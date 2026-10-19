@@ -1,4 +1,5 @@
 "use client";
+import { Suspense as __Suspense } from "react";
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -13,7 +14,7 @@ import type { PitchFrame } from "@/lib/music/types";
 
 type Status = "idle" | "countin" | "recording" | "processing";
 
-export default function RecordPage() {
+function RecordPageInner() {
   const router = useRouter();
   const [bpm, setBpm] = useState(90);
   const [beats, setBeats] = useState(4);
@@ -309,5 +310,13 @@ export default function RecordPage() {
       </section>
       <p className="text-center text-xs text-ink-soft">녹음된 목소리는 기기 밖으로 전송·저장되지 않고, 음표 정보만 남습니다.</p>
     </div>
+  );
+}
+
+export default function RecordPage() {
+  return (
+    <__Suspense fallback={null}>
+      <RecordPageInner />
+    </__Suspense>
   );
 }

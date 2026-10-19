@@ -10,6 +10,7 @@ const OWNERSHIP = {
   "music-logic-coder": [/^src\/lib\/music\/(?!types\.ts$)/, ...TEST],
   "feature-implementer": [
     /^src\/app\//,
+    /^src\/proxy\.ts$/,
     /^src\/components\//,
     /^src\/hooks\//,
     /^src\/lib\/(audio|platform|storage)\//,

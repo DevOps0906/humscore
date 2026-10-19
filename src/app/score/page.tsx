@@ -1,4 +1,5 @@
 "use client";
+import { Suspense as __Suspense } from "react";
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -28,7 +29,7 @@ const INSTRUMENT_LABELS: Record<InstrumentId, string> = {
   choir: "합창",
 };
 
-export default function ScorePage() {
+function ScorePageInner() {
   const router = useRouter();
   const { score, update } = useScoreParam();
   const [layout, setLayout] = useState<ScoreLayout>("lead");
@@ -213,5 +214,13 @@ export default function ScorePage() {
       </div>
       <div className="h-28" />
     </div>
+  );
+}
+
+export default function ScorePage() {
+  return (
+    <__Suspense fallback={null}>
+      <ScorePageInner />
+    </__Suspense>
   );
 }

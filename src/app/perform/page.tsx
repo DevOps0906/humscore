@@ -1,4 +1,5 @@
 "use client";
+import { Suspense as __Suspense } from "react";
 
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -12,7 +13,7 @@ import { scoreToMusicXML } from "@/lib/music/musicxml";
  * - 큰 악보, 화면 좌/우 탭 또는 블루투스 페이지 넘김 페달(←/→, PageUp/PageDown, Space)로 스크롤
  * - 즉석 전조
  */
-export default function PerformPage() {
+function PerformPageInner() {
   const { score, update } = useScoreParam();
   const [zoom, setZoom] = useState(1.4);
   const scroller = useRef<HTMLDivElement>(null);
@@ -54,5 +55,13 @@ export default function PerformPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function PerformPage() {
+  return (
+    <__Suspense fallback={null}>
+      <PerformPageInner />
+    </__Suspense>
   );
 }

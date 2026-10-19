@@ -1,18 +1,31 @@
 import type { NextConfig } from "next";
 
 /**
- * HumScore — Next.js + Capacitor 구성
+ * HumScore — 풀스택 Next.js (Vercel)
  *
- * output: "export"  → `next build` 결과가 `out/` 정적 파일로 생성되고,
- *                     Capacitor가 이 폴더(webDir)를 앱 안에 번들합니다.
- * 앱 내부에는 Node 서버가 없으므로 Server Actions·Route Handlers(동적)·
- * Proxy·Rewrites·쿠키는 사용하지 않습니다. 서버 로직은 Supabase로 분리합니다.
+ * 서버 런타임 사용: Server Components · Server Actions · Route Handlers · 쿠키 인증(Supabase SSR).
+ * 모바일 앱(Capacitor)은 운영 도메인을 원격 로드합니다 → capacitor.config.ts 의 server.url.
  */
 const nextConfig: NextConfig = {
-  output: "export",
-  trailingSlash: true, // /record → /record/index.html (Capacitor 파일 서빙과 궁합)
-  images: { unoptimized: true },
-  // cacheComponents / partialPrefetching(PPR)은 서버 런타임 기능이라 export 모드와 함께 쓸 수 없음
+  cacheComponents: true,
+  partialPrefetching: true,
+  async redirects() {
+    // 정적 export 시절 쿼리 기반 URL(/score/?id=…) → 동적 세그먼트
+    return [
+      {
+        source: "/score",
+        has: [{ type: "query", key: "id", value: "(?<id>.+)" }],
+        destination: "/scores/:id",
+        permanent: true,
+      },
+      {
+        source: "/perform",
+        has: [{ type: "query", key: "id", value: "(?<id>.+)" }],
+        destination: "/scores/:id/perform",
+        permanent: true,
+      },
+    ];
+  },
   turbopack: {
     rules: {
       "*.css": {

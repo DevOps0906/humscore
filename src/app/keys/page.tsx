@@ -1,4 +1,5 @@
 "use client";
+import { Suspense as __Suspense } from "react";
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -123,7 +124,7 @@ const PC_MAP: Record<string, number> = {
   g: 67, y: 68, h: 69, u: 70, j: 71, k: 72,
 };
 
-export default function KeysPage() {
+function KeysPageInner() {
   const router = useRouter();
   const { playNote, sustain, setSustain } = usePianoSound();
   const [active, setActive] = useState(69);
@@ -337,5 +338,13 @@ export default function KeysPage() {
         </table>
       </details>
     </div>
+  );
+}
+
+export default function KeysPage() {
+  return (
+    <__Suspense fallback={null}>
+      <KeysPageInner />
+    </__Suspense>
   );
 }
