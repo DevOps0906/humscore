@@ -1,19 +1,21 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowRight, CircleCheck, Keyboard, Library, Mic, Plus, Star, Upload } from "lucide-react";
+import { ArrowRight, CircleCheck, Keyboard, Library, Mic, Plus, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Icon } from "@/components/landing/icon";
-import { CHECKS, FAQS, FORMATS, PRODUCTS, QUOTES, STATS, STEPS } from "@/components/landing/data";
+import { CHECKS, FAQS, FORMATS, PRODUCTS, STATS, STEPS } from "@/components/landing/data";
 import styles from "@/components/landing/landing.module.css";
 
+const DESCRIPTION =
+  "마이크에 멜로디를 흥얼거리면 음표와 코드가 붙은 악보로 받아 적습니다. 원클릭 전조, 공연 모드, MIDI·MusicXML 내보내기.";
+
 export const metadata: Metadata = {
-  title: "HumScore — 모든 음악을 악보로 바꿔보세요",
-  description:
-    "오디오 파일이나 YouTube 링크를 올리면 AI가 몇 분 안에 악보, 기타 탭, MIDI로 받아 적어 드립니다. 악기별로 분리해 채보하고 에디터에서 바로 다듬으세요.",
+  title: "HumScore — 흥얼거리면 악보가 됩니다",
+  description: DESCRIPTION,
   openGraph: {
-    title: "HumScore — 모든 음악을 악보로 바꿔보세요",
-    description: "AI가 몇 분 안에 악보, 기타 탭, MIDI로 받아 적어 드립니다.",
+    title: "HumScore — 흥얼거리면 악보가 됩니다",
+    description: DESCRIPTION,
     type: "website",
     locale: "ko_KR",
   },
@@ -46,21 +48,13 @@ export default function LandingPage() {
         <section className="grid items-center gap-10 pb-16 pt-12 md:grid-cols-[minmax(0,1fr)_minmax(0,460px)] md:gap-16 md:pb-24 md:pt-20">
           <div>
             <h1 className="mb-5 text-[clamp(36px,5.4vw,72px)] font-semibold leading-[1.1] tracking-[-0.025em]">
-              <span className="block">모든 음악을</span>
-              <span className="block">악보로 바꿔보세요.</span>
+              <span className="block">흥얼거리면</span>
+              <span className="block">악보가 됩니다.</span>
             </h1>
             <p className="mb-7 max-w-[46ch] text-[17px] leading-relaxed text-ink/70">
-              오디오 파일이나 YouTube 링크를 올리면 AI가 몇 분 안에 악보, 기타 탭, MIDI로 받아 적어 드립니다. 피아노부터 보컬, 드럼까지 악기별로
-              분리해 채보합니다.
+              떠오른 멜로디를 마이크에 불러 보세요. 음정을 실시간으로 따라가 음표와 코드를 붙인 악보로 정리합니다.
             </p>
-            <div className="flex items-center gap-3 text-[13px]">
-              <span className="flex gap-0.5 text-accent" aria-hidden>
-                {Array.from({ length: 5 }, (_, i) => (
-                  <Star key={i} className="size-3.5 fill-current" />
-                ))}
-              </span>
-              <span className="text-ink/70">4.8 · 리뷰 12,000+개</span>
-            </div>
+            <p className="text-[13px] text-ink/70">가입 없이 바로 시작 · 목소리는 저장하지 않아요</p>
           </div>
           <div className={`${styles.heroGlow} flex flex-col gap-3 rounded-2xl bg-surface p-5 shadow-[var(--shadow-md)]`}>
             <p className="text-xs text-ink-soft">지금 바로 시작하기</p>
@@ -88,7 +82,7 @@ export default function LandingPage() {
       </div>
 
       {/* stats */}
-      <section className={`${styles.stats} py-14`} aria-label="HumScore 숫자로 보기">
+      <section className={`${styles.stats} py-14`} aria-label="HumScore 특징">
         <div className={`${wrap} grid grid-cols-2 gap-8 md:grid-cols-4`}>
           {STATS.map((s) => (
             <div key={s.label}>
@@ -102,7 +96,7 @@ export default function LandingPage() {
       <div className={wrap}>
         {/* products */}
         <section id="products" className={sectionPad}>
-          <SecHead kick="제품" title="악기마다 맞춘 채보 도구" desc="각 악기의 음색과 연주법을 따로 학습한 모델이 음표, 리듬, 운지까지 받아 적습니다." />
+          <SecHead kick="기능" title="멜로디를 악보로 만드는 도구" desc="녹음부터 연주까지, 악보 한 장을 완성하는 데 필요한 것만 담았습니다." />
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {PRODUCTS.map((p) => (
               <Card key={p.title} className="gap-2.5 p-[22px] transition-shadow hover:shadow-[var(--shadow-md)]">
@@ -141,7 +135,7 @@ export default function LandingPage() {
             <div>
               <span className={kicker}>에디터</span>
               <h2 className={h2}>받아 적은 악보를 바로 다듬으세요</h2>
-              <p className="text-base leading-[1.7] text-ink/70">원곡과 악보를 나란히 재생하며 틀린 음을 고치고, 템포를 늦춰 연습할 수 있습니다.</p>
+              <p className="text-base leading-[1.7] text-ink/70">리드시트와 피아노 대보표를 오가며 음표와 코드를 고치고, 피아노 소리로 바로 확인합니다.</p>
               <ul className="mt-6 flex flex-col gap-3 text-[15px]">
                 {CHECKS.map((c) => (
                   <li key={c} className="flex items-start gap-2.5">
@@ -158,7 +152,7 @@ export default function LandingPage() {
 
         {/* formats */}
         <section className={sectionPad}>
-          <SecHead kick="내보내기" title="쓰던 프로그램 그대로" desc="MuseScore, Finale, Sibelius, Guitar Pro, DAW 어디서든 열 수 있습니다." />
+          <SecHead kick="내보내기" title="쓰던 프로그램 그대로" desc="MuseScore, Finale, Sibelius와 DAW에서 열 수 있습니다." />
           <div className="flex flex-wrap gap-2.5">
             {FORMATS.map((f) => (
               <div key={f.name} className="flex min-w-[200px] flex-1 items-center gap-3 rounded-lg bg-surface px-[18px] py-3.5">
@@ -173,18 +167,17 @@ export default function LandingPage() {
         </section>
         <Rule />
 
-        {/* users */}
+        {/* privacy */}
         <section className={sectionPad}>
-          <SecHead kick="사용자 후기" title="연주자, 선생님, 작곡가가 씁니다" />
-          <div className="grid gap-3 md:grid-cols-3">
-            {QUOTES.map((q) => (
-              <Card key={q.who} className="p-6">
-                <figure className="flex flex-col gap-4">
-                  <blockquote className="text-base leading-relaxed">“{q.text}”</blockquote>
-                  <figcaption className="text-[13px] text-ink-soft">{q.who}</figcaption>
-                </figure>
-              </Card>
-            ))}
+          <div className="flex flex-col gap-5 md:flex-row md:items-start md:gap-8">
+            <ShieldCheck className="size-10 shrink-0 text-accent" aria-hidden />
+            <div className="max-w-[640px]">
+              <span className={kicker}>개인정보</span>
+              <h2 className={h2}>목소리는 기기 밖으로 나가지 않아요</h2>
+              <p className="text-base leading-[1.7] text-ink/70">
+                마이크 소리는 기기 안에서 바로 음표 숫자로 바뀌고, 녹음 파일은 만들지도 저장하지도 않습니다. 로그인하면 악보 데이터만 내 계정에 동기화됩니다.
+              </p>
+            </div>
           </div>
         </section>
         <Rule />
@@ -208,13 +201,13 @@ export default function LandingPage() {
 
         {/* close */}
         <section className={sectionPad}>
-          <h2 className="mb-3.5 text-[clamp(30px,3.6vw,44px)] font-semibold leading-tight tracking-tight">오늘 연습할 곡, 지금 악보로.</h2>
-          <p className="text-base text-ink/70">카드 등록 없이 시작하세요.</p>
+          <h2 className="mb-3.5 text-[clamp(30px,3.6vw,44px)] font-semibold leading-tight tracking-tight">오늘 떠오른 멜로디, 지금 악보로.</h2>
+          <p className="text-base text-ink/70">가입 없이 바로 시작하세요.</p>
           <div className="mt-6 flex flex-wrap gap-2.5">
             <Button asChild className="h-[42px] px-[18px] text-[15px]">
               <Link href="/library">
-                <Upload aria-hidden />
-                음악 올리기
+                <ArrowRight aria-hidden />
+                바로 시작하기
               </Link>
             </Button>
             <Button asChild variant="secondary" className="h-[42px] px-[18px] text-[15px]">
