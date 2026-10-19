@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import { usePianoSound } from "@/hooks/use-piano-sound";
 import {
   CHORD_QUALITIES,
@@ -28,7 +30,7 @@ function parseSymbol(sym: string): { root: number; quality: string; bass: number
 }
 
 const pill = (on: boolean) =>
-  `rounded-lg border px-2 py-1.5 text-sm ${on ? "border-accent bg-accent/15 text-accent" : "border-line bg-paper"}`;
+  `h-11 px-2 text-sm sm:h-9 ${on ? "border-accent bg-accent/15 text-accent hover:bg-accent/20 hover:text-accent" : "bg-paper"}`;
 
 /** 마디별 코드 추가·수정. 화면은 전조된 기호, 저장은 원키 기호 */
 export function ChordEditor({ score, onChange }: { score: Score; onChange: (chords: ChordEvent[]) => void }) {
@@ -87,24 +89,25 @@ export function ChordEditor({ score, onChange }: { score: Score; onChange: (chor
         {Array.from({ length: count }, (_, m) => {
           const s = shownAt(m);
           return (
-            <button
+            <Button
               key={m}
               type="button"
+              variant="outline"
               onClick={() => open(m)}
               aria-pressed={measure === m}
-              className={`min-w-[3.25rem] rounded-lg border px-3 py-1.5 text-sm ${
-                measure === m ? "border-accent bg-accent/20" : "border-line bg-surface"
+              className={`h-11 min-w-14 px-3 text-sm sm:h-9 ${
+                measure === m ? "border-accent bg-accent/20 hover:bg-accent/25" : "bg-surface"
               }`}
             >
               <span className="mr-1 text-xs text-ink-soft">{m + 1}</span>
               {s ?? <span className="text-ink-soft">+</span>}
-            </button>
+            </Button>
           );
         })}
       </div>
 
       {measure !== null && (
-        <div className="mt-3 grid gap-3 rounded-2xl border border-line bg-surface p-4">
+        <Card className="mt-3 gap-3 p-4">
           <p className="text-sm font-semibold">
             {measure + 1}마디 코드 · <span className="text-accent">{symbol}</span>
           </p>
@@ -112,9 +115,9 @@ export function ChordEditor({ score, onChange }: { score: Score; onChange: (chor
             <p className="mb-1 text-xs text-ink-soft">근음</p>
             <div className="grid grid-cols-6 gap-1.5">
               {Array.from({ length: 12 }, (_, pc) => (
-                <button key={pc} type="button" onClick={() => setRoot(pc)} className={pill(root === pc)}>
+                <Button key={pc} type="button" variant="outline" onClick={() => setRoot(pc)} className={pill(root === pc)} aria-pressed={root === pc}>
                   {name(pc)}
-                </button>
+                </Button>
               ))}
             </div>
           </div>
@@ -122,45 +125,46 @@ export function ChordEditor({ score, onChange }: { score: Score; onChange: (chor
             <p className="mb-1 text-xs text-ink-soft">종류</p>
             <div className="flex flex-wrap gap-1.5">
               {CHORD_QUALITIES.map((q) => (
-                <button key={q.suffix} type="button" onClick={() => setQuality(q.suffix)} className={pill(quality === q.suffix)}>
+                <Button key={q.suffix} type="button" variant="outline" onClick={() => setQuality(q.suffix)} className={pill(quality === q.suffix)} aria-pressed={quality === q.suffix}>
                   {q.label}
-                </button>
+                </Button>
               ))}
             </div>
           </div>
           <div>
             <p className="mb-1 text-xs text-ink-soft">베이스음 (분수 코드, 선택)</p>
-            <div className="grid grid-cols-7 gap-1.5">
-              <button type="button" onClick={() => setBass(null)} className={pill(bass === null)}>
+            <div className="grid grid-cols-5 gap-1.5">
+              <Button type="button" variant="outline" onClick={() => setBass(null)} className={pill(bass === null)} aria-pressed={bass === null}>
                 없음
-              </button>
+              </Button>
               {Array.from({ length: 12 }, (_, pc) => (
-                <button key={pc} type="button" onClick={() => setBass(pc)} className={pill(bass === pc)}>
+                <Button key={pc} type="button" variant="outline" onClick={() => setBass(pc)} className={pill(bass === pc)} aria-pressed={bass === pc}>
                   {name(pc)}
-                </button>
+                </Button>
               ))}
             </div>
           </div>
           <div className="flex flex-wrap gap-2 text-sm">
-            <button type="button" onClick={apply} className="rounded-full border border-accent px-4 py-2 text-accent">
+            <Button type="button" onClick={apply} className="h-11 px-5 sm:h-9">
               적용
-            </button>
-            <button type="button" onClick={preview} className="rounded-full border border-line px-4 py-2">
+            </Button>
+            <Button type="button" variant="outline" onClick={preview} className="h-11 px-5 sm:h-9">
               듣기
-            </button>
-            <button
+            </Button>
+            <Button
               type="button"
+              variant="destructive"
               onClick={remove}
               disabled={!chordAtMeasure(chords, measure, beatsPerMeasure)}
-              className="rounded-full border border-line px-4 py-2 text-tune-bad disabled:opacity-40"
+              className="h-11 px-5 sm:h-9"
             >
               삭제
-            </button>
-            <button type="button" onClick={() => setMeasure(null)} className="rounded-full border border-line px-4 py-2">
+            </Button>
+            <Button type="button" variant="ghost" onClick={() => setMeasure(null)} className="h-11 px-5 sm:h-9">
               취소
-            </button>
+            </Button>
           </div>
-        </div>
+        </Card>
       )}
     </section>
   );

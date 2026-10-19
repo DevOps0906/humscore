@@ -84,15 +84,15 @@ export function ScoreView({ xml, zoom = 1, className = "" }: { xml: string; zoom
   );
 
   return (
-    <div className={`score-sheet relative overflow-x-auto rounded-2xl border border-line p-2 shadow-sm ${className}`}>
+    <div className={`score-sheet relative overflow-x-auto p-2 ${className}`}>
       {rendering && (
-        <div className="no-print flex items-center justify-center gap-2 p-4 text-sm text-ink-soft" aria-live="polite">
+        <div className="no-print flex items-center justify-center gap-2 p-4 text-sm text-neutral-600" aria-live="polite">
           <LoadingSpinner size="sm" />
           <span>악보 그리는 중…</span>
         </div>
       )}
       <div ref={ref} />
-      {error && <p className="p-4 text-sm text-tune-bad">{error}</p>}
+      {error && <p role="alert" className="p-4 text-sm text-red-700">{error}</p>}
     </div>
   );
 }

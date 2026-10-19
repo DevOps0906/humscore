@@ -1,7 +1,7 @@
 {
   "name": "HumScore — 허밍으로 만드는 악보",
   "short_name": "HumScore",
-  "start_url": "/library/",
+  "start_url": "/library",
   "display": "standalone",
   "background_color": "#161826",
   "theme_color": "#161826",

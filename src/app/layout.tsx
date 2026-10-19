@@ -1,6 +1,13 @@
 import type { Metadata, Viewport } from "next";
-import { TabBar } from "@/components/tab-bar";
+import { Inter } from "next/font/google";
+import { CloudSync } from "@/components/cloud-sync";
+import { cn } from "@/lib/utils";
 import "./globals.css";
+
+// 라틴: Inter(next/font 자체 호스팅). 한글: Pretendard Variable(동적 서브셋 CDN, globals.css 폰트 스택).
+const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
+const PRETENDARD_CSS =
+  "https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css";
 
 export const metadata: Metadata = {
   title: "HumScore — 허밍으로 만드는 악보",
@@ -17,10 +24,14 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="ko" className="h-full antialiased">
+    <html lang="ko" className={cn("h-full antialiased", inter.variable)}>
+      <head>
+        <link rel="preconnect" href="https://cdn.jsdelivr.net" crossOrigin="" />
+        <link rel="stylesheet" href={PRETENDARD_CSS} crossOrigin="" />
+      </head>
       <body className="flex min-h-full flex-col">
-        <main className="safe-top mx-auto w-full max-w-5xl flex-1 px-4 pb-28 pt-4 md:px-8">{children}</main>
-        <TabBar />
+        {children}
+        <CloudSync />
       </body>
     </html>
   );

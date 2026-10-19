@@ -1,25 +1,80 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
 
 /*
- * HumScore 디자인 토큰
- * Nocturne 다크 단일 테마. 악보만 '종이'처럼 밝게 유지(음악인 가독성).
+ * HumScore 디자인 토큰 — Tono(Nocturne) 다크 단일 테마
+ * 출처: Design/Tono Main Page.html. 악보만 '종이'처럼 밝게 유지(음악인 가독성).
+ * shadcn/ui 변수는 아래 Tono 팔레트에 매핑. `accent`는 브랜드 보라색(기존 코드 호환).
  */
 :root {
   color-scheme: dark;
-  --paper: #161826;
-  --ink: #e9e9ed;
-  --ink-soft: #9397ab;
-  --line: #3f424d;
-  --divider: color-mix(in srgb, #e9e9ed 16%, transparent);
-  --surface: #232532;
-  --accent: #9184d9; /* Nocturne accent */
-  --accent-ink: #161826;
+
+  /* Tono 팔레트 */
+  --tono-bg: #161826;
+  --tono-surface: #232532;
+  --tono-text: #e9e9ed;
+  --tono-accent: #9184d9;
+  --tono-section: #262a60;
+  --tono-section-glow: #353b80;
+  --tono-section-ghost: #4c5397;
+  --tono-lavender-50: #f5f4ff;
+  --tono-lavender-100: #e7e5fe;
+  --tono-lavender-200: #d2cefd;
+  --tono-lavender-300: #b5abfc;
+  --tono-gray-400: #9397ab;
+  --tono-gray-600: #595d6c;
+  --tono-gray-700: #3f424d;
+  --tono-error: #ff8a80;
+
+  /* 앱 시맨틱 토큰 (기존 클래스: bg-paper, text-ink, bg-accent ...) */
+  --paper: var(--tono-bg);
+  --ink: var(--tono-text);
+  --ink-soft: var(--tono-gray-400);
+  --line: var(--tono-gray-700);
+  --divider: color-mix(in srgb, var(--tono-text) 16%, transparent);
+  --surface: var(--tono-surface);
+  --accent: var(--tono-accent);
+  --accent-ink: var(--tono-bg);
   --tune-good: #4fc08d; /* 음정 정확 */
   --tune-warn: #e0b04a;
   --tune-bad: #f07a6e;
   --score-paper: #f7f7fb;
-  --shadow-sm: 0 0 0 1px #3f424d;
-  --shadow-md: 0 0 0 1px #595d6c, 0 6px 18px rgba(0, 0, 0, 0.55);
+  --shadow-sm: 0 0 0 1px var(--tono-gray-700);
+  --shadow-md: 0 0 0 1px var(--tono-gray-600), 0 6px 18px rgba(0, 0, 0, 0.55);
+
+  /* shadcn/ui 매핑 */
+  --background: var(--tono-bg);
+  --foreground: var(--tono-text);
+  --card: var(--tono-surface);
+  --card-foreground: var(--tono-text);
+  --popover: var(--tono-surface);
+  --popover-foreground: var(--tono-text);
+  --primary: var(--tono-accent);
+  --primary-foreground: var(--tono-bg);
+  --secondary: var(--tono-section);
+  --secondary-foreground: var(--tono-lavender-100);
+  --muted: color-mix(in srgb, var(--tono-surface) 70%, var(--tono-gray-700));
+  --muted-foreground: var(--tono-gray-400);
+  --accent-foreground: var(--tono-bg);
+  --destructive: var(--tono-error);
+  --border: var(--tono-gray-700);
+  --input: var(--tono-gray-700);
+  --ring: var(--tono-lavender-300);
+  --chart-1: var(--tono-accent);
+  --chart-2: var(--tono-lavender-300);
+  --chart-3: var(--tono-section-ghost);
+  --chart-4: var(--tono-section-glow);
+  --chart-5: var(--tono-gray-400);
+  --radius: 0.5rem; /* 8px — Tono 4/8/14 */
+  --sidebar: var(--tono-surface);
+  --sidebar-foreground: var(--tono-text);
+  --sidebar-primary: var(--tono-accent);
+  --sidebar-primary-foreground: var(--tono-bg);
+  --sidebar-accent: var(--tono-section);
+  --sidebar-accent-foreground: var(--tono-text);
+  --sidebar-border: var(--tono-gray-700);
+  --sidebar-ring: var(--tono-lavender-300);
 }
 
 @theme inline {
@@ -34,9 +89,56 @@
   --color-tune-warn: var(--tune-warn);
   --color-tune-bad: var(--tune-bad);
   --color-score-paper: var(--score-paper);
+  --color-section: var(--tono-section);
+  --color-section-glow: var(--tono-section-glow);
+  --color-section-ghost: var(--tono-section-ghost);
+  --color-lavender-50: var(--tono-lavender-50);
+  --color-lavender-100: var(--tono-lavender-100);
+  --color-lavender-200: var(--tono-lavender-200);
+  --color-lavender-300: var(--tono-lavender-300);
+
+  --font-sans: var(--font-inter), "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", system-ui, sans-serif;
+  --font-heading: var(--font-sans);
+  --font-mono: ui-monospace, Menlo, monospace;
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 10px;
   --radius-2xl: 14px;
   --radius-3xl: 14px;
-  --font-sans: Inter, "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", system-ui, sans-serif;
+  --radius-4xl: 20px;
 }
 
 html,
@@ -90,5 +192,19 @@ h3 {
   .score-sheet {
     box-shadow: none !important;
     border: 0 !important;
+  }
+}
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  button:not(:disabled), [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+  html {
+    @apply font-sans;
   }
 }

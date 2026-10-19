@@ -16,7 +16,7 @@ export function LoadingSpinner({ size = "md", className = "" }: LoadingSpinnerPr
     <div
       role="status"
       aria-label="로딩 중"
-      className={`animate-spin rounded-full border-ink-soft border-t-accent ${SIZE_CLASSES[size]} ${className}`}
+      className={`animate-spin rounded-full border-section-ghost border-t-accent ${SIZE_CLASSES[size]} ${className}`}
     />
   );
 }

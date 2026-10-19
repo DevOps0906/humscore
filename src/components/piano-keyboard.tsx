@@ -64,7 +64,7 @@ export function PianoKeyboard({ onPress, active = null, highlight, pressed: exte
               onPointerLeave={() => release(k.midi)}
               onPointerCancel={() => release(k.midi)}
               className={[
-                "relative flex-1 rounded-b border border-neutral-800 transition-all duration-75",
+                "relative flex-1 rounded-b border border-section outline-none transition-all duration-75 focus-visible:z-20 focus-visible:ring-2 focus-visible:ring-ring",
                 down
                   ? "translate-y-0.5 bg-accent shadow-[inset_0_3px_6px_rgba(0,0,0,0.25)]"
                   : isActive || hl
@@ -92,12 +92,12 @@ export function PianoKeyboard({ onPress, active = null, highlight, pressed: exte
               onPointerLeave={() => release(k.midi)}
               onPointerCancel={() => release(k.midi)}
               className={[
-                "absolute top-0 z-10 h-24 rounded-b transition-all duration-75",
+                "absolute top-0 z-10 h-24 rounded-b outline-none transition-all duration-75 focus-visible:ring-2 focus-visible:ring-ring",
                 down
                   ? "translate-y-1 bg-accent"
                   : active === k.midi || highlight?.has(k.midi)
                     ? "bg-accent"
-                    : "bg-[#161826] hover:bg-[#292b31] ring-1 ring-neutral-700",
+                    : "bg-[#161826] hover:bg-[#2a2d3d] ring-1 ring-section-ghost",
               ].join(" ")}
               style={{ left: `${(i + 1) * W - W * 0.32}%`, width: `${W * 0.64}%` }}
               aria-label={`${k.name} ${k.freq.toFixed(2)}Hz`}

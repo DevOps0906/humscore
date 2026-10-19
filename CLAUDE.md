@@ -37,8 +37,8 @@ UI·기능 구현                  → feature-implementer (소네트, 대리)
 | 에이전트 | 쓰기 영역 |
 |---|---|
 | `music-logic-coder` | `src/lib/music/**` (단, `types.ts`는 팀장 승인 시에만) |
-| `feature-implementer` | `src/app/**`, `src/components/**`, `src/hooks/**`, `src/lib/{audio,platform,storage}/**`, `public/**`, `ios/**`, `android/**`, `supabase/**` |
-| `tester` | 테스트 파일만 (`**/__tests__/**`, `**/*.test.ts`) |
+| `feature-implementer` | `src/app/**`, `src/proxy.ts`, `src/components/**`, `src/hooks/**`, `src/lib/{audio,platform,storage}/**`, `public/**`, `ios/**`, `android/**`, `supabase/**` |
+| `tester` | 테스트 파일만 (`**/__tests__/**`, `**/*.test.ts`, `e2e/**`) |
 | `code-reviewer`, `architect`, `file-finder` | 읽기 전용 |
 | **팀장 전용** | `CLAUDE.md`, `AGENTS.md`, `.claude/**`, `scripts/**`, `package.json`, lock 파일, 각종 config(`*.config.*`, `tsconfig.json`), git 작업 전부 |
 
@@ -71,11 +71,11 @@ UI·기능 구현                  → feature-implementer (소네트, 대리)
 
 ## 프로젝트 개요
 
-흥얼거리면 악보가 되는 앱. **Next.js 16 (정적 export) + Capacitor 8** 한 코드베이스로 웹·iOS·Android 동시 지원.
+흥얼거리면 악보가 되는 앱. **풀스택 Next.js 16 (Vercel) + Capacitor 8**(운영 도메인 원격 로드) 한 코드베이스로 웹·iOS·Android 동시 지원.
 
 ### 핵심 제약
 
-1. 정적 export → Server Actions / Route Handler / 쿠키 / PPR 사용 금지
+1. 서버: Server Components · Server Actions(`src/app/actions/**`, zod 검증) · Supabase SSR 쿠키 인증(`src/proxy.ts`). 마이크·AudioContext 쓰는 화면은 클라이언트 컴포넌트 유지. `cacheComponents` 켜짐 → 사용자 데이터 읽기는 `<Suspense>` 안에서.
 2. 단일 데이터 모델 `Score` (`src/lib/music/types.ts`) — 모든 출력은 이 타입 기반
 3. 전조는 `transpose` 값만 저장, 출력 시 적용 (원본 불변)
 4. 마이크 음성 데이터 저장·전송 금지 (음표 숫자만 유지)
