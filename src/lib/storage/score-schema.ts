@@ -27,6 +27,7 @@ export const keyInfoSchema = z.object({
 export const scoreSchema = z.object({
   id: z.uuid(),
   title: z.string().max(200),
+  composer: z.string().max(200).optional(),
   bpm: z.number().finite().min(1).max(400),
   beatsPerMeasure: z.number().int().min(1).max(32),
   beatUnit: z.literal(4),

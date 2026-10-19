@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { scoreToMusicXML } from "../musicxml";
+import { tempoTerm } from "../theory";
 import { makeScore } from "./helpers";
 import type { NoteEvent } from "../types";
 
@@ -26,7 +27,7 @@ describe("scoreToMusicXML 옵션", () => {
     expect(count(xml, /<print new-system="yes"\/>/g)).toBe(2);
     expect(xml).toContain(`<measure number="5"><print new-system="yes"/>`);
     expect(xml).toContain(`<measure number="9"><print new-system="yes"/>`);
-    expect(scoreToMusicXML(makeScore([]), "lead", { minMeasures: 9 })).not.toContain("<print");
+    expect(scoreToMusicXML(makeScore([]), "lead", { minMeasures: 9, measuresPerSystem: 0 })).not.toContain("<print");
   });
 });
 
@@ -36,7 +37,7 @@ describe("scoreToMusicXML", () => {
     expect(xml.startsWith("<?xml")).toBe(true);
     expect(count(xml, /<measure /g)).toBe(1);
     expect(xml).toContain("<score-partwise");
-    expect(xml).toContain("<part-name>Melody</part-name>");
+    expect(xml).toContain(">Melody</part-name>");
   });
   it("제목 XML 이스케이프", () => {
     const xml = scoreToMusicXML(makeScore([], { title: "A & B <c>" }));
@@ -186,5 +187,57 @@ describe("scoreToMusicXML", () => {
       for (const m of ms) expect(total(m)).toBe(16);
       expect(ms[2]).toContain("<root-step>G</root-step>");
     });
+  });
+});
+
+describe("악보 요소 (줄바꿈·끝마디선·헤더·빠르기말)", () => {
+  const wellFormed = (xml: string) => {
+    const body = xml.replace(/<\?xml[^>]*\?>/, "").replace(/<!DOCTYPE[^>]*>/, "");
+    const stack: string[] = [];
+    for (const m of body.matchAll(/<(\/?)([A-Za-z][\w-]*)[^>]*?(\/?)>/g)) {
+      if (m[3]) continue;
+      if (m[1]) expect(stack.pop()).toBe(m[2]);
+      else stack.push(m[2]);
+    }
+    expect(stack).toHaveLength(0);
+  };
+
+  for (const layout of ["lead", "piano"] as const) {
+    it(`${layout}: 13마디 → 5·9·13마디에만 줄바꿈, 마지막 마디에만 끝마디선`, () => {
+      const xml = scoreToMusicXML(makeScore([n(60, 48, 1)]), layout);
+      expect(count(xml, /<measure /g)).toBe(13);
+      expect(count(xml, /<print new-system="yes"\/>/g)).toBe(3);
+      for (const k of [5, 9, 13]) expect(xml).toContain(`<measure number="${k}"><print new-system="yes"/>`);
+      expect(xml).not.toContain(`<measure number="1"><print`);
+      expect(count(xml, /<bar-style>light-heavy<\/bar-style>/g)).toBe(1);
+      const last = xml.split("<measure ").pop()!;
+      expect(last).toContain("<barline location=\"right\"><bar-style>light-heavy</bar-style></barline></measure>");
+      wellFormed(xml);
+    });
+  }
+
+  it("composer: 있으면 creator(이스케이프), 없거나 공백이면 없음", () => {
+    const withC = scoreToMusicXML(makeScore([], { composer: "A & B" }));
+    expect(withC).toContain('<creator type="composer">A &amp; B</creator>');
+    wellFormed(withC);
+    expect(scoreToMusicXML(makeScore([]))).not.toContain("<creator");
+    expect(scoreToMusicXML(makeScore([], { composer: "  " }))).not.toContain("<creator");
+  });
+
+  it("빠르기말 경계", () => {
+    const cases: [number, string][] = [[59, "Largo"], [60, "Larghetto"], [65, "Larghetto"], [66, "Adagio"], [75, "Adagio"], [76, "Andante"], [107, "Andante"], [108, "Moderato"], [119, "Moderato"], [120, "Allegro"], [155, "Allegro"], [156, "Vivace"], [175, "Vivace"], [176, "Presto"]];
+    for (const [bpm, w] of cases) expect(tempoTerm(bpm)).toBe(w);
+  });
+
+  it("방향 요소: 빠르기말 + 메트로놈", () => {
+    const xml = scoreToMusicXML(makeScore([], { bpm: 90 }));
+    expect(xml).toContain("<words>Andante</words></direction-type><direction-type><metronome>");
+  });
+
+  it("파트 라벨: 리드시트는 숨김, 피아노는 표시", () => {
+    expect(scoreToMusicXML(makeScore([]), "lead")).toContain('<part-name print-object="no">Melody</part-name>');
+    const piano = scoreToMusicXML(makeScore([]), "piano");
+    expect(piano).toContain("<part-name>Piano</part-name>");
+    expect(piano).not.toContain("print-object");
   });
 });

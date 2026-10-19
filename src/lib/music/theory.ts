@@ -167,3 +167,15 @@ export function chordToMidi(symbol: string, octave = 3): number[] {
   else if (rest.includes("7")) tones.push(base + 10);
   return tones;
 }
+
+/** BPM → 이탈리아어 빠르기말 */
+export function tempoTerm(bpm: number): string {
+  if (bpm < 60) return "Largo";
+  if (bpm < 66) return "Larghetto";
+  if (bpm < 76) return "Adagio";
+  if (bpm < 108) return "Andante";
+  if (bpm < 120) return "Moderato";
+  if (bpm < 156) return "Allegro";
+  if (bpm < 176) return "Vivace";
+  return "Presto";
+}

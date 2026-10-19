@@ -1,6 +1,6 @@
 import { octaveOf, pitchClass } from "./frequency";
 import { scoreMeasureCount } from "./edit";
-import { chordToMidi, transposeChordSymbol, transposeKey } from "./theory";
+import { chordToMidi, tempoTerm, transposeChordSymbol, transposeKey } from "./theory";
 import type { NoteEvent, Score } from "./types";
 
 /**
@@ -107,7 +107,7 @@ function noteXml(p: Piece, preferFlats: boolean, staff: number, voice: number): 
 export interface MusicXmlOptions {
   /** 최소 마디 수 — 모자라면 뒤를 온쉼표 마디로 채움(출력 전용). 기본 1 */
   minMeasures?: number;
-  /** 지정 시 N마디마다 줄바꿈 힌트(<print new-system="yes"/>)를 넣음 */
+  /** N마디마다 줄바꿈(<print new-system="yes"/>). 기본 4, 0이면 끔 */
   measuresPerSystem?: number;
 }
 
@@ -119,7 +119,7 @@ export function scoreToMusicXML(score: Score, layout: ScoreLayout = "lead", opts
   const chords = score.chords.map((c) => ({ ...c, symbol: transposeChordSymbol(c.symbol, tp, preferFlats) }));
   const bpm = score.beatsPerMeasure;
   const measures = Math.max(scoreMeasureCount(score), opts.minMeasures ?? 1);
-  const perSystem = opts.measuresPerSystem;
+  const perSystem = opts.measuresPerSystem ?? 4;
   const measureDivs = bpm * DIVISIONS;
 
   // 남성 음역(가온 도 아래 중심)이면 옥타브 낮춘 높은음자리표(테너 표기)
@@ -140,7 +140,7 @@ export function scoreToMusicXML(score: Score, layout: ScoreLayout = "lead", opts
           `<time><beats>${bpm}</beats><beat-type>4</beat-type></time>` +
           (piano ? `<staves>2</staves>${trebleClef}<clef number="2"><sign>F</sign><line>4</line></clef>` : trebleClef) +
           `</attributes>`,
-        `<direction placement="above"><direction-type><metronome><beat-unit>quarter</beat-unit><per-minute>${score.bpm}</per-minute></metronome></direction-type><sound tempo="${score.bpm}"/></direction>`,
+        `<direction placement="above"><direction-type><words>${tempoTerm(score.bpm)}</words></direction-type><direction-type><metronome><beat-unit>quarter</beat-unit><per-minute>${score.bpm}</per-minute></metronome></direction-type><sound tempo="${score.bpm}"/></direction>`,
       );
     }
     const chord = chords.find((c) => Math.abs(c.startBeat - m * bpm) < 1e-6);
@@ -178,13 +178,20 @@ export function scoreToMusicXML(score: Score, layout: ScoreLayout = "lead", opts
         });
       }
     }
+    if (m === measures - 1) parts.push(`<barline location="right"><bar-style>light-heavy</bar-style></barline>`);
     body.push(`<measure number="${m + 1}">${parts.join("")}</measure>`);
   }
+
+  const composer = score.composer?.trim() ?? "";
+  // 멜로디 한 줄이면 라벨 숨김, 대보표(멜로디+반주)면 왼쪽에 Piano 표기
+  const partNames = piano
+    ? `<part-name>Piano</part-name><part-abbreviation>Pno.</part-abbreviation>`
+    : `<part-name print-object="no">Melody</part-name><part-abbreviation print-object="no">Mel.</part-abbreviation>`;
 
   return `<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE score-partwise PUBLIC "-//Recordare//DTD MusicXML 4.0 Partwise//EN" "http://www.musicxml.org/dtds/partwise.dtd">
 <score-partwise version="4.0"><work><work-title>${esc(score.title)}</work-title></work>
-<identification><encoding><software>HumScore</software></encoding></identification>
-<part-list><score-part id="P1"><part-name>${piano ? "Piano" : "Melody"}</part-name></score-part></part-list>
+<identification>${composer ? `<creator type="composer">${esc(composer)}</creator>` : ""}<encoding><software>HumScore</software></encoding></identification>
+<part-list><score-part id="P1">${partNames}</score-part></part-list>
 <part id="P1">${body.join("\n")}</part></score-partwise>`;
 }
