@@ -38,7 +38,7 @@ UI·기능 구현                  → feature-implementer (소네트, 대리)
 |---|---|
 | `music-logic-coder` | `src/lib/music/**` (단, `types.ts`는 팀장 승인 시에만) |
 | `feature-implementer` | `src/app/**`, `src/proxy.ts`, `src/components/**`, `src/hooks/**`, `src/lib/{audio,platform,storage}/**`, `public/**`, `ios/**`, `android/**`, `supabase/**` |
-| `tester` | 테스트 파일만 (`**/__tests__/**`, `**/*.test.ts`) |
+| `tester` | 테스트 파일만 (`**/__tests__/**`, `**/*.test.ts`, `e2e/**`) |
 | `code-reviewer`, `architect`, `file-finder` | 읽기 전용 |
 | **팀장 전용** | `CLAUDE.md`, `AGENTS.md`, `.claude/**`, `scripts/**`, `package.json`, lock 파일, 각종 config(`*.config.*`, `tsconfig.json`), git 작업 전부 |
 

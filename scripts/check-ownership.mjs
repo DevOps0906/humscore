@@ -4,7 +4,7 @@
 //       npm run agents:check -- feature-implementer,tester   (병렬 실행한 경우)
 import { execSync } from "node:child_process";
 
-const TEST = [/(^|\/)__tests__\//, /\.test\.tsx?$/];
+const TEST = [/(^|\/)__tests__\//, /\.test\.tsx?$/, /^e2e\//];
 
 const OWNERSHIP = {
   "music-logic-coder": [/^src\/lib\/music\/(?!types\.ts$)/, ...TEST],
