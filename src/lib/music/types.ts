@@ -26,6 +26,8 @@ export interface KeyInfo {
 export interface Score {
   id: string;
   title: string;
+  /** 작곡/편곡자 (자유 입력, 없거나 빈 문자열 가능) */
+  composer?: string;
   bpm: number;
   beatsPerMeasure: number;
   /** 기본 4분음표 = 1박 */

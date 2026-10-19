@@ -34,6 +34,8 @@ export async function createScoreViaKeys(page: Page): Promise<string> {
   for (const k of ["a", "s", "d"]) await page.keyboard.press(k);
   await expect(page.getByText("3개 음표")).toBeVisible();
   await page.getByRole("button", { name: "악보로 저장" }).click();
+  // 제목 대화상자: 기본 제목으로 저장
+  await page.getByRole("dialog").getByRole("button", { name: "저장", exact: true }).click();
   await page.waitForURL(/\/scores\/[^/]+$/);
   return page.url().split("/scores/")[1];
 }

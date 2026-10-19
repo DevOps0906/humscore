@@ -3,6 +3,7 @@ import { Suspense } from "react";
 
 import { useRouter } from "next/navigation";
 import { Mic } from "lucide-react";
+import { AppLogo } from "@/components/app-logo";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 
@@ -29,7 +30,7 @@ function WelcomePageInner() {
     <div className="flex flex-col gap-16 pb-8 md:gap-24">
       <section className="grid items-center gap-8 pt-6 md:grid-cols-[minmax(0,1fr)_minmax(0,420px)] md:gap-14 md:pt-16">
         <div>
-          <p className="mb-4 text-sm font-medium text-accent">HumScore</p>
+          <AppLogo className="mb-3 -ml-1 text-accent" />
           <h1 className="mb-5 text-[clamp(38px,6vw,64px)] font-medium leading-[1.1] tracking-[-0.025em]">
             <span className="block">흥얼거리면</span>
             <span className="block">악보가 돼요.</span>

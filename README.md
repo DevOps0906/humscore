@@ -1,63 +1,68 @@
 # HumScore — 허밍으로 만드는 악보 (MVP)
 
 흥얼거리면 악보가 되고, 원클릭으로 전조하고, 코드 악보·피아노 악보·MIDI·MusicXML·PDF로 내보내는 앱.
-**Next.js(정적 export) + Capacitor 8** 한 코드베이스로 웹 · iOS · 안드로이드를 동시에 만듭니다.
+**풀스택 Next.js 16 (Vercel) + Supabase + Capacitor 8** — 웹은 https://humscore.vercel.app, 앱은 같은 주소를 원격 로드합니다.
 
 ## 빠른 시작
 
 ```bash
 npm install
 npm run dev          # http://localhost:3100  (마이크는 localhost 또는 https에서만 동작)
-npm test             # 음악 코어 로직 단위 테스트
+npm test             # Vitest 단위 테스트
+npm run test:e2e     # Playwright E2E (로컬 프로덕션 빌드, desktop + mobile)
+E2E_BASE_URL=https://humscore.vercel.app npm run test:e2e   # 운영 배포본 대상
 ```
+
+환경변수(`.env.local`): `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` — 없으면 로컬 저장 모드로 동작.
+`vercel env pull`로 받을 수 있습니다. Supabase Auth Redirect URLs에 `<도메인>/auth/callback`을 등록하세요.
 
 ### 앱으로 실행
 
 ```bash
-npm run cap:android  # next build → cap sync → Android Studio 열기
-npm run cap:ios      # next build → cap sync → Xcode 열기 (macOS 필요)
+npm run cap:android  # cap sync → Android Studio 열기
+npm run cap:ios      # cap sync → Xcode 열기 (macOS 필요)
+CAP_SERVER_URL=http://<PC IP>:3100 npx cap sync   # 실기기에서 개발 서버 라이브 리로드
 ```
 
-`android/`, `ios/` 프로젝트는 이미 생성되어 있고 마이크 권한도 들어가 있습니다.
-플랫폼을 지우고 다시 만들었다면 `npx cap add android` 후 `npm run native:permissions` 를 꼭 실행하세요.
-
-실기기에서 라이브 리로드로 개발하려면 `capacitor.config.ts` 의 `server.url` 주석을 풀고 PC IP를 넣으세요.
-**배포 빌드에서는 반드시 다시 주석 처리** (원격 URL만 띄우는 앱은 애플 심사 거절 위험).
+앱은 `capacitor.config.ts`의 `server.url`(운영 도메인)을 불러오고, 연결 실패 시 `native-shell/index.html` 안내 페이지를 띄웁니다.
+앱 웹뷰에서는 Google OAuth가 차단되므로 이메일 6자리 코드 로그인을 사용합니다.
+플랫폼을 다시 만들었다면 `npx cap add android` 후 `npm run native:permissions`를 실행하세요.
 
 ## 구조
 
 ```
 src/
-├── app/                      # 화면 (모두 클라이언트 컴포넌트, 정적 export)
-│   ├── record/               # ① 녹음: 메트로놈 + 실시간 음정(Hz·센트) + 궤적
-│   ├── page.tsx              # ② 내 악보 목록
-│   ├── score/                # ③ 악보: 코드 악보/피아노 전환, 코드 수정, 재생, 전조, 내보내기
-│   ├── perform/              # ④ 공연 모드: 태블릿 보면대, 탭/블루투스 페달 넘김, 즉석 전조
-│   └── keys/                 # 88건반 주파수 탐색기
-├── lib/
-│   ├── music/                # 순수 TypeScript (UI·브라우저 의존 없음 → 테스트·서버 재사용 가능)
-│   │   ├── frequency.ts      # 88건반 테이블, Hz ↔ MIDI ↔ 센트
-│   │   ├── segment.ts        # 피치 프레임 → 음 구간 (중앙값 필터, 반복음 분리)
-│   │   ├── quantize.ts       # 초 → 박자 격자, 쉼표 채우기
-│   │   ├── theory.ts         # 조성 추정, 코드 추천(규칙 기반), 전조
-│   │   ├── musicxml.ts       # Score → MusicXML 4.0 (리드시트/피아노 대보표, 붙임줄)
-│   │   ├── midi.ts           # Score → MIDI (멜로디 악기 선택 + 코드 트랙)
-│   │   └── pipeline.ts       # 위 단계를 묶은 허밍 채보 파이프라인
-│   ├── audio/                # Web Audio: 피치 추적(pitchy), 배음 합성 피아노, 메트로놈
-│   ├── platform/             # 웹/앱 차이 흡수 (파일 저장·공유 시트)
-│   └── storage/              # 로컬 저장 + Supabase 동기화(선택)
-supabase/migrations/          # scores 테이블 + RLS, 3단계용 transcription_jobs 큐
-scripts/native-permissions.mjs
+├── app/
+│   ├── (marketing)/          # / 랜딩 (서버 컴포넌트)
+│   ├── (auth)/login/         # 이메일 코드 · Google 로그인
+│   ├── auth/callback/        # Supabase OAuth 코드 교환 (Route Handler)
+│   ├── (app)/                # 앱 화면 (탭바)
+│   │   ├── library/          # 내 악보 목록
+│   │   ├── record/           # 녹음: 메트로놈 + 실시간 음정(Hz·센트) + 궤적
+│   │   ├── keys/             # 88건반 입력
+│   │   └── scores/[id]/      # 악보 보기·편집·재생·전조·내보내기, perform/ 공연 모드
+│   └── actions/              # Server Actions (악보 동기화, 로그아웃)
+├── proxy.ts                  # Supabase 세션 쿠키 갱신
+├── components/               # 공유 컴포넌트 (ui/ = shadcn)
+├── hooks/
+└── lib/
+    ├── music/                # 순수 TypeScript 음악 코어 (UI·브라우저 의존 없음)
+    ├── audio/                # Web Audio: 피치 추적(pitchy), 배음 합성 피아노, 메트로놈
+    ├── platform/             # 웹/앱 차이 흡수 (파일 저장·공유 시트)
+    └── storage/              # localStorage 기본 저장 + Supabase 동기화(병합·삭제 기록)
+supabase/migrations/          # scores(RLS·소프트 삭제·LWW 트리거), transcription_jobs
+e2e/                          # Playwright E2E
+native-shell/                 # 앱 오프라인 안내 페이지
 ```
 
 ## 설계 원칙
 
-1. **화면은 Next.js, 데이터는 Supabase, 무거운 오디오 연산은 나중에 Python 워커.**
-   앱 번들에는 서버가 없으므로 Server Actions·동적 Route Handler·Proxy·쿠키·Cache Components(PPR)는 쓰지 않습니다.
+1. **화면은 Next.js, 데이터는 Supabase(RLS), 무거운 오디오 연산은 나중에 Python 워커.**
+   서버 코드는 Server Actions·Route Handler·proxy에만 두고, 마이크·AudioContext 화면은 클라이언트 컴포넌트로 유지합니다.
 2. **하나의 악보 모델(`Score`), 여러 개의 뷰.** 모든 출력은 `Score` → MusicXML/MIDI 변환으로 만듭니다.
 3. **전조는 데이터를 바꾸지 않음.** `transpose` 값만 저장하고 출력 시 적용 → 원키로 언제든 복귀.
 4. **목소리는 저장하지 않음.** 마이크 음성은 기기 안에서 음표 숫자로만 변환됩니다.
-5. **라이선스 안전 스택만 사용.** pitchy(MIT), OpenSheetMusicDisplay(BSD-3), @tonejs/midi(MIT), Capacitor(MIT).
+5. **라이선스 안전 스택만 사용.** pitchy(MIT), OpenSheetMusicDisplay(BSD-3), @tonejs/midi(MIT), Capacitor(MIT), shadcn/ui·Radix(MIT). 폰트 Inter·Pretendard(OFL).
 
 ## MVP 범위
 

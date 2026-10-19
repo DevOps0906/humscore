@@ -1,11 +1,11 @@
 "use client";
 
 import { useState } from "react";
+import type { Dispatch, SetStateAction } from "react";
 import { ArrowDown, ArrowUp, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { PianoKeyboard } from "@/components/piano-keyboard";
-import { usePianoSound } from "@/hooks/use-piano-sound";
 import { appendNote, deleteNote, insertNote, measureOf, STEP_DURATIONS, updateNote } from "@/lib/music/edit";
 import { midiToName, PIANO_MAX_MIDI, PIANO_MIN_MIDI } from "@/lib/music/frequency";
 import { transposeKey } from "@/lib/music/theory";
@@ -69,11 +69,28 @@ export function DurationPicker({ value, onChange }: { value: number; onChange: (
 }
 
 /** 악보 화면용 음표 편집기. 데이터는 원본 키, 화면(건반·음이름)은 midi + transpose */
-export function NoteEditor({ score, onChange }: { score: Score; onChange: (notes: NoteEvent[]) => void }) {
+export function NoteEditor({
+  score,
+  onChange,
+  selected,
+  onSelect,
+  sound,
+}: {
+  score: Score;
+  onChange: (notes: NoteEvent[]) => void;
+  /** 선택 음 index (악보 커서와 공유) */
+  selected: number | null;
+  onSelect: (i: number | null) => void;
+  sound: {
+    playNote: (midi: number, opts?: { duration?: number; velocity?: number }) => void;
+    sustain: boolean;
+    setSustain: Dispatch<SetStateAction<boolean>>;
+  };
+}) {
   const { notes, transpose, beatsPerMeasure } = score;
   const flats = transposeKey(score.key, transpose).fifths < 0;
-  const { playNote, sustain, setSustain } = usePianoSound();
-  const [selected, setSelected] = useState<number | null>(null);
+  const { playNote, sustain, setSustain } = sound;
+  const setSelected = onSelect;
   const [addDur, setAddDur] = useState(1);
 
   const sel = selected !== null && selected < notes.length ? selected : null;
@@ -157,6 +174,9 @@ export function NoteEditor({ score, onChange }: { score: Score; onChange: (notes
 
   return (
     <Card className="no-print gap-3 p-4">
+      <p className="text-xs text-ink-soft" data-testid="edit-legend">
+        방향키 이동 · ↑↓ 음높이 · 1–5 음표 길이 · . 점 · Enter 복제 · Delete 삭제
+      </p>
       <p className="text-xs text-ink-soft">
         {sel === null
           ? "음표를 탭해 선택하거나, 아래 건반을 눌러 끝에 추가하세요."

@@ -4,7 +4,7 @@ import { Suspense } from "react";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Capacitor } from "@capacitor/core";
-import { Mic, Square } from "lucide-react";
+import { Mic, Piano, Square } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -12,9 +12,16 @@ import { loadManualLatencyMs, saveManualLatencyMs } from "@/lib/audio/latency";
 import { MIN_RMS, startPitchTracking, type TrackerSession } from "@/lib/audio/pitch-tracker";
 import { getAudioContext } from "@/lib/audio/context";
 import { centsOff, freqToNearestMidi, freqToMidiFloat, midiToName } from "@/lib/music/frequency";
-import { buildScoreFromFrames } from "@/lib/music/pipeline";
+import { buildScoreFromFrames, buildScoreFromRawNotes } from "@/lib/music/pipeline";
+import { midiEventsToRawNotes, startMetronomeSession, type MetronomeSession } from "@/lib/audio/midi-recorder";
+import type { MidiEvent } from "@/lib/audio/midi-input";
+import { useMidiInput } from "@/hooks/use-midi-input";
+import { usePianoSound } from "@/hooks/use-piano-sound";
+import { MidiConnectButton } from "@/components/midi-connect-button";
+import { RecordSourcePicker, loadRecordSource, saveRecordSource, type RecordSource } from "@/components/record-source-picker";
 import { saveScore } from "@/lib/storage/scores";
-import type { PitchFrame } from "@/lib/music/types";
+import type { PitchFrame, Score } from "@/lib/music/types";
+import { TitleDialog } from "@/components/title-dialog";
 
 type Status = "idle" | "countin" | "recording" | "processing";
 
@@ -29,6 +36,7 @@ function RecordPageInner() {
   const [error, setError] = useState<string | null>(null);
   const [latencyMs, setLatencyMs] = useState(0);
   const [noInput, setNoInput] = useState(false);
+  const [pending, setPending] = useState<{ score: Score; interrupted: boolean } | null>(null);
   const session = useRef<TrackerSession | null>(null);
   /** 진행 중인 start() 식별자. 마이크 권한 대기 중 정지를 누르면 null 이 되어 늦게 열린 세션을 바로 닫음 */
   const starting = useRef<object | null>(null);
@@ -37,6 +45,26 @@ function RecordPageInner() {
   const peakLevel = useRef(0);
   const canvas = useRef<HTMLCanvasElement>(null);
   const meter = useRef<HTMLDivElement>(null);
+  const [source, setSource] = useState<RecordSource>("voice");
+  const sourceRef = useRef<RecordSource>("voice");
+  const [heldMidi, setHeldMidi] = useState<number | null>(null);
+  const midiSession = useRef<MetronomeSession | null>(null);
+  const midiEvents = useRef<MidiEvent[]>([]);
+  const heldRef = useRef<number | null>(null);
+  const { playNote } = usePianoSound();
+  const midi = useMidiInput({
+    onEvent: (e) => {
+      if (e.type === "on") {
+        heldRef.current = e.midi;
+        setHeldMidi(e.midi);
+        playNote(e.midi, { velocity: e.velocity }); // AudioContext 는 녹음/연결 버튼 제스처에서 이미 시작됨
+      } else if (e.type === "off" && heldRef.current === e.midi) {
+        heldRef.current = null;
+        setHeldMidi(null);
+      }
+      if (midiSession.current) midiEvents.current.push(e);
+    },
+  });
 
   // 실시간 음정 궤적 (최근 6초) + 입력 레벨 미터
   useEffect(() => {
@@ -57,7 +85,8 @@ function RecordPageInner() {
         const pts = trace.current;
         const now = pts.length ? pts[pts.length - 1].time : 0;
         const span = 6;
-        const lo = 45, hi = 81; // A2 ~ A5
+        const inst = sourceRef.current === "instrument";
+        const lo = inst ? 36 : 45, hi = inst ? 96 : 81; // 목소리 A2~A5, 악기 C2~C7
         g.strokeStyle = "rgba(147,151,171,0.25)";
         g.lineWidth = 1;
         for (let m = lo; m <= hi; m++) {
@@ -84,6 +113,8 @@ function RecordPageInner() {
       starting.current = null; // 권한 대기 중 화면을 떠나면 늦게 열린 세션을 start()가 닫음
       session.current?.stop();
       session.current = null;
+      midiSession.current?.stop();
+      midiSession.current = null;
     },
     [],
   );
@@ -94,12 +125,71 @@ function RecordPageInner() {
     return () => clearTimeout(t);
   }, []);
 
+  useEffect(() => {
+    const t = setTimeout(() => {
+      const v = loadRecordSource();
+      sourceRef.current = v;
+      setSource(v);
+    }, 0);
+    return () => clearTimeout(t);
+  }, []);
+
+  function changeSource(v: RecordSource) {
+    sourceRef.current = v;
+    setSource(v);
+    saveRecordSource(v);
+    setError(null);
+    setNoInput(false);
+  }
+
+  function startMidi() {
+    if (midiSession.current) return;
+    setError(null);
+    midiEvents.current = [];
+    getAudioContext(); // 제스처 동기 호출 (resume 은 내부 fire-and-forget)
+    setStatus("countin");
+    midiSession.current = startMetronomeSession({
+      bpm,
+      beatsPerMeasure: beats,
+      countInMeasures: 1,
+      metronome,
+      manualLatencyMs: latencyMs,
+      onBeat: (b) => {
+        setBeat(b);
+        if (b >= 0) setStatus("recording");
+      },
+    });
+  }
+
+  function finishMidi() {
+    const ms = midiSession.current;
+    if (!ms) return;
+    midiSession.current = null;
+    ms.stop();
+    setBeat(null);
+    setStatus("processing");
+    const raw = midiEventsToRawNotes(midiEvents.current, ms.startPerf, performance.now());
+    midiEvents.current = [];
+    const { score } = buildScoreFromRawNotes(raw, { bpm, beatsPerMeasure: beats });
+    if (!score.notes.some((n) => n.midi !== null)) {
+      setStatus("idle");
+      setError("연주한 음이 없어요. 건반 연결을 확인하고 메트로놈에 맞춰 다시 연주해 주세요.");
+      return;
+    }
+    setStatus("idle");
+    setPending({ score, interrupted: false });
+  }
+
   function changeLatency(ms: number) {
     setLatencyMs(ms);
     saveManualLatencyMs(ms);
   }
 
   async function start() {
+    if (sourceRef.current === "midi") {
+      startMidi();
+      return;
+    }
     if (session.current || starting.current) return; // 이미 녹음 중이거나 시작 대기 중
     setError(null);
     setNoInput(false);
@@ -165,6 +255,10 @@ function RecordPageInner() {
   }
 
   async function finish(interrupted: boolean) {
+    if (midiSession.current) {
+      finishMidi();
+      return;
+    }
     if (!session.current) {
       // 아직 마이크 권한 대기 중(세션 없음)에 정지 → 시작 취소만 하고 조용히 대기 상태로
       starting.current = null;
@@ -183,19 +277,38 @@ function RecordPageInner() {
       return;
     }
     setStatus("processing");
-    const { score } = buildScoreFromFrames(frames, { bpm, beatsPerMeasure: beats });
+    const { score } = buildScoreFromFrames(frames, {
+      bpm,
+      beatsPerMeasure: beats,
+      range: sourceRef.current === "instrument" ? "instrument" : "voice",
+    });
     if (!score.notes.some((n) => n.midi !== null)) {
       setStatus("idle");
       setError(
         interrupted
           ? "마이크 연결이 끊겼어요. 음이 감지되지 않아 저장하지 못했어요."
-          : "음이 감지되지 않았어요. 조용한 곳에서 '라~' 또는 '음~'으로 또렷하게 불러 주세요.",
+          : sourceRef.current === "instrument"
+            ? "음이 감지되지 않았어요. 조용한 곳에서 한 음씩 또렷하게 연주해 주세요."
+            : "음이 감지되지 않았어요. 조용한 곳에서 '라~' 또는 '음~'으로 또렷하게 불러 주세요.",
       );
       return;
     }
-    await saveScore(score);
+    // 마이크는 위에서 이미 정지됨. 제목을 받기 위해 음표 데이터(Score)만 보관 (오디오 없음)
+    setStatus("idle");
+    setPending({ score, interrupted });
+  }
+
+  async function confirmSave({ title, composer }: { title: string; composer?: string }) {
+    if (!pending) return;
+    const { score, interrupted } = pending;
+    await saveScore({ ...score, title });
     if (interrupted) toast.info("마이크 연결이 끊겨 여기까지 저장했어요.");
     router.push(`/scores/${score.id}`);
+  }
+
+  function cancelSave() {
+    setPending(null);
+    toast.info("저장을 취소했어요");
   }
 
   function stop() {
@@ -206,19 +319,49 @@ function RecordPageInner() {
   const cents = voiced ? centsOff(voiced) : 0;
   const tuneColor = Math.abs(cents) < 15 ? "text-tune-good" : Math.abs(cents) < 30 ? "text-tune-warn" : "text-tune-bad";
   const recording = status === "countin" || status === "recording";
+  const isMidi = source === "midi";
+  const midiBlocked = isMidi && midi.status !== "connected";
+  const noun = source === "voice" ? "부르는" : "연주하는";
 
   return (
     <div className="mx-auto flex max-w-md flex-col gap-5">
       <header>
         <h1 className="text-2xl font-medium">흥얼거리면 악보가 됩니다</h1>
-        <p className="mt-1 text-sm text-ink-soft">메트로놈에 맞춰 &lsquo;라~&rsquo;로 불러 주세요. 유선 이어폰을 쓰면 박자가 가장 정확해요.</p>
+        <p className="mt-1 text-sm text-ink-soft">
+          {source === "voice"
+            ? "메트로놈에 맞춰 ‘라~’로 불러 주세요. 유선 이어폰을 쓰면 박자가 가장 정확해요."
+            : "메트로놈에 맞춰 연주해 주세요. 유선 이어폰을 쓰면 박자가 가장 정확해요."}
+        </p>
       </header>
 
+      <div className={recording ? "pointer-events-none opacity-50" : ""}>
+        <RecordSourcePicker value={source} onChange={changeSource} disabled={recording || status === "processing"} />
+        {source === "instrument" && (
+          <p className="mt-2 flex items-center gap-1.5 text-xs text-ink-soft">
+            <Piano className="size-4 shrink-0" aria-hidden />
+            피아노·신디 소리를 한 음씩 연주하세요 (화음은 인식하지 않아요)
+          </p>
+        )}
+        {isMidi && (
+          <div className="mt-3">
+            <MidiConnectButton status={midi.status} devices={midi.devices} message={midi.message} onConnect={() => { getAudioContext(); void midi.connect(); }} />
+            {midi.status === "idle" && !midi.supported && <p className="mt-1 text-xs text-destructive">{midi.message}</p>}
+            {midi.status === "idle" && midi.supported && <p className="mt-1 text-xs text-ink-soft">먼저 건반을 연결해 주세요.</p>}
+          </div>
+        )}
+      </div>
+
       {/* 실시간 음정 */}
+      {isMidi ? (
+        <Card className="gap-0 rounded-2xl p-5">
+          <p className="text-xs text-ink-soft">지금 누른 음</p>
+          <p className="text-5xl font-bold tabular-nums">{heldMidi !== null ? midiToName(heldMidi) : <span className="text-ink-soft/40">–</span>}</p>
+        </Card>
+      ) : (
       <Card className="gap-0 rounded-2xl p-5">
         <div className="flex items-end justify-between">
           <div>
-            <p className="text-xs text-ink-soft">지금 부르는 음</p>
+            <p className="text-xs text-ink-soft">지금 {noun} 음</p>
             <p className="text-5xl font-bold tabular-nums">{voiced ? midiToName(freqToNearestMidi(voiced)) : <span className="text-ink-soft/40">–</span>}</p>
           </div>
           <div className="text-right">
@@ -249,6 +392,7 @@ function RecordPageInner() {
           <p className="mt-2 text-xs text-tune-warn">마이크 입력이 거의 없어요. 다른 앱이 마이크를 쓰고 있지 않은지, 시스템 입력 음량이 0이 아닌지 확인해 주세요.</p>
         )}
       </Card>
+      )}
 
       {/* 박자 표시 */}
       <div className="flex items-center justify-center gap-3" aria-live="polite">
@@ -264,14 +408,14 @@ function RecordPageInner() {
       <button
         type="button"
         onClick={recording ? stop : start}
-        disabled={status === "processing"}
+        disabled={status === "processing" || (!recording && midiBlocked)}
         className={`mx-auto flex h-24 w-24 items-center justify-center rounded-full text-accent-ink shadow-md outline-none transition focus-visible:ring-4 focus-visible:ring-ring/60 active:scale-95 disabled:opacity-50 ${recording ? "bg-tune-bad" : "bg-accent"}`}
         aria-label={recording ? "녹음 끝내고 악보 만들기" : "녹음 시작"}
       >
         {recording ? (
           <Square className="size-8" fill="currentColor" aria-hidden />
         ) : (
-          <Mic className="size-10" strokeWidth={2} fill="currentColor" aria-hidden />
+          isMidi ? <Piano className="size-10" strokeWidth={2} aria-hidden /> : <Mic className="size-10" strokeWidth={2} fill="currentColor" aria-hidden />
         )}
       </button>
       {error && <p role="alert" className="text-center text-sm text-tune-bad">{error}</p>}
@@ -311,7 +455,13 @@ function RecordPageInner() {
           <input type="checkbox" checked={metronome} onChange={(e) => setMetronome(e.target.checked)} className="h-5 w-5 accent-accent" />
         </label>
       </Card>
-      <p className="text-center text-xs text-ink-soft">녹음된 목소리는 기기 밖으로 전송·저장되지 않고, 음표 정보만 남습니다.</p>
+      <p className="text-center text-xs text-ink-soft">녹음된 소리는 기기 밖으로 전송·저장되지 않고, 음표 정보만 남습니다. (MIDI 건반 모드는 마이크를 쓰지 않아요)</p>
+      <TitleDialog
+        open={pending !== null}
+        defaultTitle={pending?.score.title ?? ""}
+        onConfirm={confirmSave}
+        onCancel={cancelSave}
+      />
     </div>
   );
 }

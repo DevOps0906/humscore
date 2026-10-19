@@ -11,7 +11,11 @@ import { DurationPicker } from "@/components/note-editor";
 import { PianoKeyboard } from "@/components/piano-keyboard";
 import { BASS_CLEF_PATH, CLEF_UNITS_PER_SPACE, TREBLE_CLEF_PATH } from "@/components/clef-glyphs";
 import { ScoreView } from "@/components/score-view";
+import { TitleDialog } from "@/components/title-dialog";
+import { MidiConnectButton } from "@/components/midi-connect-button";
 import { usePianoSound } from "@/hooks/use-piano-sound";
+import { useMidiInput } from "@/hooks/use-midi-input";
+import { getAudioContext } from "@/lib/audio/context";
 import { appendNote, createBlankScore, deleteNote, scoreMeasureCount } from "@/lib/music/edit";
 import { PIANO_KEYS } from "@/lib/music/frequency";
 import { scoreToMusicXML } from "@/lib/music/musicxml";
@@ -141,6 +145,8 @@ function KeysPageInner() {
   const [dur, setDur] = useState(1);
   const [loaded, setLoaded] = useState(false);
   const [confirmClear, setConfirmClear] = useState(false);
+  const [titleOpen, setTitleOpen] = useState(false);
+  const [defaultTitle, setDefaultTitle] = useState("");
   const [base] = useState(() => createBlankScore());
 
   // 초안 복원 / 저장 (음표 숫자만, 오디오 아님)
@@ -187,6 +193,29 @@ function KeysPageInner() {
     };
   });
 
+  // 외부 MIDI 건반: 화면 건반을 누른 것과 같은 경로(handler)로 처리
+  const midi = useMidiInput({
+    onEvent: (e) => {
+      if (e.type === "pedal") {
+        setSustain(e.down);
+        return;
+      }
+      if (e.midi < 21 || e.midi > 108) return;
+      if (e.type === "on") {
+        setPressed((p) => new Set([...p, e.midi]));
+        handler.current(e.midi);
+      } else {
+        setPressed((p) => { const n = new Set(p); n.delete(e.midi); return n; });
+      }
+    },
+  });
+  function connectMidiKeyboard() {
+    // 사용자 제스처 안에서 동기 호출 — MIDI 이벤트는 제스처가 아니므로 미리 AudioContext를 깨워 둔다
+    const ctx = getAudioContext();
+    void ctx.resume();
+    void midi.connect();
+  }
+
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
       if (e.ctrlKey || e.metaKey || e.altKey) return;
@@ -209,12 +238,19 @@ function KeysPageInner() {
 
   const key = PIANO_KEYS[active - 21];
 
-  async function save() {
+  function openTitleDialog() {
+    if (notes.length === 0) return;
+    setDefaultTitle(`건반 입력 ${new Date().toLocaleString("ko-KR")}`);
+    setTitleOpen(true);
+  }
+
+  async function save({ title, composer }: { title: string; composer?: string }) {
     if (notes.length === 0) return;
     // 허밍 채보와 동일하게 마디별 코드를 추천해 둠 (악보 화면에서 수정 가능)
     const chords = suggestChords(notes, draftScore.key, beats, scoreMeasureCount(draftScore));
-    const saved = await saveScore({ ...draftScore, chords, title: `건반 입력 ${new Date().toLocaleString("ko-KR")}` });
+    const saved = await saveScore({ ...draftScore, chords, title, composer });
     try { localStorage.removeItem(DRAFT_KEY); } catch { /* 무시 */ }
+    setTitleOpen(false); // 이동 전에 닫아 대화상자가 DOM 에 남지 않게 함
     router.push(`/scores/${saved.id}`);
   }
 
@@ -239,6 +275,13 @@ function KeysPageInner() {
           악보 입력
         </Button>
       </header>
+
+      <MidiConnectButton
+        status={midi.supported ? midi.status : "unsupported"}
+        devices={midi.devices}
+        message={midi.message}
+        onConnect={connectMidiKeyboard}
+      />
 
       {/* 입력 도구 */}
       {entry && (
@@ -323,10 +366,17 @@ function KeysPageInner() {
       </label>
 
       {entry && (
-        <Button type="button" disabled={notes.length === 0} onClick={() => void save()} className="h-11 w-full text-sm">
+        <Button type="button" disabled={notes.length === 0} onClick={openTitleDialog} className="h-11 w-full text-sm">
           악보로 저장
         </Button>
       )}
+      <TitleDialog
+        open={titleOpen}
+        defaultTitle={defaultTitle}
+        onConfirm={save}
+        onCancel={() => setTitleOpen(false)}
+      />
+
 
       <details className="rounded-2xl border border-line bg-surface p-4 text-sm">
         <summary className="cursor-pointer rounded-sm font-semibold outline-none focus-visible:ring-3 focus-visible:ring-ring/60">전체 주파수 표 보기</summary>
