@@ -1,5 +1,5 @@
 "use client";
-import { Suspense as __Suspense } from "react";
+import { Suspense } from "react";
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -210,7 +210,7 @@ function KeysPageInner() {
     const chords = suggestChords(notes, draftScore.key, beats, scoreMeasureCount(draftScore));
     const saved = await saveScore({ ...draftScore, chords, title: `건반 입력 ${new Date().toLocaleString("ko-KR")}` });
     try { localStorage.removeItem(DRAFT_KEY); } catch { /* 무시 */ }
-    router.push(`/score/?id=${saved.id}`);
+    router.push(`/scores/${saved.id}`);
   }
 
   const btn = "rounded-full border border-line bg-surface px-4 py-2 text-sm disabled:opacity-40";
@@ -343,8 +343,8 @@ function KeysPageInner() {
 
 export default function KeysPage() {
   return (
-    <__Suspense fallback={null}>
+    <Suspense fallback={null}>
       <KeysPageInner />
-    </__Suspense>
+    </Suspense>
   );
 }

@@ -1,6 +1,4 @@
 "use client";
-import { Suspense as __Suspense } from "react";
-
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -8,7 +6,7 @@ import { ChordEditor } from "@/components/chord-editor";
 import { NoteEditor } from "@/components/note-editor";
 import { ScoreView } from "@/components/score-view";
 import { TransposeBar } from "@/components/transpose-bar";
-import { useScoreParam } from "@/hooks/use-score-param";
+import { useScore } from "@/hooks/use-score-param";
 import { getAudioContext, setAudioSessionType } from "@/lib/audio/context";
 import { playScore, type Playback } from "@/lib/audio/piano-synth";
 import { GM_INSTRUMENTS, scoreToMidi, type InstrumentId } from "@/lib/music/midi";
@@ -29,9 +27,9 @@ const INSTRUMENT_LABELS: Record<InstrumentId, string> = {
   choir: "합창",
 };
 
-function ScorePageInner() {
+export function ScoreClient({ id }: { id: string }) {
   const router = useRouter();
-  const { score, update } = useScoreParam();
+  const { score, update } = useScore(id);
   const [layout, setLayout] = useState<ScoreLayout>("lead");
   const [instrument, setInstrument] = useState<InstrumentId>("piano");
   const [editNotes, setEditNotes] = useState(false);
@@ -60,7 +58,7 @@ function ScorePageInner() {
     return (
       <div className="py-20 text-center">
         <p className="text-ink-soft">악보를 찾을 수 없어요.</p>
-        <Link href="/library/" className="mt-4 inline-block text-accent underline">내 악보로</Link>
+        <Link href="/library" className="mt-4 inline-block text-accent underline">내 악보로</Link>
       </div>
     );
 
@@ -116,7 +114,7 @@ function ScorePageInner() {
           className="w-full bg-transparent text-xl font-bold outline-none focus:underline"
           aria-label="악보 제목"
         />
-        <Link href={`/perform/?id=${score.id}`} className="shrink-0 rounded-full border border-line px-4 py-2 text-sm">
+        <Link href={`/scores/${score.id}/perform`} className="shrink-0 rounded-full border border-line px-4 py-2 text-sm">
           공연 모드
         </Link>
       </div>
@@ -188,7 +186,7 @@ function ScorePageInner() {
           onClick={() => {
             if (!confirm("이 악보를 삭제할까요?")) return;
             deleteScore(score.id);
-            router.push("/library/");
+            router.push("/library");
           }}
           className="justify-self-start text-xs text-tune-bad"
         >
@@ -217,10 +215,3 @@ function ScorePageInner() {
   );
 }
 
-export default function ScorePage() {
-  return (
-    <__Suspense fallback={null}>
-      <ScorePageInner />
-    </__Suspense>
-  );
-}

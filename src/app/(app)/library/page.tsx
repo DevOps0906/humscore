@@ -1,5 +1,5 @@
 "use client";
-import { Suspense as __Suspense } from "react";
+import { Suspense } from "react";
 
 import Link from "next/link";
 import { AuthStatus } from "@/components/auth-status";
@@ -22,7 +22,7 @@ function LibraryPageInner() {
         </div>
         <div className="flex shrink-0 items-center gap-3">
           <AuthStatus />
-          <Link href="/welcome/" className="shrink-0 pb-1 text-xs text-ink-soft underline underline-offset-4">
+          <Link href="/welcome" className="shrink-0 pb-1 text-xs text-ink-soft underline underline-offset-4">
             앱 소개
           </Link>
         </div>
@@ -36,7 +36,7 @@ function LibraryPageInner() {
         <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {scores.map((s) => (
             <li key={s.id}>
-              <Link href={`/score/?id=${s.id}`} className="block rounded-2xl bg-surface p-4 shadow-sm transition active:scale-[0.99]">
+              <Link href={`/scores/${s.id}`} className="block rounded-2xl bg-surface p-4 shadow-sm transition active:scale-[0.99]">
                 <p className="truncate font-semibold">{s.title}</p>
                 <p className="mt-1 text-sm text-ink-soft">
                   {keyName(transposeKey(s.key, s.transpose))}키 · {s.bpm} BPM · {measureCount(s.notes, s.beatsPerMeasure)}마디
@@ -53,8 +53,8 @@ function LibraryPageInner() {
 
 export default function LibraryPage() {
   return (
-    <__Suspense fallback={null}>
+    <Suspense fallback={null}>
       <LibraryPageInner />
-    </__Suspense>
+    </Suspense>
   );
 }

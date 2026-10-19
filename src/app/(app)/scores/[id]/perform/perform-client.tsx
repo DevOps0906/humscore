@@ -1,11 +1,9 @@
 "use client";
-import { Suspense as __Suspense } from "react";
-
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ScoreView } from "@/components/score-view";
 import { TransposeBar } from "@/components/transpose-bar";
-import { useScoreParam } from "@/hooks/use-score-param";
+import { useScore } from "@/hooks/use-score-param";
 import { scoreToMusicXML } from "@/lib/music/musicxml";
 
 /**
@@ -13,8 +11,8 @@ import { scoreToMusicXML } from "@/lib/music/musicxml";
  * - 큰 악보, 화면 좌/우 탭 또는 블루투스 페이지 넘김 페달(←/→, PageUp/PageDown, Space)로 스크롤
  * - 즉석 전조
  */
-function PerformPageInner() {
-  const { score, update } = useScoreParam();
+export function PerformClient({ id }: { id: string }) {
+  const { score, update } = useScore(id);
   const [zoom, setZoom] = useState(1.4);
   const scroller = useRef<HTMLDivElement>(null);
   const xml = useMemo(() => (score ? scoreToMusicXML(score, "lead") : ""), [score]);
@@ -34,7 +32,7 @@ function PerformPageInner() {
   return (
     <div className="fixed inset-0 z-30 flex flex-col bg-paper">
       <div className="safe-top flex items-center gap-3 border-b border-line px-4 py-2">
-        <Link href={`/score/?id=${score.id}`} className="rounded-full border border-line px-3 py-1.5 text-sm">닫기</Link>
+        <Link href={`/scores/${score.id}`} className="rounded-full border border-line px-3 py-1.5 text-sm">닫기</Link>
         <p className="flex-1 truncate font-semibold">{score.title}</p>
         <button type="button" onClick={() => setZoom((z) => Math.max(0.8, z - 0.2))} className="h-9 w-9 rounded-full border border-line" aria-label="작게">A−</button>
         <button type="button" onClick={() => setZoom((z) => Math.min(2.6, z + 0.2))} className="h-9 w-9 rounded-full border border-line" aria-label="크게">A+</button>
@@ -58,10 +56,3 @@ function PerformPageInner() {
   );
 }
 
-export default function PerformPage() {
-  return (
-    <__Suspense fallback={null}>
-      <PerformPageInner />
-    </__Suspense>
-  );
-}

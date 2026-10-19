@@ -1,5 +1,5 @@
 "use client";
-import { Suspense as __Suspense } from "react";
+import { Suspense } from "react";
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -191,7 +191,7 @@ function RecordPageInner() {
     }
     await saveScore(score);
     if (interrupted) window.alert("마이크 연결이 끊겨 여기까지 저장했어요.");
-    router.push(`/score/?id=${score.id}`);
+    router.push(`/scores/${score.id}`);
   }
 
   function stop() {
@@ -315,8 +315,8 @@ function RecordPageInner() {
 
 export default function RecordPage() {
   return (
-    <__Suspense fallback={null}>
+    <Suspense fallback={null}>
       <RecordPageInner />
-    </__Suspense>
+    </Suspense>
   );
 }

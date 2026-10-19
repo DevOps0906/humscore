@@ -17,7 +17,7 @@ export function AuthStatus() {
 
   if (auth.status === "signed-out") {
     return (
-      <Link href="/login/" className="shrink-0 pb-1 text-xs text-ink-soft underline underline-offset-4">
+      <Link href="/login" className="shrink-0 pb-1 text-xs text-ink-soft underline underline-offset-4">
         로그인
       </Link>
     );

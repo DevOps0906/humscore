@@ -1,6 +1,5 @@
 import type { Metadata, Viewport } from "next";
 import { CloudSync } from "@/components/cloud-sync";
-import { TabBar } from "@/components/tab-bar";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -21,7 +20,6 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     <html lang="ko" className="h-full antialiased">
       <body className="flex min-h-full flex-col">
         <main className="safe-top mx-auto w-full max-w-5xl flex-1 px-4 pb-28 pt-4 md:px-8">{children}</main>
-        <TabBar />
         <CloudSync />
       </body>
     </html>

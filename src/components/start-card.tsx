@@ -6,8 +6,8 @@ import Link from "next/link";
 type Mode = "record" | "keys";
 
 const PANELS: { id: Mode; tab: string; title: string; sub: string; cta: string; href: string }[] = [
-  { id: "record", tab: "녹음", title: "떠오른 멜로디를 흥얼거려 보세요", sub: "30초면 코드 악보가 만들어져요", cta: "녹음 시작", href: "/record/" },
-  { id: "keys", tab: "건반 입력", title: "88건반을 눌러 음표를 적어요", sub: "음 길이를 고르고 건반을 누르면 바로 악보가 그려져요", cta: "건반으로 입력", href: "/keys/?entry=1" },
+  { id: "record", tab: "녹음", title: "떠오른 멜로디를 흥얼거려 보세요", sub: "30초면 코드 악보가 만들어져요", cta: "녹음 시작", href: "/record" },
+  { id: "keys", tab: "건반 입력", title: "88건반을 눌러 음표를 적어요", sub: "음 길이를 고르고 건반을 누르면 바로 악보가 그려져요", cta: "건반으로 입력", href: "/keys?entry=1" },
 ];
 
 export function StartCard() {

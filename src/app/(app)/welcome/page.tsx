@@ -1,5 +1,5 @@
 "use client";
-import { Suspense as __Suspense } from "react";
+import { Suspense } from "react";
 
 import { useRouter } from "next/navigation";
 
@@ -19,7 +19,7 @@ const STEPS = [
 function WelcomePageInner() {
   const router = useRouter();
   const start = () => {
-    router.replace("/library/");
+    router.replace("/library");
   };
 
   return (
@@ -100,8 +100,8 @@ function WelcomePageInner() {
 
 export default function WelcomePage() {
   return (
-    <__Suspense fallback={null}>
+    <Suspense fallback={null}>
       <WelcomePageInner />
-    </__Suspense>
+    </Suspense>
   );
 }

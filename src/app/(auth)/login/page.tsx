@@ -45,7 +45,7 @@ export default function LoginPage() {
     const { error } = await sb.auth.verifyOtp({ email: email.trim(), token: code.trim(), type: "email" });
     setBusy(false);
     if (error) setMessage("코드가 맞지 않거나 만료됐어요.");
-    else router.replace("/library/");
+    else router.replace("/library");
   };
 
   const google = async () => {
@@ -72,7 +72,7 @@ export default function LoginPage() {
       ) : auth.status === "signed-in" ? (
         <div className="flex flex-col gap-3 rounded-2xl bg-surface p-4 shadow-sm">
           <p className="text-sm">{auth.email} 로 로그인되어 있어요.</p>
-          <Link href="/library/" className={`${primary} text-center`}>내 악보로 가기</Link>
+          <Link href="/library" className={`${primary} text-center`}>내 악보로 가기</Link>
         </div>
       ) : (
         <>
