@@ -1,5 +1,7 @@
 "use client";
 import Link from "next/link";
+import { X } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ScoreView } from "@/components/score-view";
 import { TransposeBar } from "@/components/transpose-bar";
@@ -32,10 +34,12 @@ export function PerformClient({ id }: { id: string }) {
   return (
     <div className="fixed inset-0 z-30 flex flex-col bg-paper">
       <div className="safe-top flex items-center gap-3 border-b border-line px-4 py-2">
-        <Link href={`/scores/${score.id}`} className="rounded-full border border-line px-3 py-1.5 text-sm">닫기</Link>
-        <p className="flex-1 truncate font-semibold">{score.title}</p>
-        <button type="button" onClick={() => setZoom((z) => Math.max(0.8, z - 0.2))} className="h-9 w-9 rounded-full border border-line" aria-label="작게">A−</button>
-        <button type="button" onClick={() => setZoom((z) => Math.min(2.6, z + 0.2))} className="h-9 w-9 rounded-full border border-line" aria-label="크게">A+</button>
+        <Button asChild variant="outline" className="h-11 rounded-full px-4 text-sm">
+          <Link href={`/scores/${score.id}`}><X aria-hidden /> 닫기</Link>
+        </Button>
+        <p className="flex-1 truncate font-medium">{score.title}</p>
+        <Button type="button" variant="outline" onClick={() => setZoom((z) => Math.max(0.8, z - 0.2))} className="size-11 rounded-full" aria-label="작게">A−</Button>
+        <Button type="button" variant="outline" onClick={() => setZoom((z) => Math.min(2.6, z + 0.2))} className="size-11 rounded-full" aria-label="크게">A+</Button>
       </div>
       <div
         ref={scroller}

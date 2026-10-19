@@ -2,6 +2,12 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { Download, FileMusic, Play, Printer, Square, Trash2 } from "lucide-react";
+import { toast } from "sonner";
+import { ConfirmDialog } from "@/components/confirm-dialog";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { ChordEditor } from "@/components/chord-editor";
 import { NoteEditor } from "@/components/note-editor";
 import { ScoreView } from "@/components/score-view";
@@ -34,6 +40,7 @@ export function ScoreClient({ id }: { id: string }) {
   const [instrument, setInstrument] = useState<InstrumentId>("piano");
   const [editNotes, setEditNotes] = useState(false);
   const [playing, setPlaying] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const playback = useRef<Playback | null>(null);
   const stopTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -53,12 +60,12 @@ export function ScoreClient({ id }: { id: string }) {
 
   const xml = useMemo(() => (score ? scoreToMusicXML(score, layout) : ""), [score, layout]);
 
-  if (score === undefined) return <p className="text-ink-soft">불러오는 중…</p>;
+  if (score === undefined) return <p className="text-ink-soft" role="status">불러오는 중…</p>;
   if (score === null)
     return (
       <div className="py-20 text-center">
         <p className="text-ink-soft">악보를 찾을 수 없어요.</p>
-        <Link href="/library" className="mt-4 inline-block text-accent underline">내 악보로</Link>
+        <Button asChild variant="outline" className="mt-4 h-11 px-5"><Link href="/library">내 악보로</Link></Button>
       </div>
     );
 
@@ -108,27 +115,29 @@ export function ScoreClient({ id }: { id: string }) {
   return (
     <div className="flex flex-col gap-4">
       <div className="no-print flex items-start justify-between gap-3">
-        <input
+        <Input
           defaultValue={score.title}
           onBlur={(e) => e.target.value.trim() && update({ title: e.target.value.trim() })}
-          className="w-full bg-transparent text-xl font-bold outline-none focus:underline"
+          className="h-11 border-transparent bg-transparent px-2 text-xl font-medium hover:border-input md:text-xl dark:bg-transparent"
           aria-label="악보 제목"
         />
-        <Link href={`/scores/${score.id}/perform`} className="shrink-0 rounded-full border border-line px-4 py-2 text-sm">
-          공연 모드
-        </Link>
+        <Button asChild variant="outline" className="h-11 shrink-0 rounded-full px-4 text-sm">
+          <Link href={`/scores/${score.id}/perform`}>공연 모드</Link>
+        </Button>
       </div>
 
       <div className="no-print flex flex-wrap items-center gap-2 text-sm">
         {(["lead", "piano"] as const).map((l) => (
-          <button
+          <Button
             key={l}
             type="button"
+            variant="outline"
             onClick={() => setLayout(l)}
-            className={`rounded-full border px-4 py-1.5 ${layout === l ? "border-accent bg-accent/15 text-accent" : "border-line"}`}
+            aria-pressed={layout === l}
+            className={`h-11 rounded-full px-4 sm:h-9 ${layout === l ? "border-accent bg-accent/15 text-accent hover:bg-accent/20 hover:text-accent" : ""}`}
           >
             {l === "lead" ? "코드 악보" : "피아노"}
-          </button>
+          </Button>
         ))}
         <span className="ml-auto text-ink-soft">
           {score.bpm} BPM · {score.beatsPerMeasure}/4
@@ -138,14 +147,15 @@ export function ScoreClient({ id }: { id: string }) {
       {!editNotes && <ScoreView xml={xml} />}
 
       <div className="no-print">
-        <button
+        <Button
           type="button"
+          variant="outline"
           onClick={() => setEditNotes((v) => !v)}
           aria-pressed={editNotes}
-          className={`rounded-full border px-4 py-2 text-sm ${editNotes ? "border-accent bg-accent/15 text-accent" : "border-line"}`}
+          className={`h-11 rounded-full px-4 text-sm sm:h-9 ${editNotes ? "border-accent bg-accent/15 text-accent hover:bg-accent/20 hover:text-accent" : ""}`}
         >
           음표 편집
-        </button>
+        </Button>
       </div>
       {editNotes && <NoteEditor score={score} onChange={(notes) => update({ notes })} />}
       {editNotes && <ScoreView xml={xml} />}
@@ -153,58 +163,73 @@ export function ScoreClient({ id }: { id: string }) {
       <ChordEditor score={score} onChange={(chords) => update({ chords })} />
 
       {/* 내보내기 */}
-      <section className="no-print grid gap-3 rounded-2xl border border-line bg-surface p-4">
+      <Card className="no-print gap-3 p-4">
         <p className="text-sm font-semibold">내보내기 · {keyName(shownKey)}키 기준</p>
         <div className="flex flex-wrap gap-2 text-sm">
-          <button type="button" onClick={() => window.print()} className="rounded-full border border-line px-4 py-2">
-            PDF / 인쇄
-          </button>
-          <button
+          <Button type="button" variant="outline" onClick={() => window.print()} className="h-11 rounded-full px-4 sm:h-9">
+            <Printer aria-hidden /> PDF / 인쇄
+          </Button>
+          <Button
             type="button"
+            variant="outline"
             onClick={() => exportFile(`${base}.musicxml`, xml, "application/vnd.recordare.musicxml+xml")}
-            className="rounded-full border border-line px-4 py-2"
+            className="h-11 rounded-full px-4 sm:h-9"
           >
-            MusicXML
-          </button>
-          <div className="flex items-center gap-1 rounded-full border border-line pl-3">
-            <select value={instrument} onChange={(e) => setInstrument(e.target.value as InstrumentId)} className="bg-transparent py-2" aria-label="MIDI 멜로디 악기">
+            <FileMusic aria-hidden /> MusicXML
+          </Button>
+          <div className="flex items-center gap-1 rounded-full border border-input pl-3">
+            <select
+              value={instrument}
+              onChange={(e) => setInstrument(e.target.value as InstrumentId)}
+              className="h-11 rounded-md bg-transparent text-sm outline-none focus-visible:ring-3 focus-visible:ring-ring/60 sm:h-9 [&>option]:bg-surface"
+              aria-label="MIDI 멜로디 악기"
+            >
               {(Object.keys(GM_INSTRUMENTS) as InstrumentId[]).map((id) => (
                 <option key={id} value={id}>{INSTRUMENT_LABELS[id]}</option>
               ))}
             </select>
-            <button
+            <Button
               type="button"
+              variant="outline"
               onClick={() => exportFile(`${base}_${instrument}.mid`, scoreToMidi(score, { melodyInstrument: instrument }), "audio/midi")}
-              className="rounded-full border border-accent px-4 py-2 text-accent"
+              className="h-11 rounded-full border-accent px-4 text-accent hover:bg-accent/10 hover:text-accent sm:h-9"
             >
-              MIDI
-            </button>
+              <Download aria-hidden /> MIDI
+            </Button>
           </div>
         </div>
-        <button
+        <Button
           type="button"
-          onClick={() => {
-            if (!confirm("이 악보를 삭제할까요?")) return;
-            deleteScore(score.id);
-            router.push("/library");
-          }}
-          className="justify-self-start text-xs text-tune-bad"
+          variant="destructive"
+          onClick={() => setConfirmDelete(true)}
+          className="h-11 justify-self-start px-4 text-xs sm:h-9"
         >
-          악보 삭제
-        </button>
-      </section>
+          <Trash2 aria-hidden /> 악보 삭제
+        </Button>
+      </Card>
+      <ConfirmDialog
+        open={confirmDelete}
+        onOpenChange={setConfirmDelete}
+        title="이 악보를 삭제할까요?"
+        description="삭제한 악보는 되돌릴 수 없어요."
+        onConfirm={() => {
+          deleteScore(score.id);
+          toast.success("악보를 삭제했어요");
+          router.push("/library");
+        }}
+      />
 
       {/* 하단 고정: 재생 + 전조 */}
       <div className="no-print fixed inset-x-0 bottom-[72px] z-10 px-4">
         <div className="mx-auto flex max-w-md items-center gap-2">
-          <button
+          <Button
             type="button"
             onClick={togglePlay}
-            className={`h-14 w-14 shrink-0 rounded-full text-accent-ink shadow-md ${playing ? "bg-tune-bad" : "bg-accent"}`}
+            className={`size-14 shrink-0 rounded-full text-accent-ink shadow-md [&_svg:not([class*=size-])]:size-6 ${playing ? "bg-tune-bad hover:bg-tune-bad/80" : ""}`}
             aria-label={playing ? "정지" : "재생"}
           >
-            {playing ? "■" : "▶"}
-          </button>
+            {playing ? <Square fill="currentColor" aria-hidden /> : <Play fill="currentColor" aria-hidden />}
+          </Button>
           <div className="flex-1">
             <TransposeBar originalKey={score.key} transpose={score.transpose} onChange={(t) => update({ transpose: t })} />
           </div>

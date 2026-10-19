@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import { TabBar } from "@/components/tab-bar";
+import { Toaster } from "@/components/ui/sonner";
 
 export default function AppLayout({ children }: LayoutProps<"/">) {
   return (
@@ -8,6 +9,7 @@ export default function AppLayout({ children }: LayoutProps<"/">) {
       <Suspense fallback={null}>
         <TabBar />
       </Suspense>
+      <Toaster position="top-center" />
     </>
   );
 }

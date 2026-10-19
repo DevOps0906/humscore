@@ -1,6 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import { ArrowDown, ArrowUp, Plus, Trash2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import { PianoKeyboard } from "@/components/piano-keyboard";
 import { usePianoSound } from "@/hooks/use-piano-sound";
 import { appendNote, deleteNote, insertNote, measureOf, STEP_DURATIONS, updateNote } from "@/lib/music/edit";
@@ -29,8 +32,8 @@ export const DURATION_LABELS: Record<number, string> = {
 };
 
 const chipBtn = (on: boolean) =>
-  `rounded-full border px-3 py-1.5 text-sm ${on ? "border-accent bg-accent/15 text-accent" : "border-line bg-surface"}`;
-const actBtn = "rounded-full border border-line bg-surface px-3 py-1.5 text-sm disabled:opacity-40";
+  `h-11 rounded-full px-3.5 text-sm sm:h-9 ${on ? "border-accent bg-accent/15 text-accent hover:bg-accent/20 hover:text-accent" : "bg-surface"}`;
+const actBtn = "h-11 rounded-full bg-surface px-3.5 text-sm sm:h-9";
 
 /** 음가 선택 (16분~온음표 + 점) */
 export function DurationPicker({ value, onChange }: { value: number; onChange: (v: number) => void }) {
@@ -40,24 +43,27 @@ export function DurationPicker({ value, onChange }: { value: number; onChange: (
   return (
     <div className="flex flex-wrap items-center gap-1.5">
       {BASE_DURS.map((d) => (
-        <button
+        <Button
           key={d.v}
           type="button"
+          variant="outline"
           onClick={() => onChange(dotted && STEP_DURATIONS.includes(d.v * 1.5) ? d.v * 1.5 : d.v)}
           className={chipBtn(base === d.v)}
+          aria-pressed={base === d.v}
         >
           {d.label}
-        </button>
+        </Button>
       ))}
-      <button
+      <Button
         type="button"
+        variant="outline"
         disabled={!dotted && !canDot}
         onClick={() => onChange(dotted ? base : base * 1.5)}
-        className={`${chipBtn(dotted)} disabled:opacity-40`}
+        className={chipBtn(dotted)}
         aria-pressed={dotted}
       >
         점 ·
-      </button>
+      </Button>
     </div>
   );
 }
@@ -150,7 +156,7 @@ export function NoteEditor({ score, onChange }: { score: Score; onChange: (notes
   });
 
   return (
-    <section className="no-print grid gap-3 rounded-2xl border border-line bg-surface p-4">
+    <Card className="no-print gap-3 p-4">
       <p className="text-xs text-ink-soft">
         {sel === null
           ? "음표를 탭해 선택하거나, 아래 건반을 눌러 끝에 추가하세요."
@@ -164,21 +170,22 @@ export function NoteEditor({ score, onChange }: { score: Score; onChange: (notes
             <span className="mt-2 w-6 shrink-0 text-right text-xs text-ink-soft tabular-nums">{g.measure + 1}</span>
             <div className="flex flex-wrap gap-1.5">
               {g.items.map(({ n, i }) => (
-                <button
+                <Button
                   key={i}
                   type="button"
+                  variant="outline"
                   onClick={() => {
                     setSelected(i === sel ? null : i);
                     if (n.midi !== null) playNote(n.midi + transpose, { duration: 0.4 });
                   }}
-                  className={`rounded-lg border px-2.5 py-1.5 text-sm tabular-nums ${
-                    i === sel ? "border-accent bg-accent/20 font-semibold" : "border-line bg-paper"
+                  className={`h-11 px-2.5 text-sm tabular-nums sm:h-9 ${
+                    i === sel ? "border-accent bg-accent/20 font-semibold hover:bg-accent/25" : "bg-paper"
                   }`}
                   aria-pressed={i === sel}
                 >
                   {label(n)}
                   <span className="ml-1 text-[11px] text-ink-soft">{DURATION_LABELS[n.durationBeats] ?? n.durationBeats}</span>
-                </button>
+                </Button>
               ))}
             </div>
           </div>
@@ -189,37 +196,37 @@ export function NoteEditor({ score, onChange }: { score: Score; onChange: (notes
         <p className="text-xs text-ink-soft">{sel === null ? "새 음 길이" : "선택 음 길이"}</p>
         <DurationPicker value={dur} onChange={setDur} />
         <div className="flex flex-wrap gap-1.5">
-          <button type="button" className={actBtn} disabled={sel === null || cur?.midi == null} onClick={() => shift(1)}>
-            반음 ▲
-          </button>
-          <button type="button" className={actBtn} disabled={sel === null || cur?.midi == null} onClick={() => shift(-1)}>
-            반음 ▼
-          </button>
-          <button type="button" className={actBtn} disabled={sel === null || cur?.midi == null} onClick={() => shift(12)}>
+          <Button type="button" variant="outline" className={actBtn} disabled={sel === null || cur?.midi == null} onClick={() => shift(1)}>
+            <ArrowUp aria-hidden /> 반음
+          </Button>
+          <Button type="button" variant="outline" className={actBtn} disabled={sel === null || cur?.midi == null} onClick={() => shift(-1)}>
+            <ArrowDown aria-hidden /> 반음
+          </Button>
+          <Button type="button" variant="outline" className={actBtn} disabled={sel === null || cur?.midi == null} onClick={() => shift(12)}>
             옥타브 +
-          </button>
-          <button type="button" className={actBtn} disabled={sel === null || cur?.midi == null} onClick={() => shift(-12)}>
+          </Button>
+          <Button type="button" variant="outline" className={actBtn} disabled={sel === null || cur?.midi == null} onClick={() => shift(-12)}>
             옥타브 −
-          </button>
-          <button type="button" className={actBtn} disabled={sel === null} onClick={toggleRest}>
+          </Button>
+          <Button type="button" variant="outline" className={actBtn} disabled={sel === null} onClick={toggleRest}>
             {cur?.midi === null ? "음으로" : "쉼표로"}
-          </button>
-          <button type="button" className={actBtn} disabled={sel === null} onClick={insertBefore}>
+          </Button>
+          <Button type="button" variant="outline" className={actBtn} disabled={sel === null} onClick={insertBefore}>
             앞에 삽입
-          </button>
-          <button type="button" className={actBtn} onClick={addAfter}>
-            {sel === null ? "끝에 추가" : "뒤에 추가"}
-          </button>
-          <button type="button" className={actBtn} onClick={addRest}>
+          </Button>
+          <Button type="button" variant="outline" className={actBtn} onClick={addAfter}>
+            <Plus aria-hidden /> {sel === null ? "끝에 추가" : "뒤에 추가"}
+          </Button>
+          <Button type="button" variant="outline" className={actBtn} onClick={addRest}>
             쉼표 추가
-          </button>
-          <button type="button" className={`${actBtn} text-tune-bad`} disabled={sel === null} onClick={remove}>
-            삭제
-          </button>
+          </Button>
+          <Button type="button" variant="destructive" className="h-11 rounded-full px-3.5 text-sm sm:h-9" disabled={sel === null} onClick={remove}>
+            <Trash2 aria-hidden /> 삭제
+          </Button>
         </div>
       </div>
 
-      <label className="flex items-center gap-2 text-sm">
+      <label className="flex min-h-11 items-center gap-2 text-sm">
         <input type="checkbox" checked={sustain} onChange={(e) => setSustain(e.target.checked)} className="h-5 w-5 accent-accent" />
         서스테인 페달
       </label>
@@ -228,6 +235,6 @@ export function NoteEditor({ score, onChange }: { score: Score; onChange: (notes
         active={shownMidi !== null && inRange(shownMidi) ? shownMidi : null}
         highlight={shownMidi !== null ? new Set([shownMidi]) : undefined}
       />
-    </section>
+    </Card>
   );
 }

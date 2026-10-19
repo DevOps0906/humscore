@@ -2,6 +2,9 @@
 import { Suspense } from "react";
 
 import { useRouter } from "next/navigation";
+import { Mic } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 
 const STATS = [
   { num: "88건반", label: "피아노 건반 입력" },
@@ -34,24 +37,19 @@ function WelcomePageInner() {
           <p className="mb-7 max-w-[46ch] text-base leading-relaxed text-ink-soft">
             허밍을 녹음하거나 88건반으로 입력하면 코드 악보가 만들어져요. 원클릭 전조는 물론 MIDI·MusicXML·PDF로 내보낼 수 있어요.
           </p>
-          <button type="button" onClick={start} className="rounded-lg bg-accent px-6 py-3 text-sm font-medium text-accent-ink">
+          <Button type="button" onClick={start} className="h-11 px-6 text-sm">
             시작하기
-          </button>
+          </Button>
         </div>
 
-        <div className="flex flex-col gap-4 rounded-2xl bg-surface p-5 shadow-md">
+        <Card className="gap-4 p-5 shadow-md">
           <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed border-line px-5 py-8 text-center">
-            <span className="text-accent">
-              <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
-                <rect x="9" y="3" width="6" height="11" rx="3" />
-                <path d="M5 11a7 7 0 0 0 14 0M12 18v3" strokeLinecap="round" />
-              </svg>
-            </span>
+            <span className="text-accent"><Mic className="size-9" strokeWidth={1.8} aria-hidden /></span>
             <strong className="font-medium">떠오른 멜로디를 흥얼거려 보세요</strong>
             <small className="text-xs text-ink-soft">30초면 코드 악보가 만들어져요</small>
           </div>
           <p className="text-center text-xs text-ink-soft">목소리는 저장·전송하지 않고 음표만 남겨요.</p>
-        </div>
+        </Card>
       </section>
 
       <section
@@ -90,9 +88,9 @@ function WelcomePageInner() {
       <section>
         <h2 className="mb-3 text-[clamp(28px,3.6vw,40px)]">오늘 떠오른 멜로디, 지금 악보로.</h2>
         <p className="mb-6 text-sm text-ink-soft">목소리는 저장·전송하지 않고 음표만 남겨요.</p>
-        <button type="button" onClick={start} className="w-full rounded-lg bg-accent px-6 py-3 text-sm font-medium text-accent-ink md:w-auto">
+        <Button type="button" onClick={start} className="h-11 w-full px-6 text-sm md:w-auto">
           시작하기
-        </button>
+        </Button>
       </section>
     </div>
   );

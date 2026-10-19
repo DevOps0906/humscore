@@ -3,6 +3,10 @@ import { Suspense } from "react";
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { ConfirmDialog } from "@/components/confirm-dialog";
 import { DurationPicker } from "@/components/note-editor";
 import { PianoKeyboard } from "@/components/piano-keyboard";
 import { BASS_CLEF_PATH, CLEF_UNITS_PER_SPACE, TREBLE_CLEF_PATH } from "@/components/clef-glyphs";
@@ -136,6 +140,7 @@ function KeysPageInner() {
   const [beats, setBeats] = useState(4);
   const [dur, setDur] = useState(1);
   const [loaded, setLoaded] = useState(false);
+  const [confirmClear, setConfirmClear] = useState(false);
   const [base] = useState(() => createBlankScore());
 
   // 초안 복원 / 저장 (음표 숫자만, 오디오 아님)
@@ -213,70 +218,83 @@ function KeysPageInner() {
     router.push(`/scores/${saved.id}`);
   }
 
-  const btn = "rounded-full border border-line bg-surface px-4 py-2 text-sm disabled:opacity-40";
+  const btn = "h-11 rounded-full px-4 text-sm sm:h-9";
 
   return (
     <div className="flex flex-col gap-5">
       <header className="flex items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold">피아노 88건반 주파수</h1>
+          <h1 className="text-2xl font-medium">피아노 88건반 주파수</h1>
           <p className="text-sm text-ink-soft">
             f = 440 × 2^((n − 49) / 12) · 건반을 누르거나 PC 키보드 A~K
           </p>
         </div>
-        <button
+        <Button
           type="button"
+          variant="outline"
           onClick={() => setEntry((v) => !v)}
           aria-pressed={entry}
-          className={`shrink-0 rounded-full border px-4 py-2 text-sm ${entry ? "border-accent bg-accent/15 text-accent" : "border-line"}`}
+          className={`h-11 shrink-0 rounded-full px-4 text-sm sm:h-9 ${entry ? "border-accent bg-accent/15 text-accent hover:bg-accent/20 hover:text-accent" : ""}`}
         >
           악보 입력
-        </button>
+        </Button>
       </header>
 
       {/* 입력 도구 */}
       {entry && (
-        <section className="grid gap-3 rounded-2xl border border-line bg-surface p-4">
+        <Card className="gap-3 p-4">
           <p className="text-xs text-ink-soft">음 길이를 고르고 건반을 누르면 악보에 추가돼요.</p>
           <DurationPicker value={dur} onChange={setDur} />
           <div className="flex flex-wrap items-center gap-2 text-sm">
-            <button type="button" className={btn} onClick={() => setNotes((n) => appendNote(n, null, dur))}>쉼표 추가</button>
-            <button type="button" className={btn} disabled={notes.length === 0} onClick={() => setNotes((n) => deleteNote(n, n.length - 1))}>되돌리기</button>
-            <button
+            <Button type="button" variant="outline" className={btn} onClick={() => setNotes((n) => appendNote(n, null, dur))}>쉼표 추가</Button>
+            <Button type="button" variant="outline" className={btn} disabled={notes.length === 0} onClick={() => setNotes((n) => deleteNote(n, n.length - 1))}>되돌리기</Button>
+            <Button
               type="button"
-              className={`${btn} text-tune-bad`}
+              variant="destructive"
+              className={btn}
               disabled={notes.length === 0}
-              onClick={() => { if (confirm("작성 중인 음표를 모두 지울까요?")) setNotes([]); }}
+              onClick={() => setConfirmClear(true)}
             >
               전체 지우기
-            </button>
+            </Button>
           </div>
           <div className="flex flex-wrap items-center gap-3 text-sm">
             <label className="flex items-center gap-2">
               BPM
-              <input
+              <Input
                 type="number"
                 min={30}
                 max={240}
                 value={bpm}
                 onChange={(e) => setBpm(Math.min(240, Math.max(30, Number(e.target.value) || 90)))}
-                className="w-20 rounded-lg border border-line bg-paper px-2 py-1"
+                className="h-11 w-20 sm:h-9"
               />
             </label>
             {[3, 4].map((b) => (
-              <button
+              <Button
                 key={b}
                 type="button"
+                variant="outline"
                 onClick={() => setBeats(b)}
-                className={`rounded-full border px-3 py-1.5 ${beats === b ? "border-accent bg-accent/15 text-accent" : "border-line"}`}
+                aria-pressed={beats === b}
+                className={`h-11 rounded-full px-4 sm:h-9 ${beats === b ? "border-accent bg-accent/15 text-accent hover:bg-accent/20 hover:text-accent" : ""}`}
               >
                 {b}/4
-              </button>
+              </Button>
             ))}
             <span className="text-ink-soft">{notes.length}개 음표</span>
           </div>
-        </section>
+        </Card>
       )}
+
+      <ConfirmDialog
+        open={confirmClear}
+        onOpenChange={setConfirmClear}
+        title="음표를 모두 지울까요?"
+        description="작성 중인 음표가 모두 사라져요."
+        confirmLabel="모두 지우기"
+        onConfirm={() => setNotes([])}
+      />
 
       {/* 건반 */}
       <PianoKeyboard active={active} pressed={pressed} onPress={(m) => handler.current(m)} />
@@ -285,16 +303,16 @@ function KeysPageInner() {
       {entry && <ScoreView xml={xml} />}
 
       {/* 오선지 + 정보 카드 */}
-      <div className="flex items-center gap-4 rounded-3xl border border-line bg-surface p-4">
+      <Card className="flex-row items-center gap-4 p-4">
         <NoteStaff midi={active} />
         <div className="flex min-w-0 flex-col gap-1">
           <p className="text-4xl font-bold tabular-nums">{key.name}</p>
           <p className="tabular-nums text-sm text-ink-soft">{key.freq.toFixed(2)} Hz</p>
           <p className="tabular-nums text-sm text-ink-soft">MIDI {key.midi} · {key.keyNumber}/88</p>
         </div>
-      </div>
+      </Card>
 
-      <label className="flex items-center gap-2 text-sm">
+      <label className="flex min-h-11 items-center gap-2 text-sm">
         <input
           type="checkbox"
           checked={sustain}
@@ -305,18 +323,13 @@ function KeysPageInner() {
       </label>
 
       {entry && (
-        <button
-          type="button"
-          disabled={notes.length === 0}
-          onClick={() => void save()}
-          className="rounded-full border border-accent px-5 py-3 text-accent disabled:opacity-40"
-        >
+        <Button type="button" disabled={notes.length === 0} onClick={() => void save()} className="h-11 w-full text-sm">
           악보로 저장
-        </button>
+        </Button>
       )}
 
       <details className="rounded-2xl border border-line bg-surface p-4 text-sm">
-        <summary className="cursor-pointer font-semibold">전체 주파수 표 보기</summary>
+        <summary className="cursor-pointer rounded-sm font-semibold outline-none focus-visible:ring-3 focus-visible:ring-ring/60">전체 주파수 표 보기</summary>
         <table className="mt-3 w-full tabular-nums">
           <thead className="text-left text-ink-soft">
             <tr>

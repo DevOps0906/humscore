@@ -2,7 +2,9 @@
 
 import Link from "next/link";
 import { useState, useSyncExternalStore } from "react";
+import { LogOut } from "lucide-react";
 import { signOut } from "@/app/actions/auth";
+import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
 import { flushAndClearAccountData, getSyncStatus, subscribeSyncStatus } from "@/lib/storage/scores";
 import { getSupabase } from "@/lib/storage/supabase/client";
@@ -17,9 +19,9 @@ export function AuthStatus() {
 
   if (auth.status === "signed-out") {
     return (
-      <Link href="/login" className="shrink-0 pb-1 text-xs text-ink-soft underline underline-offset-4">
-        로그인
-      </Link>
+      <Button asChild variant="outline" className="h-11 shrink-0 px-4 text-accent sm:h-9">
+        <Link href="/login">로그인</Link>
+      </Button>
     );
   }
 
@@ -32,13 +34,13 @@ export function AuthStatus() {
   };
 
   return (
-    <div className="flex shrink-0 items-center gap-2 pb-1 text-xs text-ink-soft">
-      <span className="max-w-32 truncate" title={auth.email}>{auth.email || "로그인됨"}</span>
+    <div className="flex shrink-0 items-center gap-2 text-xs text-ink-soft">
+      <span className="max-w-28 truncate" title={auth.email}>{auth.email || "로그인됨"}</span>
       {sync.state === "syncing" && <span aria-live="polite">동기화 중…</span>}
       {sync.state === "error" && <span role="status" className="text-tune-warn" title={sync.message}>동기화 문제</span>}
-      <button type="button" onClick={onSignOut} disabled={busy} className="underline underline-offset-4 disabled:opacity-50">
-        로그아웃
-      </button>
+      <Button type="button" variant="outline" onClick={onSignOut} disabled={busy} aria-label="로그아웃" className="size-11 sm:size-9">
+        <LogOut aria-hidden />
+      </Button>
     </div>
   );
 }

@@ -4,6 +4,10 @@ import { Suspense } from "react";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Capacitor } from "@capacitor/core";
+import { Mic, Square } from "lucide-react";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import { loadManualLatencyMs, saveManualLatencyMs } from "@/lib/audio/latency";
 import { MIN_RMS, startPitchTracking, type TrackerSession } from "@/lib/audio/pitch-tracker";
 import { getAudioContext } from "@/lib/audio/context";
@@ -54,7 +58,7 @@ function RecordPageInner() {
         const now = pts.length ? pts[pts.length - 1].time : 0;
         const span = 6;
         const lo = 45, hi = 81; // A2 ~ A5
-        g.strokeStyle = "rgba(128,120,104,0.25)";
+        g.strokeStyle = "rgba(147,151,171,0.25)";
         g.lineWidth = 1;
         for (let m = lo; m <= hi; m++) {
           if (m % 12 !== 0) continue; // C 위치마다 가이드선
@@ -190,7 +194,7 @@ function RecordPageInner() {
       return;
     }
     await saveScore(score);
-    if (interrupted) window.alert("마이크 연결이 끊겨 여기까지 저장했어요.");
+    if (interrupted) toast.info("마이크 연결이 끊겨 여기까지 저장했어요.");
     router.push(`/scores/${score.id}`);
   }
 
@@ -206,12 +210,12 @@ function RecordPageInner() {
   return (
     <div className="mx-auto flex max-w-md flex-col gap-5">
       <header>
-        <h1 className="text-2xl font-bold">흥얼거리면 악보가 됩니다</h1>
+        <h1 className="text-2xl font-medium">흥얼거리면 악보가 됩니다</h1>
         <p className="mt-1 text-sm text-ink-soft">메트로놈에 맞춰 &lsquo;라~&rsquo;로 불러 주세요. 유선 이어폰을 쓰면 박자가 가장 정확해요.</p>
       </header>
 
       {/* 실시간 음정 */}
-      <section className="rounded-3xl border border-line bg-surface p-5">
+      <Card className="gap-0 rounded-2xl p-5">
         <div className="flex items-end justify-between">
           <div>
             <p className="text-xs text-ink-soft">지금 부르는 음</p>
@@ -244,7 +248,7 @@ function RecordPageInner() {
         {noInput && recording && (
           <p className="mt-2 text-xs text-tune-warn">마이크 입력이 거의 없어요. 다른 앱이 마이크를 쓰고 있지 않은지, 시스템 입력 음량이 0이 아닌지 확인해 주세요.</p>
         )}
-      </section>
+      </Card>
 
       {/* 박자 표시 */}
       <div className="flex items-center justify-center gap-3" aria-live="polite">
@@ -261,22 +265,19 @@ function RecordPageInner() {
         type="button"
         onClick={recording ? stop : start}
         disabled={status === "processing"}
-        className={`mx-auto flex h-24 w-24 items-center justify-center rounded-full text-accent-ink shadow-md transition active:scale-95 ${recording ? "bg-tune-bad" : "bg-accent"}`}
+        className={`mx-auto flex h-24 w-24 items-center justify-center rounded-full text-accent-ink shadow-md outline-none transition focus-visible:ring-4 focus-visible:ring-ring/60 active:scale-95 disabled:opacity-50 ${recording ? "bg-tune-bad" : "bg-accent"}`}
         aria-label={recording ? "녹음 끝내고 악보 만들기" : "녹음 시작"}
       >
         {recording ? (
-          <span className="h-8 w-8 rounded-md bg-paper" />
+          <Square className="size-8" fill="currentColor" aria-hidden />
         ) : (
-          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
-            <rect x="9" y="3" width="6" height="11" rx="3" fill="currentColor" />
-            <path d="M5 11a7 7 0 0 0 14 0M12 18v3" strokeLinecap="round" />
-          </svg>
+          <Mic className="size-10" strokeWidth={2} fill="currentColor" aria-hidden />
         )}
       </button>
-      {error && <p className="text-center text-sm text-tune-bad">{error}</p>}
+      {error && <p role="alert" className="text-center text-sm text-tune-bad">{error}</p>}
 
       {/* 설정 */}
-      <section className={`grid gap-4 rounded-2xl border border-line bg-surface p-4 ${recording ? "pointer-events-none opacity-50" : ""}`}>
+      <Card className={`gap-4 p-4 ${recording ? "pointer-events-none opacity-50" : ""}`} aria-disabled={recording}>
         <label className="flex items-center gap-3 text-sm">
           <span className="w-14 text-ink-soft">템포</span>
           <input type="range" min={50} max={160} step={1} value={bpm} onChange={(e) => setBpm(+e.target.value)} className="flex-1 accent-accent" />
@@ -285,14 +286,16 @@ function RecordPageInner() {
         <div className="flex items-center gap-3 text-sm">
           <span className="w-14 text-ink-soft">박자</span>
           {[2, 3, 4].map((b) => (
-            <button
+            <Button
               key={b}
               type="button"
+              variant="outline"
               onClick={() => setBeats(b)}
-              className={`rounded-full border px-4 py-1.5 ${beats === b ? "border-accent bg-accent/15 text-accent" : "border-line"}`}
+              aria-pressed={beats === b}
+              className={`h-11 rounded-full px-5 sm:h-9 ${beats === b ? "border-accent bg-accent/15 text-accent hover:bg-accent/20 hover:text-accent" : ""}`}
             >
               {b}/4
-            </button>
+            </Button>
           ))}
         </div>
         <div className="grid gap-1 text-sm">
@@ -303,11 +306,11 @@ function RecordPageInner() {
           </label>
           <p className="text-xs text-ink-soft">블루투스 이어폰이면 올려 주세요. 박자가 밀려 보일 때 조정합니다.</p>
         </div>
-        <label className="flex items-center justify-between text-sm">
+        <label className="flex min-h-11 items-center justify-between text-sm">
           <span className="text-ink-soft">녹음 중 메트로놈</span>
           <input type="checkbox" checked={metronome} onChange={(e) => setMetronome(e.target.checked)} className="h-5 w-5 accent-accent" />
         </label>
-      </section>
+      </Card>
       <p className="text-center text-xs text-ink-soft">녹음된 목소리는 기기 밖으로 전송·저장되지 않고, 음표 정보만 남습니다.</p>
     </div>
   );
