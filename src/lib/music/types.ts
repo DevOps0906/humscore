@@ -23,11 +23,24 @@ export interface KeyInfo {
   fifths: number;
 }
 
+/** 선택 가능한 박자표. 6/8 은 내부적으로 4분음표 3박(beatsPerMeasure=3)이며 표기·묶음만 다르다 */
+export type Meter = "3/4" | "4/4" | "6/8";
+
 export interface Score {
   id: string;
   title: string;
-  /** 작곡/편곡자 (자유 입력, 없거나 빈 문자열 가능) */
+  /** 작곡자 (자유 입력, 없거나 빈 문자열 가능). 예전 데이터는 작곡·편곡을 함께 적었음 */
   composer?: string;
+  /** 작사자 */
+  lyricist?: string;
+  /** 편곡자 */
+  arranger?: string;
+  /** 악보 머리글(빠르기말 + 작사·작곡·편곡자) 글꼴 id. 값 목록은 lib/music/header-fonts.ts 의 HEADER_FONTS */
+  headerFont?: string;
+  /** 악보 머리글 글자 크기(px, 10~48). 생략하면 기본 크기 */
+  headerFontSize?: number;
+  /** 박자표. 생략하면 beatsPerMeasure/4 (3→3/4, 4→4/4). 6/8 만 beatsPerMeasure=3 과 함께 명시한다 */
+  meter?: Meter;
   bpm: number;
   beatsPerMeasure: number;
   /** 기본 4분음표 = 1박 */

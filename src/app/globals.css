@@ -77,6 +77,11 @@
   --sidebar-ring: var(--tono-lavender-300);
 }
 
+/* 데스크톱 구간 시작을 1200px 로 (Tailwind 기본 lg=1024px 대신). lg: 접두사 = 데스크톱 */
+@theme {
+  --breakpoint-lg: 75rem;
+}
+
 @theme inline {
   --color-paper: var(--paper);
   --color-ink: var(--ink);
@@ -142,10 +147,10 @@
 }
 
 /*
- * 반응형 폰트 스케일 — 모바일 / 태블릿 / 데스크톱 3구간 (Tailwind 기본 breakpoint 사용)
+ * 반응형 폰트 스케일 — 모바일 / 태블릿 / 데스크톱 3구간
  *   모바일  : ~767px   (iPhone·Android, Capacitor 앱)
- *   태블릿  : 768px~1023px (md)  — 터치 기기라 글자·터치 영역은 크게 유지
- *   데스크톱: 1024px~  (lg)  — 사이드바 내비 + 촘촘한 글자 (SmartAI-RAG-Tour 스케일과 동일)
+ *   태블릿  : 768px~1199px (md)  — 터치 기기라 글자·터치 영역은 크게 유지
+ *   데스크톱: 1200px~  (lg로 매핑) — 사이드바 내비 + 촘촘한 글자 (SmartAI-RAG-Tour 스케일과 동일)
  * text-* 유틸리티가 참조하는 토큰만 바꾸므로 간격·레이아웃은 그대로다.
  */
 :root {
@@ -175,7 +180,7 @@
   }
 }
 
-@media (min-width: 1024px) {
+@media (min-width: 1200px) {
   :root {
     --text-xs: 0.6875rem;   /* 11px */
     --text-sm: 0.8125rem;   /* 13px */
