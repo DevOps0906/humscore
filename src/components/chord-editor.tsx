@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { ConfirmDialog } from "@/components/confirm-dialog";
+import { PROGRESSIONS, buildProgression } from "@/lib/music/progressions";
 import { usePianoSound } from "@/hooks/use-piano-sound";
 import {
   CHORD_QUALITIES,
@@ -41,6 +43,8 @@ export function ChordEditor({ score, onChange }: { score: Score; onChange: (chor
   const [root, setRoot] = useState(0);
   const [quality, setQuality] = useState("");
   const [bass, setBass] = useState<number | null>(null);
+  const [progId, setProgId] = useState(PROGRESSIONS[0].id);
+  const [confirmApply, setConfirmApply] = useState(false);
 
   const count = scoreMeasureCount(score);
   const shownAt = (m: number): string | null => {
@@ -82,8 +86,48 @@ export function ChordEditor({ score, onChange }: { score: Score; onChange: (chor
     setMeasure(null);
   }
 
+  const minor = score.key.mode === "minor";
+  const preset = PROGRESSIONS.find((p) => p.id === progId) ?? PROGRESSIONS[0];
+
+  function applyProgression() {
+    onChange(buildProgression(preset.id, score.key, count, beatsPerMeasure));
+    setMeasure(null);
+  }
+
   return (
     <section className="no-print">
+      <div className="mb-4 grid gap-2 rounded-xl border border-line bg-surface p-3 text-sm">
+        <p className="font-semibold">코드 진행 불러오기</p>
+        <div className="flex flex-wrap items-center gap-2">
+          <select
+            value={preset.id}
+            onChange={(e) => setProgId(e.target.value)}
+            aria-label="코드 진행 선택"
+            className="h-11 min-w-0 max-w-full flex-1 rounded-md border border-input bg-transparent px-2 outline-none focus-visible:ring-3 focus-visible:ring-ring/60 lg:h-9 [&>option]:bg-surface"
+          >
+            {PROGRESSIONS.map((p) => (
+              <option key={p.id} value={p.id}>{`${p.name} — ${minor ? p.minorRoman : p.roman}`}</option>
+            ))}
+          </select>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => (chords.length > 0 ? setConfirmApply(true) : applyProgression())}
+            className="h-11 px-5 lg:h-9"
+          >
+            적용
+          </Button>
+        </div>
+        <p className="text-xs text-ink-soft">{preset.description}</p>
+      </div>
+      <ConfirmDialog
+        open={confirmApply}
+        onOpenChange={setConfirmApply}
+        title="현재 코드가 바뀝니다"
+        description={`'${preset.name}' 진행으로 모든 마디의 코드를 바꿀까요?`}
+        confirmLabel="적용"
+        onConfirm={applyProgression}
+      />
       <p className="mb-2 text-xs text-ink-soft">마디를 눌러 코드 추가·수정 (마디당 1개)</p>
       <div className="flex flex-wrap gap-2">
         {Array.from({ length: count }, (_, m) => {

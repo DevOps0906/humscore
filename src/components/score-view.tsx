@@ -76,6 +76,7 @@ export function ScoreView({
   className = "",
   cursor,
   showHeader = false,
+  header,
 }: {
   xml: string;
   zoom?: number;
@@ -83,6 +84,8 @@ export function ScoreView({
   cursor?: ScoreCursorProps;
   /** MusicXML 의 제목·작곡자를 악보 맨 위에 그림 (생성 시점에만 반영) */
   showHeader?: boolean;
+  /** 악보(종이) 맨 위, OSMD 그림 앞에 놓는 HTML 머리글 (인쇄에 포함됨) */
+  header?: ReactNode;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const sheetRef = useRef<HTMLDivElement>(null);
@@ -286,6 +289,7 @@ export function ScoreView({
         ? { tabIndex: 0, role: "application", "aria-label": "악보 편집 — 방향키로 음표 이동", onClick: onSheetClick }
         : {})}
     >
+      {header}
       {rendering && (
         <div className="no-print flex items-center justify-center gap-2 p-4 text-sm text-neutral-600" aria-live="polite">
           <LoadingSpinner size="sm" />

@@ -17,21 +17,28 @@ interface TitleDialogProps {
   /** 입력칸 초기값이자 비워 두거나 건너뛸 때 쓰는 제목 */
   defaultTitle: string;
   /** 확정된 제목(trim 적용, 빈 값이면 defaultTitle). 저장이 끝날 때까지 기다림 */
-  onConfirm: (result: { title: string; composer?: string }) => void | Promise<void>;
+  onConfirm: (result: { title: string; composer?: string; lyricist?: string; arranger?: string }) => void | Promise<void>;
   /** Esc / 닫기 버튼 / 바깥 클릭 — 저장하지 않음 */
   onCancel: () => void;
 }
 
 function TitleForm({ defaultTitle, onConfirm }: Pick<TitleDialogProps, "defaultTitle" | "onConfirm">) {
   const [value, setValue] = useState(defaultTitle);
+  const [lyricist, setLyricist] = useState("");
   const [composer, setComposer] = useState("");
+  const [arranger, setArranger] = useState("");
   const [busy, setBusy] = useState(false);
 
   async function submit(title: string) {
     if (busy) return;
     setBusy(true);
     try {
-      await onConfirm({ title: title.trim() || defaultTitle, composer: composer.trim() || undefined });
+      await onConfirm({
+        title: title.trim() || defaultTitle,
+        composer: composer.trim() || undefined,
+        lyricist: lyricist.trim() || undefined,
+        arranger: arranger.trim() || undefined,
+      });
     } finally {
       setBusy(false);
     }
@@ -58,18 +65,26 @@ function TitleForm({ defaultTitle, onConfirm }: Pick<TitleDialogProps, "defaultT
           className="h-11 text-base"
         />
       </label>
-      <label className="grid gap-1.5 text-sm">
-        <span className="text-ink-soft">작곡·편곡자 (선택)</span>
-        <Input
-          type="text"
-          value={composer}
-          maxLength={100}
-          disabled={busy}
-          onChange={(e) => setComposer(e.target.value)}
-          placeholder="작곡·편곡자 (선택)"
-          className="h-11 text-base"
-        />
-      </label>
+      {(
+        [
+          ["작사", lyricist, setLyricist],
+          ["작곡", composer, setComposer],
+          ["편곡", arranger, setArranger],
+        ] as const
+      ).map(([label, val, setVal]) => (
+        <label key={label} className="grid gap-1.5 text-sm">
+          <span className="text-ink-soft">{label} (선택)</span>
+          <Input
+            type="text"
+            value={val}
+            maxLength={100}
+            disabled={busy}
+            onChange={(e) => setVal(e.target.value)}
+            placeholder={`${label}자 (선택)`}
+            className="h-11 text-base"
+          />
+        </label>
+      ))}
       <DialogFooter>
         <Button type="button" variant="outline" disabled={busy} onClick={() => void submit(defaultTitle)} className="h-11 px-4 text-sm">
           건너뛰기

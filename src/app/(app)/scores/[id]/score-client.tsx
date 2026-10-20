@@ -14,12 +14,16 @@ import { TransposeBar } from "@/components/transpose-bar";
 import { InlineField } from "@/components/inline-field";
 import { ScoreEditToolbar } from "@/components/score-edit-toolbar";
 import { applyEditKey, describeInterval, describeNote, dragTargetMidi } from "@/components/score-cursor";
+import { ScoreHeader, HeaderSettings } from "@/components/score-header";
 import { usePianoSound } from "@/hooks/use-piano-sound";
+import { useInstrument } from "@/hooks/use-instrument";
 import { useScoreEditKeys } from "@/hooks/use-score-edit-keys";
 import { useScore } from "@/hooks/use-score-param";
 import { getAudioContext, setAudioSessionType } from "@/lib/audio/context";
 import { playScore, type Playback } from "@/lib/audio/piano-synth";
-import { GM_INSTRUMENTS, scoreToMidi, type InstrumentId } from "@/lib/music/midi";
+import { INSTRUMENT_LABELS, INSTRUMENT_ORDER, isInstrumentId } from "@/lib/audio/instruments";
+import { scoreToMidi } from "@/lib/music/midi";
+import { meterOf, timeSignatureOf } from "@/lib/music/meter";
 import { scoreToMusicXML, type ScoreLayout } from "@/lib/music/musicxml";
 import { updateNote } from "@/lib/music/edit";
 import { midiToName } from "@/lib/music/frequency";
@@ -27,27 +31,15 @@ import { keyName, transposeKey } from "@/lib/music/theory";
 import { exportFile, safeFileName } from "@/lib/platform/export-file";
 import { deleteScore } from "@/lib/storage/scores";
 
-const INSTRUMENT_LABELS: Record<InstrumentId, string> = {
-  piano: "피아노",
-  strings: "스트링 합주",
-  flute: "플루트",
-  violin: "바이올린",
-  cello: "첼로",
-  trumpet: "트럼펫",
-  clarinet: "클라리넷",
-  acousticGuitar: "어쿠스틱 기타",
-  choir: "합창",
-};
-
 export function ScoreClient({ id }: { id: string }) {
   const router = useRouter();
   const { score, update } = useScore(id);
   const [layout, setLayout] = useState<ScoreLayout>("lead");
-  const [instrument, setInstrument] = useState<InstrumentId>("piano");
+  const [instrument, setInstrument] = useInstrument();
   const [editNotes, setEditNotes] = useState(false);
   const [selectedRaw, setSelected] = useState<number | null>(null);
   const [toolbarOpen, setToolbarOpen] = useState(false);
-  const sound = usePianoSound();
+  const sound = usePianoSound(instrument);
   const [playing, setPlaying] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const playback = useRef<Playback | null>(null);
@@ -67,7 +59,7 @@ export function ScoreClient({ id }: { id: string }) {
 
   useEffect(() => clearPlayback, [clearPlayback]);
 
-  const xml = useMemo(() => (score ? scoreToMusicXML(score, layout) : ""), [score, layout]);
+  const xml = useMemo(() => (score ? scoreToMusicXML(score, layout, { externalHeader: true }) : ""), [score, layout]);
 
   const noteCount = score?.notes.length ?? 0;
   const selected = selectedRaw !== null && selectedRaw < noteCount ? selectedRaw : null;
@@ -105,7 +97,7 @@ export function ScoreClient({ id }: { id: string }) {
     const ctx = getAudioContext(); // 제스처 핸들러 안에서 동기 호출 (await 금지)
     const target = score!;
     const doPlay = () => {
-      playback.current = playScore(ctx, target);
+      playback.current = playScore(ctx, target, { instrument });
       stopTimer.current = setTimeout(() => setPlaying(false), (playback.current.durationSec + 2.5) * 1000);
     };
     setPlaying(true);
@@ -163,6 +155,9 @@ export function ScoreClient({ id }: { id: string }) {
     update({ notes: updateNote(score.notes, selected, { midi: dragTargetMidi(curNote.midi, steps) }) });
   };
 
+  const ts = timeSignatureOf(score);
+  const meterLabel = meterOf(score) ?? `${ts.beats}/${ts.beatType}`;
+  const header = <ScoreHeader score={score} />;
   const base = `${safeFileName(score.title)}_${keyName(shownKey)}`;
 
   return (
@@ -179,17 +174,28 @@ export function ScoreClient({ id }: { id: string }) {
             }}
             className="[&_input]:text-xl [&_input]:font-medium"
           />
-          <InlineField
-            label="작곡·편곡"
-            ariaLabel="작곡·편곡"
-            placeholder="작곡·편곡자 (선택)"
-            allowEmpty
-            value={score.composer ?? ""}
-            onCommit={(t) => {
-              update({ composer: t || undefined });
-              toast.success("작곡·편곡자를 저장했어요");
-            }}
-          />
+          <div className="grid gap-x-2 md:grid-cols-3">
+            {(
+              [
+                ["lyricist", "작사", score.lyricist],
+                ["composer", "작곡", score.composer],
+                ["arranger", "편곡", score.arranger],
+              ] as const
+            ).map(([field, label, val]) => (
+              <InlineField
+                key={field}
+                label={label}
+                ariaLabel={`${label}자`}
+                placeholder={`${label}자 (선택)`}
+                allowEmpty
+                value={val ?? ""}
+                onCommit={(t) => {
+                  update({ [field]: t || undefined });
+                  toast.success(`${label}자를 저장했어요`);
+                }}
+              />
+            ))}
+          </div>
         </div>
         <Button asChild variant="outline" className="h-11 shrink-0 rounded-full px-4 text-sm">
           <Link href={`/scores/${score.id}/perform`}>공연 모드</Link>
@@ -210,12 +216,14 @@ export function ScoreClient({ id }: { id: string }) {
           </Button>
         ))}
         <span className="ml-auto text-ink-soft">
-          {score.bpm} BPM · {score.beatsPerMeasure}/4
+          {score.bpm} BPM · <span className="text-xs">{meterLabel}</span>
         </span>
       </div>
+      <HeaderSettings score={score} onChange={(p) => update(p)} />
 
       <ScoreView
-        showHeader
+        showHeader={false}
+        header={header}
         xml={xml}
         cursor={
           editNotes
@@ -279,7 +287,7 @@ export function ScoreClient({ id }: { id: string }) {
           <Button
             type="button"
             variant="outline"
-            onClick={() => exportFile(`${base}.musicxml`, xml, "application/vnd.recordare.musicxml+xml")}
+            onClick={() => exportFile(`${base}.musicxml`, scoreToMusicXML(score, layout), "application/vnd.recordare.musicxml+xml")}
             className="h-11 rounded-full px-4 lg:h-9"
           >
             <FileMusic aria-hidden /> MusicXML
@@ -287,11 +295,11 @@ export function ScoreClient({ id }: { id: string }) {
           <div className="flex items-center gap-1 rounded-full border border-input pl-3">
             <select
               value={instrument}
-              onChange={(e) => setInstrument(e.target.value as InstrumentId)}
+              onChange={(e) => isInstrumentId(e.target.value) && setInstrument(e.target.value)}
               className="h-11 rounded-md bg-transparent text-sm outline-none focus-visible:ring-3 focus-visible:ring-ring/60 lg:h-9 [&>option]:bg-surface"
               aria-label="MIDI 멜로디 악기"
             >
-              {(Object.keys(GM_INSTRUMENTS) as InstrumentId[]).map((id) => (
+              {INSTRUMENT_ORDER.map((id) => (
                 <option key={id} value={id}>{INSTRUMENT_LABELS[id]}</option>
               ))}
             </select>
@@ -337,12 +345,22 @@ export function ScoreClient({ id }: { id: string }) {
           >
             {playing ? <Square fill="currentColor" aria-hidden /> : <Play fill="currentColor" aria-hidden />}
           </Button>
-          <div className="flex-1">
+          <div className="grid min-w-0 flex-1 gap-1">
+            <select
+              value={instrument}
+              onChange={(e) => isInstrumentId(e.target.value) && setInstrument(e.target.value)}
+              className="h-11 w-full rounded-md border border-input bg-surface px-2 text-sm outline-none focus-visible:ring-3 focus-visible:ring-ring/60 lg:h-9"
+              aria-label="재생 악기"
+            >
+              {INSTRUMENT_ORDER.map((id) => (
+                <option key={id} value={id}>{INSTRUMENT_LABELS[id]}</option>
+              ))}
+            </select>
             <TransposeBar originalKey={score.key} transpose={score.transpose} onChange={(t) => update({ transpose: t })} />
           </div>
         </div>
       </div>
-      <div className="h-28" />
+      <div className="h-44" />
     </div>
   );
 }

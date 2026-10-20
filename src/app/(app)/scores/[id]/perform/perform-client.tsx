@@ -3,6 +3,7 @@ import Link from "next/link";
 import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { ScoreHeader } from "@/components/score-header";
 import { ScoreView } from "@/components/score-view";
 import { TransposeBar } from "@/components/transpose-bar";
 import { useScore } from "@/hooks/use-score-param";
@@ -17,7 +18,7 @@ export function PerformClient({ id }: { id: string }) {
   const { score, update } = useScore(id);
   const [zoom, setZoom] = useState(1.4);
   const scroller = useRef<HTMLDivElement>(null);
-  const xml = useMemo(() => (score ? scoreToMusicXML(score, "lead") : ""), [score]);
+  const xml = useMemo(() => (score ? scoreToMusicXML(score, "lead", { externalHeader: true }) : ""), [score]);
 
   useEffect(() => {
     const page = (dir: 1 | -1) => scroller.current?.scrollBy({ top: dir * window.innerHeight * 0.8, behavior: "smooth" });
@@ -49,7 +50,7 @@ export function PerformClient({ id }: { id: string }) {
           scroller.current?.scrollBy({ top: (right ? 1 : -1) * window.innerHeight * 0.8, behavior: "smooth" });
         }}
       >
-        <ScoreView xml={xml} zoom={zoom} />
+        <ScoreView showHeader={false} header={<ScoreHeader score={score} />} xml={xml} zoom={zoom} />
       </div>
       <div className="safe-bottom border-t border-line px-4 pt-2">
         <div className="mx-auto max-w-md">
