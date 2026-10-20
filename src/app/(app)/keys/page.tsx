@@ -14,33 +14,38 @@ import { ScoreView } from "@/components/score-view";
 import { TitleDialog } from "@/components/title-dialog";
 import { MidiConnectButton } from "@/components/midi-connect-button";
 import { usePianoSound } from "@/hooks/use-piano-sound";
+import { useInstrument } from "@/hooks/use-instrument";
 import { useMidiInput } from "@/hooks/use-midi-input";
 import { getAudioContext } from "@/lib/audio/context";
+import { INSTRUMENT_LABELS, INSTRUMENT_ORDER, isInstrumentId } from "@/lib/audio/instruments";
 import { appendNote, createBlankScore, deleteNote, scoreMeasureCount } from "@/lib/music/edit";
 import { PIANO_KEYS } from "@/lib/music/frequency";
+import { beatsPerMeasureOf, METERS } from "@/lib/music/meter";
+import { buildProgression, PROGRESSIONS } from "@/lib/music/progressions";
 import { scoreToMusicXML } from "@/lib/music/musicxml";
-import { estimateKey, suggestChords } from "@/lib/music/theory";
-import type { NoteEvent } from "@/lib/music/types";
+import { fifthsFor, keyName, suggestChords } from "@/lib/music/theory";
+import type { KeyInfo, Meter, NoteEvent } from "@/lib/music/types";
+import { AUTO_PROGRESSION, parseKeysDraft, serializeKeysDraft } from "@/lib/storage/keys-draft";
 import { saveScore } from "@/lib/storage/scores";
 
 const DRAFT_KEY = "humscore.keysDraft";
 
-interface Draft {
-  notes: NoteEvent[];
-  bpm: number;
-  beatsPerMeasure: number;
-}
-
-function loadDraft(): Draft | null {
+function loadDraft() {
   try {
-    const raw = localStorage.getItem(DRAFT_KEY);
-    if (!raw) return null;
-    const d = JSON.parse(raw) as Draft;
-    return Array.isArray(d.notes) ? d : null;
+    return parseKeysDraft(localStorage.getItem(DRAFT_KEY));
   } catch {
     return null;
   }
 }
+
+/** 조 선택 목록: 으뜸음 12개 (표기는 theory.keyName) */
+const TONICS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map((t) => ({
+  tonic: t,
+  label: keyName({ tonic: t, mode: "major", fifths: fifthsFor(t, "major") }),
+}));
+
+const selectCls =
+  "h-11 rounded-lg border border-line bg-surface px-3 text-sm text-ink outline-none focus-visible:ring-2 focus-visible:ring-ring lg:h-9";
 
 // ── 오선지 컴포넌트 ──────────────────────────────────────────────────────
 // pc(0~11) → 온음계 단계 C=0,D=1,E=2,F=3,G=4,A=5,B=6 (샤프은 아랫 음으로)
@@ -134,14 +139,19 @@ const PC_MAP: Record<string, number> = {
 
 function KeysPageInner() {
   const router = useRouter();
-  const { playNote, sustain, setSustain } = usePianoSound();
+  const [instrument, setInstrument] = useInstrument();
+  const { playNote, sustain, setSustain } = usePianoSound(instrument);
   const [active, setActive] = useState(69);
   const [pressed, setPressed] = useState<Set<number>>(new Set());
 
   const [entry, setEntry] = useState(false);
   const [notes, setNotes] = useState<NoteEvent[]>([]);
   const [bpm, setBpm] = useState(90);
-  const [beats, setBeats] = useState(4);
+  const [meter, setMeter] = useState<Meter>("4/4");
+  const beats = beatsPerMeasureOf(meter);
+  const [tonic, setTonic] = useState(0);
+  const [mode, setMode] = useState<"major" | "minor">("major");
+  const [progressionId, setProgressionId] = useState(AUTO_PROGRESSION);
   const [dur, setDur] = useState(1);
   const [loaded, setLoaded] = useState(false);
   const [confirmClear, setConfirmClear] = useState(false);
@@ -156,7 +166,10 @@ function KeysPageInner() {
       if (d && d.notes.length > 0) {
         setNotes(d.notes);
         setBpm(d.bpm || 90);
-        setBeats(d.beatsPerMeasure === 3 ? 3 : 4);
+        setMeter(d.meter);
+        setTonic(d.key.tonic);
+        setMode(d.key.mode);
+        setProgressionId(d.progressionId);
         setEntry(true);
       }
       if (new URLSearchParams(window.location.search).get("entry") === "1") setEntry(true);
@@ -168,16 +181,22 @@ function KeysPageInner() {
     if (!loaded) return;
     try {
       if (notes.length === 0) localStorage.removeItem(DRAFT_KEY);
-      else localStorage.setItem(DRAFT_KEY, JSON.stringify({ notes, bpm, beatsPerMeasure: beats }));
+      else {
+        localStorage.setItem(
+          DRAFT_KEY,
+          serializeKeysDraft({ notes, bpm, meter, key: { tonic, mode, fifths: fifthsFor(tonic, mode) }, progressionId }),
+        );
+      }
     } catch {
       /* 저장 불가 환경 무시 */
     }
-  }, [notes, bpm, beats, loaded]);
+  }, [notes, bpm, meter, tonic, mode, progressionId, loaded]);
 
-  const draftScore = useMemo(
-    () => ({ ...base, notes, bpm, beatsPerMeasure: beats, key: estimateKey(notes) }),
-    [base, notes, bpm, beats],
-  );
+  // 조는 사용자가 고른 값 그대로 (음을 눌러도 조표가 바뀌지 않음)
+  const draftScore = useMemo(() => {
+    const key: KeyInfo = { tonic, mode, fifths: fifthsFor(tonic, mode) };
+    return { ...base, notes, bpm, meter, beatsPerMeasure: beatsPerMeasureOf(meter), key };
+  }, [base, notes, bpm, meter, tonic, mode]);
   const xml = useMemo(
     () => (entry ? scoreToMusicXML(draftScore, "lead", { minMeasures: 8, measuresPerSystem: 4 }) : ""),
     [entry, draftScore],
@@ -244,11 +263,15 @@ function KeysPageInner() {
     setTitleOpen(true);
   }
 
-  async function save({ title, composer }: { title: string; composer?: string }) {
+  async function save(result: { title: string; composer?: string; lyricist?: string; arranger?: string }) {
     if (notes.length === 0) return;
-    // 허밍 채보와 동일하게 마디별 코드를 추천해 둠 (악보 화면에서 수정 가능)
-    const chords = suggestChords(notes, draftScore.key, beats, scoreMeasureCount(draftScore));
-    const saved = await saveScore({ ...draftScore, chords, title, composer });
+    // 선택한 코드 진행, "자동 추천"이면 마디별 코드를 추천 (악보 화면에서 수정 가능)
+    const measures = scoreMeasureCount(draftScore);
+    const chords =
+      progressionId === AUTO_PROGRESSION
+        ? suggestChords(notes, draftScore.key, beats, measures)
+        : buildProgression(progressionId, draftScore.key, measures, beats);
+    const saved = await saveScore({ ...draftScore, chords, ...result });
     try { localStorage.removeItem(DRAFT_KEY); } catch { /* 무시 */ }
     setTitleOpen(false); // 이동 전에 닫아 대화상자가 DOM 에 남지 않게 함
     router.push(`/scores/${saved.id}`);
@@ -258,22 +281,37 @@ function KeysPageInner() {
 
   return (
     <div className="flex flex-col gap-5">
-      <header className="flex items-start justify-between gap-3">
+      <header className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-medium">피아노 88건반 주파수</h1>
           <p className="text-sm text-ink-soft">
             f = 440 × 2^((n − 49) / 12) · 건반을 누르거나 PC 키보드 A~K
           </p>
         </div>
+        <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+        <label className="flex items-center gap-2 text-sm">
+          <span className="text-ink-soft">악기</span>
+          <select
+            aria-label="악기 음색"
+            value={instrument}
+            onChange={(e) => isInstrumentId(e.target.value) && setInstrument(e.target.value)}
+            className={selectCls}
+          >
+            {INSTRUMENT_ORDER.map((id) => (
+              <option key={id} value={id}>{INSTRUMENT_LABELS[id]}</option>
+            ))}
+          </select>
+        </label>
         <Button
           type="button"
           variant="outline"
           onClick={() => setEntry((v) => !v)}
           aria-pressed={entry}
-          className={`h-11 shrink-0 rounded-full px-4 text-sm lg:h-9 ${entry ? "border-accent bg-accent/15 text-accent hover:bg-accent/20 hover:text-accent" : ""}`}
+          className={`h-11 rounded-full px-4 text-sm lg:h-9 ${entry ? "border-accent bg-accent/15 text-accent hover:bg-accent/20 hover:text-accent" : ""}`}
         >
           악보 입력
         </Button>
+        </div>
       </header>
 
       <MidiConnectButton
@@ -286,7 +324,39 @@ function KeysPageInner() {
       {/* 입력 도구 */}
       {entry && (
         <Card className="gap-3 p-4">
-          <p className="text-xs text-ink-soft">음 길이를 고르고 건반을 누르면 악보에 추가돼요.</p>
+          <div className="flex flex-wrap items-center gap-2 text-sm">
+            <label className="flex items-center gap-2">
+              조
+              <select
+                aria-label="으뜸음"
+                value={tonic}
+                onChange={(e) => setTonic(Number(e.target.value))}
+                className={selectCls}
+              >
+                {TONICS.map((t) => (
+                  <option key={t.tonic} value={t.tonic}>{t.label}</option>
+                ))}
+              </select>
+            </label>
+            {(["major", "minor"] as const).map((m) => (
+              <Button
+                key={m}
+                type="button"
+                variant="outline"
+                onClick={() => setMode(m)}
+                aria-pressed={mode === m}
+                className={`h-11 rounded-full px-4 lg:h-9 ${mode === m ? "border-accent bg-accent/15 text-accent hover:bg-accent/20 hover:text-accent" : ""}`}
+              >
+                {m === "major" ? "장조" : "단조"}
+              </Button>
+            ))}
+            <span className="text-ink-soft">{keyName(draftScore.key)} · 조표 {Math.abs(draftScore.key.fifths)}{draftScore.key.fifths < 0 ? "♭" : draftScore.key.fifths > 0 ? "♯" : ""}</span>
+          </div>
+          <p className="text-xs text-ink-soft">
+            {notes.length === 0
+              ? "먼저 조를 고른 뒤 건반을 눌러 입력하세요. 음 길이를 고르면 악보에 추가돼요."
+              : "음 길이를 고르고 건반을 누르면 악보에 추가돼요. 조를 바꿔도 음높이는 그대로예요."}
+          </p>
           <DurationPicker value={dur} onChange={setDur} />
           <div className="flex flex-wrap items-center gap-2 text-sm">
             <Button type="button" variant="outline" className={btn} onClick={() => setNotes((n) => appendNote(n, null, dur))}>쉼표 추가</Button>
@@ -313,20 +383,36 @@ function KeysPageInner() {
                 className="h-11 w-20 lg:h-9"
               />
             </label>
-            {[3, 4].map((b) => (
+            {METERS.map((m) => (
               <Button
-                key={b}
+                key={m.id}
                 type="button"
                 variant="outline"
-                onClick={() => setBeats(b)}
-                aria-pressed={beats === b}
-                className={`h-11 rounded-full px-4 lg:h-9 ${beats === b ? "border-accent bg-accent/15 text-accent hover:bg-accent/20 hover:text-accent" : ""}`}
+                onClick={() => setMeter(m.id)}
+                aria-pressed={meter === m.id}
+                className={`h-11 rounded-full px-4 lg:h-9 ${meter === m.id ? "border-accent bg-accent/15 text-accent hover:bg-accent/20 hover:text-accent" : ""}`}
               >
-                {b}/4
+                {m.label}
               </Button>
             ))}
             <span className="text-ink-soft">{notes.length}개 음표</span>
           </div>
+          <label className="flex flex-wrap items-center gap-2 text-sm">
+            코드 진행
+            <select
+              aria-label="코드 진행"
+              value={progressionId}
+              onChange={(e) => setProgressionId(e.target.value)}
+              className={`${selectCls} min-w-0 max-w-full`}
+            >
+              <option value={AUTO_PROGRESSION}>자동 추천</option>
+              {PROGRESSIONS.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name} ({mode === "minor" ? p.minorRoman : p.roman})
+                </option>
+              ))}
+            </select>
+          </label>
         </Card>
       )}
 
@@ -355,14 +441,15 @@ function KeysPageInner() {
         </div>
       </Card>
 
-      <label className="flex min-h-11 items-center gap-2 text-sm">
+      <label className={`flex min-h-11 items-center gap-2 text-sm ${instrument === "piano" ? "" : "opacity-50"}`}>
         <input
           type="checkbox"
           checked={sustain}
+          disabled={instrument !== "piano"}
           onChange={(e) => setSustain(e.target.checked)}
           className="h-5 w-5 accent-accent"
         />
-        서스테인 페달 (감쇠 2.5배)
+        서스테인 페달 (감쇠 2.5배){instrument !== "piano" && " · 피아노에서만 사용"}
       </label>
 
       {entry && (
