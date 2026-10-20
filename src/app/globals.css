@@ -141,6 +141,26 @@
   --radius-4xl: 20px;
 }
 
+/* 데스크톱(1024px 이상) 글자 크기 약 10% 축소 — SmartAI-RAG-Tour 와 동일한 스케일.
+   모바일·태블릿은 Tailwind 기본 크기 유지. text-* 유틸리티가 참조하는 토큰만 바꾸므로
+   간격(spacing)과 레이아웃은 그대로다. 가장 작은 글자는 11px. */
+@media (min-width: 1024px) {
+  :root {
+    --text-xs: 0.6875rem;   /* 12px -> 11px */
+    --text-sm: 0.8125rem;   /* 14px -> 13px */
+    --text-base: 0.9rem;    /* 16px -> 14.4px */
+    --text-lg: 1.0125rem;   /* 18px -> 16.2px */
+    --text-xl: 1.125rem;    /* 20px -> 18px */
+    --text-2xl: 1.35rem;    /* 24px -> 21.6px */
+    --text-3xl: 1.6875rem;  /* 30px -> 27px */
+    --text-4xl: 2.025rem;   /* 36px -> 32.4px */
+    --text-5xl: 2.7rem;     /* 48px -> 43.2px */
+  }
+  body {
+    font-size: var(--text-base);
+  }
+}
+
 html,
 body {
   background: var(--paper);
