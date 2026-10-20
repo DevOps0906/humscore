@@ -54,16 +54,34 @@ export interface QuantizeOptions {
   timing?: QuantizeTiming | null;
 }
 
+/** 윈도 폭이 격자의 이 비율을 넘으면 박 > 반 박 순위 대신 rawStart 와의 거리를 우선 (0.9 격자) */
+const WINDOW_RANK_MAX = 0.9;
+/** 거리 우선일 때 기준점: 시작 감지는 보통 최대 지연(onsetLeadSec)의 이 비율만큼 늦다고 보고 그만큼 앞을 참조 (0.09s*2/3 = 0.06s) */
+const TYPICAL_LEAD_RATIO = 2 / 3;
+
 /**
  * [lo, hi] 구간 안의 격자점 중 하나를 고름: 박 > 반 박 > 그 밖 순으로 우선, 같으면 pref 에 가까운 쪽. 없으면 null
  */
-function pickInWindow(lo: number, hi: number, g: number, pref: number): number | null {
+function pickInWindow(lo: number, hi: number, g: number, pref: number, widePref: number = pref): number | null {
+  // 윈도가 격자 한 칸에 가깝게 넓어지는 고템포에서는 순위보다 거리를 우선 (더 가까운 16분 위치를 박 위치가 가로채지 않게)
+  const wide = hi - lo > g * WINDOW_RANK_MAX;
   let best: number | null = null;
   let bestRank = -1;
   for (let k = Math.ceil((lo - EPS) / g); k * g <= hi + EPS; k++) {
     const p = k * g;
     const rank = Math.abs(p - Math.round(p)) < EPS ? 2 : Math.abs(p * 2 - Math.round(p * 2)) < EPS ? 1 : 0;
-    if (rank > bestRank || (rank === bestRank && Math.abs(p - pref) < Math.abs((best as number) - pref))) {
+    if (best === null) {
+      best = p;
+      bestRank = rank;
+      continue;
+    }
+    const ref = wide ? widePref : pref;
+    const dp = Math.abs(p - ref);
+    const db = Math.abs(best - ref);
+    const closer = dp < db - EPS;
+    const tie = Math.abs(dp - db) <= EPS;
+    const better = wide ? closer || (tie && rank > bestRank) : rank > bestRank || (rank === bestRank && closer);
+    if (better) {
       best = p;
       bestRank = rank;
     }
@@ -71,9 +89,12 @@ function pickInWindow(lo: number, hi: number, g: number, pref: number): number |
   return best;
 }
 
+const LEGATO_GRID_RATIO = 1.2;
+
 /** 쉼표로 볼 만큼 끊겼는가 (gapSec: 실제 무성 시간, gapBeats: 박 환산) */
-function isRealRest(gapSec: number, gapBeats: number, g: number, t: QuantizeTiming): boolean {
-  if (gapSec < t.legatoGapSec) return false;
+function isRealRest(gapSec: number, gapBeats: number, g: number, t: QuantizeTiming, spb: number): boolean {
+  // 임계는 템포 비례: 격자 한 칸 시간의 1.2배를 넘지 않음 (감지 지연+성대 해제 ≈0.10s 가짜 틈은 제거, 지연 0 의 정확한 16분쉼표 gap 0.094+0.04 는 유지) (고템포의 정확한 짧은 쉼표 보존)
+  if (gapSec < Math.min(t.legatoGapSec, spb * g * LEGATO_GRID_RATIO)) return false;
   if (gapSec >= t.restMinSec && gapBeats >= 0.5) return true;
   return gapBeats >= g / 2;
 }
@@ -109,9 +130,9 @@ export function quantizeNotes(raw: RawNote[], opts: QuantizeOptions): NoteEvent[
       gapSec = prev ? n.startSec - meta[pi].endSec : n.startSec;
       const lo = Math.max(floorBeat, 0, rawStart - tm.onsetLeadSec / spb);
       const hi = rawStart + tm.slackSec / spb;
-      snappedStart = pickInWindow(lo, hi, g, rawStart) ?? snapBeat(rawStart, g);
+      snappedStart = pickInWindow(lo, hi, g, rawStart, rawStart - (tm.onsetLeadSec * TYPICAL_LEAD_RATIO) / spb) ?? snapBeat(rawStart, g);
       // 첫 음 앞의 짧은 무성은 쉼표가 아니라 발성 지연
-      if (!prev && offset === 0 && !isRealRest(gapSec, rawStart, g, tm)) snappedStart = 0;
+      if (!prev && offset === 0 && !isRealRest(gapSec, rawStart, g, tm, spb)) snappedStart = 0;
     } else {
       snappedStart = snapBeat(rawStart, g);
     }
@@ -137,7 +158,7 @@ export function quantizeNotes(raw: RawNote[], opts: QuantizeOptions): NoteEvent[
         }
       } else if (start > prevEnd + EPS) {
         const glue = tm
-          ? !isRealRest(gapSec, rawStart - meta[pi].rawEnd, g, tm)
+          ? !isRealRest(gapSec, rawStart - meta[pi].rawEnd, g, tm, spb)
           : rawStart - meta[pi].rawEnd < g / 2;
         // 사이가 짧게 붙어 있었음 -> 앞 음을 다음 음 시작까지 연장 (legato)
         if (glue) prev.durationBeats = start - prev.startBeat;

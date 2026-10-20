@@ -95,10 +95,10 @@ describe("quantizeNotes timing(마이크 보정)", () => {
     const out = quantizeNotes([r(60, 0, 0.96), r(62, 1.07, 2)], { ...opts, timing: MIC_TIMING }).filter((x) => x.midi !== null);
     expect(out.map((x) => [x.startBeat, x.durationBeats])).toEqual([[0, 2], [2, 2]]);
   });
-  it("0.15초 미만 틈은 어떤 템포에서도 legato, 0.25초·반 박 이상은 쉼표", () => {
+  it("0.10초 틈은 어떤 템포에서도 legato, 0.25초·반 박 이상은 쉼표", () => {
     for (const bpm of [60, 120, 160]) {
       const spb = 60 / bpm;
-      const glued = quantizeNotes([r(60, 0, 2 * spb), r(62, 2 * spb + 0.12, 4 * spb)], { ...opts, bpm, timing: MIC_TIMING });
+      const glued = quantizeNotes([r(60, 0, 2 * spb), r(62, 2 * spb + 0.10, 4 * spb)], { ...opts, bpm, timing: MIC_TIMING });
       expect(glued.filter((x) => x.midi === null && x.startBeat < 4)).toEqual([]);
       const gap = Math.max(0.3, spb);
       const rest = quantizeNotes([r(60, 0, 2 * spb), r(62, 2 * spb + gap, 5 * spb + gap)], { ...opts, bpm, timing: MIC_TIMING });

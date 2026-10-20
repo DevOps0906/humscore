@@ -3,6 +3,8 @@ import { buildScoreFromFrames } from "../pipeline";
 import { midiToFreq } from "../frequency";
 import type { Meter, PitchFrame } from "../types";
 import { METERS } from "../meter";
+import { MIC_TIMING, quantizeNotes } from "../quantize";
+import type { RawNote } from "../types";
 
 /** 시드 고정 난수(mulberry32) */
 function rng(seed: number) {
@@ -137,6 +139,46 @@ describe("마이크 음가 보정: 6/8 은 3/4 와 같은 양자화 입력", () 
       const b = run(SEQ, bpm, m68.beatsPerMeasure, { seed: 9 });
       expect(b).toEqual(a);
       expect(trimTail(b)).toEqual(EXPECTED);
+    }
+  });
+});
+
+/** [midi|null, 박] -> RawNote. 시작은 delay 만큼 늦게, 끝은 release 만큼 일찍 감지 (프레임 단계 없이 양자화만 검증) */
+function raws(mel: Mel, bpm: number, delay: number, release = 0.04): RawNote[] {
+  const spb = 60 / bpm;
+  const out: RawNote[] = [];
+  let t = 0;
+  for (const [midi, beats] of mel) {
+    if (midi !== null) out.push({ midi, startSec: t + delay, endSec: t + beats * spb - release, meanCents: 0 });
+    t += beats * spb;
+  }
+  return out;
+}
+const q = (mel: Mel, bpm: number, delay: number) =>
+  quantizeNotes(raws(mel, bpm, delay), { bpm, beatsPerMeasure: 4, grid: 0.25, timing: MIC_TIMING });
+
+describe("마이크 음가 보정 회귀: 고템포 격자 위치와 템포 비례 legato", () => {
+  it("연속 16분음표 4개의 시작 위치 (120~160bpm, 지연 60ms)", () => {
+    for (const bpm of [120, 140, 160]) {
+      const r = q([[60, 0.25], [62, 0.25], [64, 0.25], [65, 0.25], [67, 1]], bpm, 0.06);
+      expect(r.slice(0, 5).map((n) => n.startBeat)).toEqual([0, 0.25, 0.5, 0.75, 1]);
+    }
+  });
+  it("140bpm 8분+16분 패턴", () => {
+    const r = q([[60, 0.5], [62, 0.25], [64, 0.25], [65, 0.5], [67, 0.5], [69, 2]], 140, 0.06);
+    expect(r.slice(0, 6).map((n) => n.startBeat)).toEqual([0, 0.5, 0.75, 1, 1.5, 2]);
+  });
+  it("4분음표 사이 정확한 16분쉼표 유지 (90/120/160bpm)", () => {
+    for (const bpm of [90, 120, 160]) {
+      const r = q([[60, 0.75], [null, 0.25], [62, 1], [64, 2]], bpm, 0.0);
+      expect(r.slice(0, 3).map((n) => [n.midi, n.startBeat, n.durationBeats])).toEqual([[60, 0, 0.75], [null, 0.75, 0.25], [62, 1, 1]]);
+    }
+  });
+  it("발성 지연 60ms 가짜 쉼표는 여전히 제거 (60~160bpm)", () => {
+    for (const bpm of [60, 90, 120, 160]) {
+      const r = q([[60, 1], [62, 1], [64, 2]], bpm, 0.06);
+      expect(r.filter((n) => n.midi === null && n.startBeat < 4)).toEqual([]);
+      expect(r[0].durationBeats).toBe(1);
     }
   });
 });
