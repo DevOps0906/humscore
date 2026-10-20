@@ -12,6 +12,11 @@ test("녹음: 가짜 마이크로 시작/정지 가능", async ({ page }) => {
   }).toPass({ timeout: 15_000 });
   await expect(page.locator("p[role=alert]")).toHaveCount(0);
 
+  // 녹음 중에는 설정이 키보드로도 바뀌지 않도록 실제로 비활성화
+  await expect(page.locator('input[type=range]').first()).toBeDisabled();
+  await expect(page.getByRole("button", { name: "6/8", exact: true })).toBeDisabled();
+  await expect(page.locator('input[type=checkbox]')).toBeDisabled();
+
   await page.waitForTimeout(1500);
   await stop.click();
 

@@ -43,3 +43,14 @@ export function clicksBefore(
   }
   return { clicks, nextIndex: k };
 }
+
+/** 백그라운드 탭 복귀 등으로 이미 이만큼(초) 넘게 지난 클릭은 건너뜀 */
+export const STALE_CLICK_SEC = 0.05;
+
+/**
+ * 재생할 가치가 있는 클릭만 남긴다. 클릭 시각 = t0 + beat * spb (AudioContext 시간).
+ * 카운트인은 t0 가 현재보다 미래라 걸러지지 않는다.
+ */
+export function dropStaleClicks(clicks: ScheduledClick[], t0: number, spb: number, now: number): ScheduledClick[] {
+  return clicks.filter((c) => t0 + c.beat * spb >= now - STALE_CLICK_SEC);
+}

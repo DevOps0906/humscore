@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { liveSummaryFromFrames, liveSummaryFromRaw, solfegeName } from "../live-notes";
+import { createLiveFramesCache, liveSummaryFromFrames, liveSummaryFromRaw, liveSummaryIncremental, solfegeName } from "../live-notes";
 import type { PitchFrame, RawNote } from "../../music/types";
 
 const base = { bpm: 60, beatsPerMeasure: 4, timing: null } as const;
@@ -48,4 +48,60 @@ describe("live-notes", () => {
     const s = liveSummaryFromFrames(frames, { bpm: 90, beatsPerMeasure: 4 });
     expect(s.active?.name).toBe("라");
   });
+});
+
+/** 결정적 의사난수 */
+function rng(seed: number) {
+  let x = seed;
+  return () => {
+    x = (x * 1664525 + 1013904223) >>> 0;
+    return x / 2 ** 32;
+  };
+}
+
+/** 노래 합성: 음(0.3~2초)과 쉼(대부분 짧고 가끔 1.5~3초)을 이어 16ms 프레임으로 */
+function synth(seconds: number, seed: number, longRests: boolean): PitchFrame[] {
+  const r = rng(seed);
+  const frames: PitchFrame[] = [];
+  const dt = 0.016;
+  let t = 0;
+  while (t < seconds) {
+    const midi = 55 + Math.floor(r() * 14);
+    const dur = 0.3 + r() * 1.7;
+    const hz = 440 * 2 ** ((midi - 69) / 12);
+    for (let u = 0; u < dur && t < seconds; u += dt, t += dt) {
+      frames.push({ time: t, freq: hz * (1 + (r() - 0.5) * 0.006), clarity: 0.97 });
+    }
+    const rest = longRests && r() < 0.4 ? 1.5 + r() * 1.5 : 0.1 + r() * 0.3;
+    for (let u = 0; u < rest && t < seconds; u += dt, t += dt) frames.push({ time: t, freq: null, clarity: 0 });
+  }
+  return frames;
+}
+
+describe("liveSummaryIncremental", () => {
+  for (const [seconds, longRests, bpm, beats] of [
+    [8, true, 90, 4],
+    [40, true, 100, 4],
+    [90, true, 70, 3],
+    [60, false, 120, 4],
+    [120, true, 150, 3],
+  ] as const) {
+    it(`전체 처리와 일치: ${seconds}초, 긴 쉼 ${longRests}, ${bpm}BPM, ${beats}박`, () => {
+      for (const seed of [1, 2, 3, 4]) {
+      const frames = synth(seconds, seconds * 7 + bpm + seed * 101, longRests);
+      const opts = { bpm, beatsPerMeasure: beats } as const;
+      let cache = createLiveFramesCache();
+      const step = Math.round(0.28 / 0.016);
+      let committedSeen = false;
+      for (let n = step; n <= frames.length + step; n += step) {
+        const part = frames.slice(0, Math.min(n, frames.length));
+        const inc = liveSummaryIncremental(part, opts, cache);
+        cache = inc.cache;
+        if (cache.frameIdx > 0) committedSeen = true;
+        expect(inc.summary).toEqual(liveSummaryFromFrames(part, opts));
+      }
+      if (longRests && seconds >= 40) expect(committedSeen).toBe(true);
+      }
+    }, 60_000);
+  }
 });

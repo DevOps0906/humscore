@@ -13,7 +13,7 @@ import { MIN_RMS, startPitchTracking, type TrackerSession } from "@/lib/audio/pi
 import { getAudioContext } from "@/lib/audio/context";
 import { centsOff, freqToNearestMidi, freqToMidiFloat, midiToName } from "@/lib/music/frequency";
 import { METERS, beatsPerMeasureOf } from "@/lib/music/meter";
-import { liveAriaSummary, liveSummaryFromFrames, liveSummaryFromRaw, type LiveSummary } from "@/lib/audio/live-notes";
+import { createLiveFramesCache, liveAriaSummary, liveSummaryFromRaw, liveSummaryIncremental, type LiveFramesCache, type LiveSummary } from "@/lib/audio/live-notes";
 import { buildScoreFromFrames, buildScoreFromRawNotes } from "@/lib/music/pipeline";
 import { midiEventsToRawNotes, startMetronomeSession, type MetronomeSession } from "@/lib/audio/midi-recorder";
 import type { MidiEvent } from "@/lib/audio/midi-input";
@@ -41,6 +41,7 @@ function loadMeter(): Meter {
 }
 
 const LIVE_INTERVAL_MS = 280;
+const nowMs = () => performance.now();
 const EMPTY_LIVE: LiveSummary = { measures: [], active: null, totalMeasures: 0, noteCount: 0 };
 
 function RecordPageInner() {
@@ -62,6 +63,12 @@ function RecordPageInner() {
   const trace = useRef<PitchFrame[]>([]);
   /** 라이브 음가 미리보기용 전체 프레임 (피치 숫자만, 녹음 종료 시 폐기) */
   const allFrames = useRef<PitchFrame[]>([]);
+  /** 세션 시작 시점의 설정. 녹음 중 UI 값이 바뀌어도(방어) 메트로놈·미리보기·악보 생성은 이 값을 쓴다 */
+  const cfg = useRef<{ bpm: number; beats: number; meter: Meter }>({ bpm: 90, beats: 4, meter: "4/4" });
+  const liveCache = useRef<LiveFramesCache>(createLiveFramesCache());
+  /** 6/8: 둘째 그룹(1.5박) 점 점등 여부 */
+  const [halfLit, setHalfLit] = useState(false);
+  const halfTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [liveSummary, setLiveSummary] = useState<LiveSummary>(EMPTY_LIVE);
   const [liveAria, setLiveAria] = useState("");
   const ariaAt = useRef(0);
@@ -136,6 +143,7 @@ function RecordPageInner() {
   useEffect(
     () => () => {
       starting.current = null; // 권한 대기 중 화면을 떠나면 늦게 열린 세션을 start()가 닫음
+      if (halfTimer.current) clearTimeout(halfTimer.current);
       session.current?.stop();
       session.current = null;
       midiSession.current?.stop();
@@ -160,6 +168,7 @@ function RecordPageInner() {
   useEffect(() => {
     if (!liveOn) return;
     const id = setInterval(() => {
+      const { bpm, beats } = cfg.current;
       const timing = sourceRef.current === "midi" ? null : undefined;
       let s: LiveSummary;
       if (sourceRef.current === "midi") {
@@ -169,9 +178,14 @@ function RecordPageInner() {
           bpm, beatsPerMeasure: beats, timing, activeTolSec: heldRef.current !== null ? 1 : 0,
         });
       } else {
-        s = liveSummaryFromFrames(allFrames.current, {
-          bpm, beatsPerMeasure: beats, range: sourceRef.current === "instrument" ? "instrument" : "voice",
-        });
+        // 확정된 앞부분은 캐시하고 뒤 구간만 다시 계산 (결과는 전체 처리와 같음)
+        const r = liveSummaryIncremental(
+          allFrames.current,
+          { bpm, beatsPerMeasure: beats, range: sourceRef.current === "instrument" ? "instrument" : "voice" },
+          liveCache.current,
+        );
+        liveCache.current = r.cache;
+        s = r.summary;
       }
       setLiveSummary(s);
       // 스크린리더에는 5초에 한 번만 요약
@@ -182,7 +196,7 @@ function RecordPageInner() {
       }
     }, LIVE_INTERVAL_MS);
     return () => clearInterval(id);
-  }, [liveOn, bpm, beats]);
+  }, [liveOn]);
 
   useEffect(() => {
     const t = setTimeout(() => {
@@ -204,6 +218,7 @@ function RecordPageInner() {
 
   function resetLive() {
     allFrames.current = [];
+    liveCache.current = createLiveFramesCache();
     setLiveSummary(EMPTY_LIVE);
     setLiveAria("");
     ariaAt.current = 0;
@@ -221,6 +236,7 @@ function RecordPageInner() {
     if (midiSession.current) return;
     setError(null);
     midiEvents.current = [];
+    cfg.current = { bpm, beats, meter: meterId };
     resetLive();
     getAudioContext(); // 제스처 동기 호출 (resume 은 내부 fire-and-forget)
     setStatus("countin");
@@ -232,7 +248,7 @@ function RecordPageInner() {
       metronome,
       manualLatencyMs: latencyMs,
       onBeat: (b) => {
-        setBeat(b);
+        handleBeat(b);
         if (b >= 0) setStatus("recording");
       },
     });
@@ -244,13 +260,15 @@ function RecordPageInner() {
     if (!ms) return;
     midiSession.current = null;
     ms.stop();
+    const fixed = cfg.current;
     setBeat(null);
+    setHalfLit(false);
     setStatus("processing");
     setLiveSummary(EMPTY_LIVE);
-    const raw = midiEventsToRawNotes(midiEvents.current, ms.startPerf, performance.now());
+    const raw = midiEventsToRawNotes(midiEvents.current, ms.startPerf, nowMs());
     midiEvents.current = [];
-    const built = buildScoreFromRawNotes(raw, { bpm, beatsPerMeasure: beats });
-    const score: Score = { ...built.score, meter: meterId };
+    const built = buildScoreFromRawNotes(raw, { bpm: fixed.bpm, beatsPerMeasure: fixed.beats });
+    const score: Score = { ...built.score, meter: fixed.meter };
     if (!score.notes.some((n) => n.midi !== null)) {
       setStatus("idle");
       setError("연주한 음이 없어요. 건반 연결을 확인하고 메트로놈에 맞춰 다시 연주해 주세요.");
@@ -258,6 +276,20 @@ function RecordPageInner() {
     }
     setStatus("idle");
     setPending({ score, interrupted: false });
+  }
+
+  /** 박 알림 처리. 6/8 은 1.5박(둘째 그룹)에 맞춰 점을 늦지 않게 켬 */
+  function handleBeat(b: number) {
+    setBeat(b);
+    const c = cfg.current;
+    if (halfTimer.current) {
+      clearTimeout(halfTimer.current);
+      halfTimer.current = null;
+    }
+    setHalfLit(false);
+    if (c.meter === "6/8" && b >= 0 && ((b % c.beats) + c.beats) % c.beats === 1) {
+      halfTimer.current = setTimeout(() => setHalfLit(true), (60 / c.bpm) * 500);
+    }
   }
 
   function changeLatency(ms: number) {
@@ -274,6 +306,7 @@ function RecordPageInner() {
     setError(null);
     setNoInput(false);
     trace.current = [];
+    cfg.current = { bpm, beats, meter: meterId };
     resetLive();
     level.current = 0;
     peakLevel.current = 0;
@@ -294,7 +327,7 @@ function RecordPageInner() {
           void finish(true);
         },
         onBeat: (b) => {
-          setBeat(b);
+          handleBeat(b);
           if (b >= 0) setStatus("recording");
           // 녹음 2박이 지나도록 입력 레벨이 게이트 아래면 마이크가 소리를 못 받는 상태
           if (b >= 2 && peakLevel.current < MIN_RMS) setNoInput(true);
@@ -352,8 +385,11 @@ function RecordPageInner() {
     const frames = session.current.stop();
     session.current = null;
     allFrames.current = [];
+    liveCache.current = createLiveFramesCache();
+    const fixed = cfg.current;
     setLiveSummary(EMPTY_LIVE);
     setBeat(null);
+    setHalfLit(false);
     setLive(null);
     level.current = 0;
     if (interrupted && frames.length === 0) {
@@ -363,11 +399,11 @@ function RecordPageInner() {
     }
     setStatus("processing");
     const built = buildScoreFromFrames(frames, {
-      bpm,
-      beatsPerMeasure: beats,
+      bpm: fixed.bpm,
+      beatsPerMeasure: fixed.beats,
       range: sourceRef.current === "instrument" ? "instrument" : "voice",
     });
-    const score: Score = { ...built.score, meter: meterId };
+    const score: Score = { ...built.score, meter: fixed.meter };
     if (!score.notes.some((n) => n.midi !== null)) {
       setStatus("idle");
       setError(
@@ -405,6 +441,7 @@ function RecordPageInner() {
   const cents = voiced ? centsOff(voiced) : 0;
   const tuneColor = Math.abs(cents) < 15 ? "text-tune-good" : Math.abs(cents) < 30 ? "text-tune-warn" : "text-tune-bad";
   const recording = status === "countin" || status === "recording";
+  const locked = recording || status === "processing";
   const isMidi = source === "midi";
   const midiBlocked = isMidi && midi.status !== "connected";
   const dots = meterId === "6/8" ? 2 : beats;
@@ -485,7 +522,7 @@ function RecordPageInner() {
       <div className="flex items-center justify-center gap-3">
         {Array.from({ length: dots }, (_, i) => {
           const q = beat !== null ? ((beat % beats) + beats) % beats : 0;
-          const cur = meterId === "6/8" ? Math.floor(q / 1.5) : q;
+          const cur = meterId === "6/8" ? (q === 2 || (q === 1 && halfLit) ? 1 : 0) : q;
           const on = beat !== null && cur === i && recording;
           return <span key={i} className={`h-3 w-3 rounded-full ${on ? (i === 0 ? "bg-accent" : "bg-ink") : "bg-line"}`} />;
         })}
@@ -536,10 +573,10 @@ function RecordPageInner() {
       {error && <p role="alert" className="text-center text-sm text-tune-bad">{error}</p>}
 
       {/* 설정 */}
-      <Card className={`gap-4 p-4 ${recording ? "pointer-events-none opacity-50" : ""}`} aria-disabled={recording}>
+      <Card className={`gap-4 p-4 ${locked ? "pointer-events-none opacity-50" : ""}`} aria-disabled={locked}>
         <label className="flex items-center gap-3 text-sm">
           <span className="w-14 text-ink-soft">템포</span>
-          <input type="range" min={50} max={160} step={1} value={bpm} onChange={(e) => setBpm(+e.target.value)} className="flex-1 accent-accent" />
+          <input type="range" min={50} max={160} step={1} value={bpm} disabled={locked} onChange={(e) => setBpm(+e.target.value)} className="flex-1 accent-accent" />
           <span className="w-16 text-right tabular-nums">{bpm} BPM</span>
         </label>
         <div className="flex flex-wrap items-center gap-3 text-sm">
@@ -549,6 +586,7 @@ function RecordPageInner() {
               key={m.id}
               type="button"
               variant="outline"
+              disabled={locked}
               onClick={() => changeMeter(m.id)}
               aria-pressed={meterId === m.id}
               className={`h-11 min-w-11 rounded-full px-5 lg:h-9 ${meterId === m.id ? "border-accent bg-accent/15 text-accent hover:bg-accent/20 hover:text-accent" : ""}`}
@@ -560,14 +598,14 @@ function RecordPageInner() {
         <div className="grid gap-1 text-sm">
           <label className="flex items-center gap-3">
             <span className="w-20 shrink-0 text-ink-soft">지연 보정(ms)</span>
-            <input type="range" min={0} max={400} step={10} value={latencyMs} onChange={(e) => changeLatency(+e.target.value)} className="flex-1 accent-accent" />
+            <input type="range" min={0} max={400} step={10} value={latencyMs} disabled={locked} onChange={(e) => changeLatency(+e.target.value)} className="flex-1 accent-accent" />
             <span className="w-16 text-right tabular-nums">{latencyMs} ms</span>
           </label>
           <p className="text-xs text-ink-soft">블루투스 이어폰이면 올려 주세요. 박자가 밀려 보일 때 조정합니다.</p>
         </div>
         <label className="flex min-h-11 items-center justify-between text-sm">
           <span className="text-ink-soft">녹음 중 메트로놈</span>
-          <input type="checkbox" checked={metronome} onChange={(e) => setMetronome(e.target.checked)} className="h-5 w-5 accent-accent" />
+          <input type="checkbox" checked={metronome} disabled={locked} onChange={(e) => setMetronome(e.target.checked)} className="h-5 w-5 accent-accent" />
         </label>
       </Card>
       <p className="text-center text-xs text-ink-soft">녹음된 소리는 기기 밖으로 전송·저장되지 않고, 음표 정보만 남습니다. (MIDI 건반 모드는 마이크를 쓰지 않아요)</p>

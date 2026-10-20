@@ -1,5 +1,5 @@
 import type { Meter } from "../music/types";
-import { clicksBefore, patternFor } from "./metronome-schedule";
+import { clicksBefore, dropStaleClicks, patternFor } from "./metronome-schedule";
 import { playClick } from "./piano-synth";
 
 export interface ClickSchedulerOptions {
@@ -20,7 +20,7 @@ export function startClickScheduler(ctx: AudioContext, o: ClickSchedulerOptions)
     const limit = (ctx.currentTime + 0.1 - o.t0) / o.spb;
     const r = clicksBefore(pattern, o.beatsPerMeasure, next, limit);
     next = r.nextIndex;
-    for (const c of r.clicks) {
+    for (const c of dropStaleClicks(r.clicks, o.t0, o.spb, ctx.currentTime)) {
       if (c.beat < o.countInBeats || o.metronome) playClick(ctx, o.t0 + c.beat * o.spb, c.level);
     }
   }, 25);
