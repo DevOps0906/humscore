@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { fillRests, measureCount, quantizeNotes, totalBeats } from "../quantize";
+import { MIC_TIMING, fillRests, measureCount, quantizeNotes, totalBeats } from "../quantize";
 import type { RawNote } from "../types";
 
 const raw = (midi: number | null, s: number, e: number): RawNote => ({ midi, startSec: s, endSec: e, meanCents: 0 });
@@ -81,5 +81,28 @@ describe("fillRests / totalBeats / measureCount", () => {
   it("measureCount 경계: 8박 = 2마디, 8.5박 = 3마디", () => {
     expect(measureCount([{ midi: 60, startBeat: 0, durationBeats: 8 }], 4)).toBe(2);
     expect(measureCount([{ midi: 60, startBeat: 0, durationBeats: 8.5 }], 4)).toBe(3);
+  });
+});
+
+describe("quantizeNotes timing(마이크 보정)", () => {
+  const r = (midi: number, s: number, e: number) => ({ midi, startSec: s, endSec: e, meanCents: 0 });
+  const opts = { bpm: 120, beatsPerMeasure: 4, grid: 0.25 };
+  it("timing 생략(정확한 입력)이면 기존 동작: 0.25박 늦은 시작은 그대로", () => {
+    const out = quantizeNotes([r(60, 0, 1), r(62, 1.07, 2)], opts).filter((x) => x.midi !== null);
+    expect(out[1].startBeat).toBe(2.25);
+  });
+  it("MIC_TIMING: 감지 지연(70ms)만큼 앞당겨 스냅되고 앞 음에 붙음", () => {
+    const out = quantizeNotes([r(60, 0, 0.96), r(62, 1.07, 2)], { ...opts, timing: MIC_TIMING }).filter((x) => x.midi !== null);
+    expect(out.map((x) => [x.startBeat, x.durationBeats])).toEqual([[0, 2], [2, 2]]);
+  });
+  it("0.15초 미만 틈은 어떤 템포에서도 legato, 0.25초·반 박 이상은 쉼표", () => {
+    for (const bpm of [60, 120, 160]) {
+      const spb = 60 / bpm;
+      const glued = quantizeNotes([r(60, 0, 2 * spb), r(62, 2 * spb + 0.12, 4 * spb)], { ...opts, bpm, timing: MIC_TIMING });
+      expect(glued.filter((x) => x.midi === null && x.startBeat < 4)).toEqual([]);
+      const gap = Math.max(0.3, spb);
+      const rest = quantizeNotes([r(60, 0, 2 * spb), r(62, 2 * spb + gap, 5 * spb + gap)], { ...opts, bpm, timing: MIC_TIMING });
+      expect(rest.some((x) => x.midi === null && x.startBeat < 5)).toBe(true);
+    }
   });
 });

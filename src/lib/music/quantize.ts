@@ -21,29 +21,110 @@ export function snapBeat(beats: number, grid: number): number {
 
 const EPS = 1e-6;
 
+/** 마이크 채보용 타이밍 보정 기본값 (초). 건반 MIDI 처럼 정확한 입력은 timing: null 로 끈다 */
+export interface QuantizeTiming {
+  /** 음 시작 감지 지연: 실제 시작은 감지된 시작보다 이만큼(최대) 앞에 있다고 보고 스냅 */
+  onsetLeadSec: number;
+  /** 성대가 먼저 멈춰 끝이 일찍 잡히는 정도: 실제 끝은 감지된 끝보다 이만큼(최대) 뒤 */
+  releaseSec: number;
+  /** 시작·끝 모두 이 시간(초)까지는 감지 오차(앞으로 당겨진 쪽)로 허용 */
+  slackSec: number;
+  /** 유성 음 사이 무성 구간이 이보다 짧으면 박 환산과 무관하게 legato */
+  legatoGapSec: number;
+  /** 쉼표로 인정하려면 무성 구간이 이 시간(초) 이상이고 반 박 이상이어야 함 (그 사이는 격자 반 칸 규칙) */
+  restMinSec: number;
+}
+
+export const MIC_TIMING: QuantizeTiming = {
+  onsetLeadSec: 0.09,
+  releaseSec: 0.06,
+  slackSec: 0.04,
+  legatoGapSec: 0.15,
+  restMinSec: 0.25,
+};
+
+export interface QuantizeOptions {
+  bpm: number;
+  beatsPerMeasure: number;
+  /** 격자 크기(박). 0.5 = 8분음표, 0.25 = 16분음표 */
+  grid: number;
+  /** 녹음 시작(0초)이 몇 박째인지. 카운트인 후 바로 녹음하면 0 */
+  offsetBeats?: number;
+  /** 마이크 감지 지연 보정. 생략/null 이면 입력 시각을 그대로 스냅(MIDI 건반 등 정확한 입력) */
+  timing?: QuantizeTiming | null;
+}
+
+/**
+ * [lo, hi] 구간 안의 격자점 중 하나를 고름: 박 > 반 박 > 그 밖 순으로 우선, 같으면 pref 에 가까운 쪽. 없으면 null
+ */
+function pickInWindow(lo: number, hi: number, g: number, pref: number): number | null {
+  let best: number | null = null;
+  let bestRank = -1;
+  for (let k = Math.ceil((lo - EPS) / g); k * g <= hi + EPS; k++) {
+    const p = k * g;
+    const rank = Math.abs(p - Math.round(p)) < EPS ? 2 : Math.abs(p * 2 - Math.round(p * 2)) < EPS ? 1 : 0;
+    if (rank > bestRank || (rank === bestRank && Math.abs(p - pref) < Math.abs((best as number) - pref))) {
+      best = p;
+      bestRank = rank;
+    }
+  }
+  return best;
+}
+
+/** 쉼표로 볼 만큼 끊겼는가 (gapSec: 실제 무성 시간, gapBeats: 박 환산) */
+function isRealRest(gapSec: number, gapBeats: number, g: number, t: QuantizeTiming): boolean {
+  if (gapSec < t.legatoGapSec) return false;
+  if (gapSec >= t.restMinSec && gapBeats >= 0.5) return true;
+  return gapBeats >= g / 2;
+}
+
 /**
  * 초 단위 음 구간 → 박자 격자에 맞춘 음표·쉼표 목록 (마디 끝까지 쉼표로 채움)
  * - 시작·끝(성대가 떨어진 지점) 모두 격자에 맞추고 길이는 최소 1격자
  * - 앞 음 끝과 다음 음 시작 사이 틈이 격자 반 칸 미만이면 붙임(legato), 1격자 이상이면 쉼표
+ * - timing 이 있으면(마이크) 감지 지연만큼 앞당겨 스냅하고, 초 단위로 짧은 틈은 템포와 무관하게 legato
  */
 export function quantizeNotes(raw: RawNote[], opts: QuantizeOptions): NoteEvent[] {
   const spb = 60 / opts.bpm;
   const offset = opts.offsetBeats ?? 0;
   const g = opts.grid;
+  const tm = opts.timing ?? null;
   const sounded: NoteEvent[] = [];
   /** 최소 길이 보정 전 끝 위치, 원본 끝(박) */
-  const meta: { natEnd: number; rawEnd: number }[] = [];
+  const meta: { natEnd: number; rawEnd: number; endSec: number }[] = [];
+  const sortedRaw = [...raw].filter((n) => n.midi !== null).sort((a, b) => a.startSec - b.startSec);
 
-  for (const n of [...raw].sort((a, b) => a.startSec - b.startSec)) {
-    if (n.midi === null) continue;
+  for (let idx = 0; idx < sortedRaw.length; idx++) {
+    const n = sortedRaw[idx];
     const rawStart = n.startSec / spb + offset;
     const rawEnd = n.endSec / spb + offset;
-    let start = Math.max(0, snapBeat(rawStart, g));
-    const natEnd = snapBeat(rawEnd, g);
-    let end = natEnd;
-    if (end <= start + EPS) end = start + g;
     const pi = sounded.length - 1;
     const prev = sounded[pi];
+
+    let snappedStart: number;
+    let gapSec = Infinity;
+    if (tm) {
+      // 앞 음 끝(없으면 녹음 시작) 이전으로는 못 감
+      const floorBeat = prev ? meta[pi].rawEnd : offset;
+      gapSec = prev ? n.startSec - meta[pi].endSec : n.startSec;
+      const lo = Math.max(floorBeat, 0, rawStart - tm.onsetLeadSec / spb);
+      const hi = rawStart + tm.slackSec / spb;
+      snappedStart = pickInWindow(lo, hi, g, rawStart) ?? snapBeat(rawStart, g);
+      // 첫 음 앞의 짧은 무성은 쉼표가 아니라 발성 지연
+      if (!prev && offset === 0 && !isRealRest(gapSec, rawStart, g, tm)) snappedStart = 0;
+    } else {
+      snappedStart = snapBeat(rawStart, g);
+    }
+    let start = Math.max(0, snappedStart);
+
+    let natEnd: number;
+    if (tm) {
+      natEnd = pickInWindow(rawEnd - tm.slackSec / spb, rawEnd + tm.releaseSec / spb, g, rawEnd) ?? snapBeat(rawEnd, g);
+    } else {
+      natEnd = snapBeat(rawEnd, g);
+    }
+    let end = natEnd;
+    if (end <= start + EPS) end = start + g;
     if (prev) {
       const prevEnd = prev.startBeat + prev.durationBeats;
       if (start < prevEnd - EPS) {
@@ -54,13 +135,16 @@ export function quantizeNotes(raw: RawNote[], opts: QuantizeOptions): NoteEvent[
           start = prevEnd;
           if (end <= start + EPS) continue;
         }
-      } else if (start > prevEnd + EPS && rawStart - meta[pi].rawEnd < g / 2) {
-        // 사이가 반 칸 미만으로 붙어 있었음 -> 앞 음을 다음 음 시작까지 연장 (legato)
-        prev.durationBeats = start - prev.startBeat;
+      } else if (start > prevEnd + EPS) {
+        const glue = tm
+          ? !isRealRest(gapSec, rawStart - meta[pi].rawEnd, g, tm)
+          : rawStart - meta[pi].rawEnd < g / 2;
+        // 사이가 짧게 붙어 있었음 -> 앞 음을 다음 음 시작까지 연장 (legato)
+        if (glue) prev.durationBeats = start - prev.startBeat;
       }
     }
     sounded.push({ midi: n.midi, startBeat: start, durationBeats: end - start });
-    meta.push({ natEnd, rawEnd });
+    meta.push({ natEnd, rawEnd, endSec: n.endSec });
   }
 
   return fillRests(sounded, opts.beatsPerMeasure);

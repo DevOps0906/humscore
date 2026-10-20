@@ -29,6 +29,13 @@ export interface SegmentOptions {
    * 이 시간(초) 이내면 검출 드롭아웃으로 보고 한 음으로 유지. 주파수가 아예 없는 끊김은 반복음 분리 규칙을 따름
    */
   dropoutMaxSec: number;
+  /**
+   * 발성 시작 보정: 음이 시작되기 직전, 신뢰도만 낮고(softClarity 이상) 주파수는 이미 그 음 근처로 검출된
+   * 무성 프레임을 음의 시작으로 되돌려 포함하는 최대 시간(초). 0 이면 끔
+   */
+  onsetBackfillSec: number;
+  /** 발성 시작 보정에서 인정하는 최소 신뢰도 */
+  softClarity: number;
   /** 같은 음으로 간주하는 허용 폭(반음). 0.6 = ±60센트 */
   hysteresis: number;
   /** 중앙값 필터 창 크기(프레임 수, 홀수) — 옥타브 튐/떨림 제거 */
@@ -43,6 +50,8 @@ export const DEFAULT_SEGMENT_OPTIONS: SegmentOptions = {
   articulationGapSec: 0.03,
   articulationFrames: 2,
   dropoutMaxSec: 0.08,
+  onsetBackfillSec: 0.12,
+  softClarity: 0.7,
   hysteresis: 0.6,
   medianWindow: 5,
 };
@@ -111,6 +120,20 @@ export function segmentFrames(frames: PitchFrame[], options: Partial<SegmentOpti
     cur = null;
   };
 
+  /** 새 음의 시작 시각: 바로 앞의 '약한 발성' 프레임(주파수는 이 음 근처, 신뢰도만 낮음)까지 되돌림 */
+  const backfillStart = (i: number, v: number): number => {
+    let start = frames[i].time;
+    const floor = notes.length ? notes[notes.length - 1].endSec : -Infinity;
+    for (let j = i - 1; j >= 0 && frames[i].time - frames[j].time <= opts.onsetBackfillSec + 1e-9; j--) {
+      const f = frames[j];
+      if (track[j] !== null || f.freq === null || f.clarity < opts.softClarity) break;
+      if (f.freq < fMin || f.freq > fMax || Math.abs(freqToMidiFloat(f.freq) - v) > opts.hysteresis) break;
+      if (f.time < floor - 1e-9) break;
+      start = f.time;
+    }
+    return start;
+  };
+
   for (let i = 0; i < frames.length; i++) {
     const t = frames[i].time;
     const v = track[i];
@@ -144,7 +167,7 @@ export function segmentFrames(frames: PitchFrame[], options: Partial<SegmentOpti
       }
       close(t);
     }
-    cur = { values: [v], start: t, end: t + frameDur };
+    cur = { values: [v], start: backfillStart(i, v), end: t + frameDur };
   }
   if (cur) close((cur as Building).end);
 

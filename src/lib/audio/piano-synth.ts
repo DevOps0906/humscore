@@ -1,6 +1,8 @@
 import { midiToFreq } from "../music/frequency";
 import { chordToMidi, transposeChordSymbol, transposeKey } from "../music/theory";
+import type { InstrumentId } from "../music/midi";
 import type { Score } from "../music/types";
+import { playInstrumentNote } from "./instruments";
 
 /**
  * 배음 합성 그랜드 피아노 (외부 음원 파일 0개)
@@ -62,17 +64,24 @@ export function playPianoNote(ctx: AudioContext, midi: number, when: number, opt
   }
 }
 
-/** 메트로놈 클릭 (첫 박 강세) */
-export function playClick(ctx: AudioContext, when: number, accent: boolean): void {
+/**
+ * 메트로놈 클릭. level: 2 강, 1 중, 0 약(작고 짧게).
+ * boolean 은 하위 호환: true = 강(2), false = 중(1)
+ */
+export function playClick(ctx: AudioContext, when: number, accent: boolean | 0 | 1 | 2): void {
+  const level = typeof accent === "boolean" ? (accent ? 2 : 1) : accent;
+  const freq = level === 2 ? 1760 : level === 1 ? 1320 : 1000;
+  const peak = level === 2 ? 0.5 : level === 1 ? 0.3 : 0.14;
+  const len = level === 0 ? 0.03 : 0.05;
   const osc = ctx.createOscillator();
   const g = ctx.createGain();
-  osc.frequency.value = accent ? 1760 : 1320;
+  osc.frequency.value = freq;
   g.gain.setValueAtTime(0.0001, when);
-  g.gain.exponentialRampToValueAtTime(accent ? 0.5 : 0.3, when + 0.002);
-  g.gain.exponentialRampToValueAtTime(0.0001, when + 0.05);
+  g.gain.exponentialRampToValueAtTime(peak, when + 0.002);
+  g.gain.exponentialRampToValueAtTime(0.0001, when + len);
   osc.connect(g).connect(ctx.destination);
   osc.start(when);
-  osc.stop(when + 0.06);
+  osc.stop(when + len + 0.01);
 }
 
 export interface Playback {
@@ -83,7 +92,12 @@ export interface Playback {
 }
 
 /** 악보 전체 재생 (멜로디 + 마디별 코드 반주), 전조 반영 */
-export function playScore(ctx: AudioContext, score: Score, opts: { withChords?: boolean } = {}): Playback {
+export function playScore(
+  ctx: AudioContext,
+  score: Score,
+  opts: { withChords?: boolean; instrument?: InstrumentId } = {},
+): Playback {
+  const instrument = opts.instrument ?? "piano";
   const spb = 60 / score.bpm;
   const start = ctx.currentTime + 0.1;
   const bus = ctx.createGain();
@@ -93,7 +107,10 @@ export function playScore(ctx: AudioContext, score: Score, opts: { withChords?: 
 
   for (const n of score.notes) {
     if (n.midi === null) continue;
-    playPianoNote(ctx, n.midi + tp, start + n.startBeat * spb, { duration: n.durationBeats * spb, destination: bus });
+    playInstrumentNote(ctx, instrument, n.midi + tp, start + n.startBeat * spb, {
+      duration: n.durationBeats * spb,
+      destination: bus,
+    });
   }
   if (opts.withChords ?? true) {
     score.chords.forEach((c, i) => {

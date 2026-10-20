@@ -1,5 +1,6 @@
 import { Midi } from "@tonejs/midi";
 import { chordToMidi, transposeChordSymbol, transposeKey } from "./theory";
+import { timeSignatureOf } from "./meter";
 import type { Score } from "./types";
 
 /** GM 악기 번호(0부터). 출력 시 멜로디 악기를 바꿔 "여러 악기의 MIDI"를 만듭니다. */
@@ -44,7 +45,8 @@ export function scoreToMidi(score: Score, opts: MidiExportOptions = {}): Uint8Ar
   const { melodyInstrument = "piano", withChords = true, chordInstrument = "piano" } = opts;
   const midi = new Midi();
   midi.header.setTempo(score.bpm);
-  midi.header.timeSignatures.push({ ticks: 0, timeSignature: [score.beatsPerMeasure, 4] });
+  const ts = timeSignatureOf(score);
+  midi.header.timeSignatures.push({ ticks: 0, timeSignature: [ts.beats, ts.beatType] });
   midi.header.name = utf8AsLatin1(score.title);
   const spb = 60 / score.bpm;
   const tp = score.transpose;

@@ -81,3 +81,12 @@ describe("scoreToMidi", () => {
     expect(parsed.tracks[0].notes[0].time).toBeCloseTo(2, 2);
   });
 });
+
+describe("scoreToMidi 박자표", () => {
+  it("6/8 은 [6,8], 3/4 는 [3,4], 4/4 는 [4,4]", () => {
+    const ts = (over = {}) => new Midi(scoreToMidi(makeScore(melody, over))).header.timeSignatures[0].timeSignature;
+    expect(ts({ beatsPerMeasure: 3, meter: "6/8" })).toEqual([6, 8]);
+    expect(ts({ beatsPerMeasure: 3 })).toEqual([3, 4]);
+    expect(ts()).toEqual([4, 4]);
+  });
+});

@@ -2,6 +2,7 @@ import { scoreMeasureCount } from "./edit";
 import { chordToMidi, tempoTerm, transposeChordSymbol, transposeKey } from "./theory";
 import { splitForNotation, type NotationPiece } from "./notation";
 import { AccidentalTracker, spellPitch, type AccidentalName, type SpelledPitch } from "./spelling";
+import { timeSignatureOf } from "./meter";
 import type { Score } from "./types";
 
 /**
@@ -75,6 +76,8 @@ export interface MusicXmlOptions {
   minMeasures?: number;
   /** N마디마다 줄바꿈(<print new-system="yes"/>). 기본 4, 0이면 끔 */
   measuresPerSystem?: number;
+  /** true 면 빠르기말·메트로놈·제목·작사/작곡/편곡자를 출력하지 않음(화면 머리글을 HTML 이 따로 그림). 기본 false */
+  externalHeader?: boolean;
 }
 
 export function scoreToMusicXML(score: Score, layout: ScoreLayout = "lead", opts: MusicXmlOptions = {}): string {
@@ -100,6 +103,8 @@ export function scoreToMusicXML(score: Score, layout: ScoreLayout = "lead", opts
   const handTracker = new AccidentalTracker(key.fifths);
   const chords = score.chords.map((c) => ({ ...c, symbol: transposeChordSymbol(c.symbol, tp, preferFlats) }));
   const bpm = score.beatsPerMeasure;
+  const ts = timeSignatureOf(score);
+  const external = opts.externalHeader === true;
   const measures = Math.max(scoreMeasureCount(score), opts.minMeasures ?? 1);
   const perSystem = opts.measuresPerSystem ?? 4;
   const measureDivs = bpm * DIVISIONS;
@@ -120,11 +125,15 @@ export function scoreToMusicXML(score: Score, layout: ScoreLayout = "lead", opts
     if (m === 0) {
       parts.push(
         `<attributes><divisions>${DIVISIONS}</divisions><key><fifths>${key.fifths}</fifths><mode>${key.mode}</mode></key>` +
-          `<time><beats>${bpm}</beats><beat-type>4</beat-type></time>` +
+          `<time><beats>${ts.beats}</beats><beat-type>${ts.beatType}</beat-type></time>` +
           (piano ? `<staves>2</staves>${trebleClef}<clef number="2"><sign>F</sign><line>4</line></clef>` : trebleClef) +
           `</attributes>`,
-        `<direction placement="above"><direction-type><words>${tempoTerm(score.bpm)}</words></direction-type><direction-type><metronome><beat-unit>quarter</beat-unit><per-minute>${score.bpm}</per-minute></metronome></direction-type><sound tempo="${score.bpm}"/></direction>`,
       );
+      if (!external) {
+        parts.push(
+          `<direction placement="above"><direction-type><words>${tempoTerm(score.bpm)}</words></direction-type><direction-type><metronome><beat-unit>quarter</beat-unit><per-minute>${score.bpm}</per-minute></metronome></direction-type><sound tempo="${score.bpm}"/></direction>`,
+        );
+      }
     }
     const chord = chords.find((c) => Math.abs(c.startBeat - m * bpm) < 1e-6);
     if (chord) parts.push(harmonyXml(chord.symbol));
@@ -167,7 +176,12 @@ export function scoreToMusicXML(score: Score, layout: ScoreLayout = "lead", opts
     body.push(`<measure number="${m + 1}">${parts.join("")}</measure>`);
   }
 
-  const composer = score.composer?.trim() ?? "";
+  const creator = (type: string, v?: string) => {
+    const t = v?.trim() ?? "";
+    return !external && t ? `<creator type="${type}">${esc(t)}</creator>` : "";
+  };
+  const creators = creator("lyricist", score.lyricist) + creator("composer", score.composer) + creator("arranger", score.arranger);
+  const workTitle = external ? "" : `<work><work-title>${esc(score.title)}</work-title></work>`;
   // 멜로디 한 줄이면 라벨 숨김, 대보표(멜로디+반주)면 왼쪽에 Piano 표기
   const partNames = piano
     ? `<part-name>Piano</part-name><part-abbreviation>Pno.</part-abbreviation>`
@@ -175,8 +189,8 @@ export function scoreToMusicXML(score: Score, layout: ScoreLayout = "lead", opts
 
   return `<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE score-partwise PUBLIC "-//Recordare//DTD MusicXML 4.0 Partwise//EN" "http://www.musicxml.org/dtds/partwise.dtd">
-<score-partwise version="4.0"><work><work-title>${esc(score.title)}</work-title></work>
-<identification>${composer ? `<creator type="composer">${esc(composer)}</creator>` : ""}<encoding><software>HumScore</software></encoding></identification>
+<score-partwise version="4.0">${workTitle}
+<identification>${creators}<encoding><software>HumScore</software></encoding></identification>
 <part-list><score-part id="P1">${partNames}</score-part></part-list>
 <part id="P1">${body.join("\n")}</part></score-partwise>`;
 }

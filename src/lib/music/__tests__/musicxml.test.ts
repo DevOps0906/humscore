@@ -242,3 +242,40 @@ describe("악보 요소 (줄바꿈·끝마디선·헤더·빠르기말)", () => 
     expect(piano).not.toContain("print-object");
   });
 });
+
+describe("scoreToMusicXML 6/8 · 작사/편곡 · externalHeader", () => {
+  const sc68 = (notes: NoteEvent[], over = {}) => makeScore(notes, { beatsPerMeasure: 3, meter: "6/8", ...over });
+  it("6/8 은 <time> 6/8, 3/4 는 3/4", () => {
+    expect(scoreToMusicXML(sc68([n(60, 0, 3)]))).toContain("<time><beats>6</beats><beat-type>8</beat-type></time>");
+    expect(scoreToMusicXML(makeScore([n(60, 0, 3)], { beatsPerMeasure: 3 }))).toContain("<time><beats>3</beats><beat-type>4</beat-type></time>");
+  });
+  it("6/8 마디 길이 12 divisions, 마디 경계 넘는 음은 붙임줄로 분할", () => {
+    const xml = scoreToMusicXML(sc68([n(60, 0, 1), n(62, 1, 3), n(64, 4, 2)]));
+    expect(count(xml, /<measure /g)).toBe(2);
+    const m1 = /<measure number="1">([\s\S]*?)<\/measure>/.exec(xml)![1];
+    const durs = [...m1.matchAll(/<duration>(\d+)<\/duration>/g)].map((x) => Number(x[1]));
+    expect(durs.reduce((a, b) => a + b, 0)).toBe(12);
+    expect(count(xml, /<tie type="start"\/>/g)).toBe(count(xml, /<tie type="stop"\/>/g));
+    expect(count(xml, /<tie type="start"\/>/g)).toBeGreaterThan(0);
+  });
+  it("작사·작곡·편곡 creator 출력 (esc, 빈 값 제외)", () => {
+    const xml = scoreToMusicXML(makeScore([n(60, 0, 4)], { lyricist: "A&B", composer: "C", arranger: "  " }));
+    expect(xml).toContain(`<creator type="lyricist">A&amp;B</creator>`);
+    expect(xml).toContain(`<creator type="composer">C</creator>`);
+    expect(xml).not.toContain(`type="arranger"`);
+    expect(scoreToMusicXML(makeScore([n(60, 0, 4)], { arranger: "D" }))).toContain(`<creator type="arranger">D</creator>`);
+  });
+  it("externalHeader: 빠르기말·메트로놈·제목·creator 없음", () => {
+    const sc = makeScore([n(60, 0, 4)], { lyricist: "L", composer: "C", arranger: "R", title: "제목" });
+    const xml = scoreToMusicXML(sc, "lead", { externalHeader: true });
+    expect(xml).not.toContain("<direction");
+    expect(xml).not.toContain("<metronome");
+    expect(xml).not.toContain("<work-title");
+    expect(xml).not.toContain("<creator");
+    expect(xml).toContain("<software>HumScore</software>");
+    const normal = scoreToMusicXML(sc);
+    expect(normal).toContain("<metronome>");
+    expect(normal).toContain("<work-title>제목</work-title>");
+    expect(scoreToMusicXML(sc, "lead", { externalHeader: false })).toBe(normal);
+  });
+});
