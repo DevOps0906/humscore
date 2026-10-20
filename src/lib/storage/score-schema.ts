@@ -42,6 +42,10 @@ export const scoreSchema = z.object({
   transpose: z.number().int().min(-24).max(24),
   createdAt: isoDate,
   updatedAt: isoDate,
+}).refine((s) => s.meter !== "6/8" || s.beatsPerMeasure === 3, {
+  // 6/8 은 내부적으로 4분음표 3박 — 다른 값이면 박자표와 마디 길이가 어긋난다
+  message: "meter 6/8 은 beatsPerMeasure 3 과 함께여야 합니다",
+  path: ["meter"],
 });
 
 // 컴파일 타임에 Score 와 어긋나면 에러 (스키마 ↔ 타입 동기화 검증)

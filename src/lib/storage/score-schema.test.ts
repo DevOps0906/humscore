@@ -24,6 +24,20 @@ describe("score-schema", () => {
     expect(scoreSchema.safeParse(max).success).toBe(true);
     expect(scoreBytes(max)).toBeLessThan(MAX_SCORE_BYTES);
   });
+  it("새 필드(작사·편곡·머리글·박자표)는 저장 후에도 그대로 남는다", () => {
+    const s: Score = { ...base(), lyricist: "작사가", composer: "작곡가", arranger: "편곡가", headerFont: "nanum-myeongjo", headerFontSize: 18, meter: "3/4", beatsPerMeasure: 3 };
+    expect(parseScore(s)).toEqual(s);
+  });
+  it("meter 6/8 은 beatsPerMeasure 3 일 때만 허용 (박자표와 마디 길이 불일치 방지)", () => {
+    expect(parseScore({ ...base(), meter: "6/8", beatsPerMeasure: 3 })).not.toBeNull();
+    expect(parseScore({ ...base(), meter: "6/8", beatsPerMeasure: 4 })).toBeNull();
+    expect(parseScore({ ...base(), meter: "4/4", beatsPerMeasure: 4 })).not.toBeNull();
+  });
+  it("머리글 글자 크기·박자표 값 범위 밖은 거부", () => {
+    expect(parseScore({ ...base(), headerFontSize: 9 })).toBeNull();
+    expect(parseScore({ ...base(), headerFontSize: 49 })).toBeNull();
+    expect(parseScore({ ...base(), meter: "5/4" })).toBeNull();
+  });
   it("상한 초과는 거부", () => {
     const over = { ...base(), notes: Array.from({ length: 6_001 }, () => ({ midi: 60, startBeat: 0, durationBeats: 1 })) };
     expect(scoreSchema.safeParse(over).success).toBe(false);
