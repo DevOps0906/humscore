@@ -30,7 +30,7 @@ function parseSymbol(sym: string): { root: number; quality: string; bass: number
 }
 
 const pill = (on: boolean) =>
-  `h-11 px-2 text-sm sm:h-9 ${on ? "border-accent bg-accent/15 text-accent hover:bg-accent/20 hover:text-accent" : "bg-paper"}`;
+  `h-11 px-2 text-sm lg:h-9 ${on ? "border-accent bg-accent/15 text-accent hover:bg-accent/20 hover:text-accent" : "bg-paper"}`;
 
 /** 마디별 코드 추가·수정. 화면은 전조된 기호, 저장은 원키 기호 */
 export function ChordEditor({ score, onChange }: { score: Score; onChange: (chords: ChordEvent[]) => void }) {
@@ -95,7 +95,7 @@ export function ChordEditor({ score, onChange }: { score: Score; onChange: (chor
               variant="outline"
               onClick={() => open(m)}
               aria-pressed={measure === m}
-              className={`h-11 min-w-14 px-3 text-sm sm:h-9 ${
+              className={`h-11 min-w-14 px-3 text-sm lg:h-9 ${
                 measure === m ? "border-accent bg-accent/20 hover:bg-accent/25" : "bg-surface"
               }`}
             >
@@ -145,10 +145,10 @@ export function ChordEditor({ score, onChange }: { score: Score; onChange: (chor
             </div>
           </div>
           <div className="flex flex-wrap gap-2 text-sm">
-            <Button type="button" onClick={apply} className="h-11 px-5 sm:h-9">
+            <Button type="button" onClick={apply} className="h-11 px-5 lg:h-9">
               적용
             </Button>
-            <Button type="button" variant="outline" onClick={preview} className="h-11 px-5 sm:h-9">
+            <Button type="button" variant="outline" onClick={preview} className="h-11 px-5 lg:h-9">
               듣기
             </Button>
             <Button
@@ -156,11 +156,11 @@ export function ChordEditor({ score, onChange }: { score: Score; onChange: (chor
               variant="destructive"
               onClick={remove}
               disabled={!chordAtMeasure(chords, measure, beatsPerMeasure)}
-              className="h-11 px-5 sm:h-9"
+              className="h-11 px-5 lg:h-9"
             >
               삭제
             </Button>
-            <Button type="button" variant="ghost" onClick={() => setMeasure(null)} className="h-11 px-5 sm:h-9">
+            <Button type="button" variant="ghost" onClick={() => setMeasure(null)} className="h-11 px-5 lg:h-9">
               취소
             </Button>
           </div>

@@ -324,7 +324,7 @@ function RecordPageInner() {
   const noun = source === "voice" ? "부르는" : "연주하는";
 
   return (
-    <div className="mx-auto flex max-w-md flex-col gap-5">
+    <div className="mx-auto flex max-w-md flex-col gap-5 md:max-w-xl lg:max-w-2xl">
       <header>
         <h1 className="text-2xl font-medium">흥얼거리면 악보가 됩니다</h1>
         <p className="mt-1 text-sm text-ink-soft">
@@ -436,7 +436,7 @@ function RecordPageInner() {
               variant="outline"
               onClick={() => setBeats(b)}
               aria-pressed={beats === b}
-              className={`h-11 rounded-full px-5 sm:h-9 ${beats === b ? "border-accent bg-accent/15 text-accent hover:bg-accent/20 hover:text-accent" : ""}`}
+              className={`h-11 rounded-full px-5 lg:h-9 ${beats === b ? "border-accent bg-accent/15 text-accent hover:bg-accent/20 hover:text-accent" : ""}`}
             >
               {b}/4
             </Button>

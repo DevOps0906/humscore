@@ -204,7 +204,7 @@ export function ScoreClient({ id }: { id: string }) {
             variant="outline"
             onClick={() => setLayout(l)}
             aria-pressed={layout === l}
-            className={`h-11 rounded-full px-4 sm:h-9 ${layout === l ? "border-accent bg-accent/15 text-accent hover:bg-accent/20 hover:text-accent" : ""}`}
+            className={`h-11 rounded-full px-4 lg:h-9 ${layout === l ? "border-accent bg-accent/15 text-accent hover:bg-accent/20 hover:text-accent" : ""}`}
           >
             {l === "lead" ? "코드 악보" : "피아노"}
           </Button>
@@ -258,7 +258,7 @@ export function ScoreClient({ id }: { id: string }) {
           variant="outline"
           onClick={() => setEditNotes((v) => !v)}
           aria-pressed={editNotes}
-          className={`h-11 rounded-full px-4 text-sm sm:h-9 ${editNotes ? "border-accent bg-accent/15 text-accent hover:bg-accent/20 hover:text-accent" : ""}`}
+          className={`h-11 rounded-full px-4 text-sm lg:h-9 ${editNotes ? "border-accent bg-accent/15 text-accent hover:bg-accent/20 hover:text-accent" : ""}`}
         >
           음표 편집
         </Button>
@@ -273,14 +273,14 @@ export function ScoreClient({ id }: { id: string }) {
       <Card className="no-print gap-3 p-4">
         <p className="text-sm font-semibold">내보내기 · {keyName(shownKey)}키 기준</p>
         <div className="flex flex-wrap gap-2 text-sm">
-          <Button type="button" variant="outline" onClick={() => window.print()} className="h-11 rounded-full px-4 sm:h-9">
+          <Button type="button" variant="outline" onClick={() => window.print()} className="h-11 rounded-full px-4 lg:h-9">
             <Printer aria-hidden /> PDF / 인쇄
           </Button>
           <Button
             type="button"
             variant="outline"
             onClick={() => exportFile(`${base}.musicxml`, xml, "application/vnd.recordare.musicxml+xml")}
-            className="h-11 rounded-full px-4 sm:h-9"
+            className="h-11 rounded-full px-4 lg:h-9"
           >
             <FileMusic aria-hidden /> MusicXML
           </Button>
@@ -288,7 +288,7 @@ export function ScoreClient({ id }: { id: string }) {
             <select
               value={instrument}
               onChange={(e) => setInstrument(e.target.value as InstrumentId)}
-              className="h-11 rounded-md bg-transparent text-sm outline-none focus-visible:ring-3 focus-visible:ring-ring/60 sm:h-9 [&>option]:bg-surface"
+              className="h-11 rounded-md bg-transparent text-sm outline-none focus-visible:ring-3 focus-visible:ring-ring/60 lg:h-9 [&>option]:bg-surface"
               aria-label="MIDI 멜로디 악기"
             >
               {(Object.keys(GM_INSTRUMENTS) as InstrumentId[]).map((id) => (
@@ -299,7 +299,7 @@ export function ScoreClient({ id }: { id: string }) {
               type="button"
               variant="outline"
               onClick={() => exportFile(`${base}_${instrument}.mid`, scoreToMidi(score, { melodyInstrument: instrument }), "audio/midi")}
-              className="h-11 rounded-full border-accent px-4 text-accent hover:bg-accent/10 hover:text-accent sm:h-9"
+              className="h-11 rounded-full border-accent px-4 text-accent hover:bg-accent/10 hover:text-accent lg:h-9"
             >
               <Download aria-hidden /> MIDI
             </Button>
@@ -309,7 +309,7 @@ export function ScoreClient({ id }: { id: string }) {
           type="button"
           variant="destructive"
           onClick={() => setConfirmDelete(true)}
-          className="h-11 justify-self-start px-4 text-xs sm:h-9"
+          className="h-11 justify-self-start px-4 text-xs lg:h-9"
         >
           <Trash2 aria-hidden /> 악보 삭제
         </Button>

@@ -141,24 +141,56 @@
   --radius-4xl: 20px;
 }
 
-/* 데스크톱(1024px 이상) 글자 크기 약 10% 축소 — SmartAI-RAG-Tour 와 동일한 스케일.
-   모바일·태블릿은 Tailwind 기본 크기 유지. text-* 유틸리티가 참조하는 토큰만 바꾸므로
-   간격(spacing)과 레이아웃은 그대로다. 가장 작은 글자는 11px. */
+/*
+ * 반응형 폰트 스케일 — 모바일 / 태블릿 / 데스크톱 3구간 (Tailwind 기본 breakpoint 사용)
+ *   모바일  : ~767px   (iPhone·Android, Capacitor 앱)
+ *   태블릿  : 768px~1023px (md)  — 터치 기기라 글자·터치 영역은 크게 유지
+ *   데스크톱: 1024px~  (lg)  — 사이드바 내비 + 촘촘한 글자 (SmartAI-RAG-Tour 스케일과 동일)
+ * text-* 유틸리티가 참조하는 토큰만 바꾸므로 간격·레이아웃은 그대로다.
+ */
+:root {
+  /* 모바일 (기본) */
+  --text-xs: 0.75rem;     /* 12px */
+  --text-sm: 0.875rem;    /* 14px */
+  --text-base: 1rem;      /* 16px */
+  --text-lg: 1.125rem;    /* 18px */
+  --text-xl: 1.25rem;     /* 20px */
+  --text-2xl: 1.5rem;     /* 24px */
+  --text-3xl: 1.75rem;    /* 28px  (기본 30px → 좁은 화면 줄바꿈 방지) */
+  --text-4xl: 2rem;       /* 32px  (기본 36px) */
+  --text-5xl: 2.5rem;     /* 40px  (기본 48px) */
+}
+
+@media (min-width: 768px) {
+  :root {
+    --text-xs: 0.75rem;     /* 12px (터치 기기: 더 줄이지 않음) */
+    --text-sm: 0.84375rem;  /* 13.5px */
+    --text-base: 0.95rem;   /* 15.2px */
+    --text-lg: 1.0625rem;   /* 17px */
+    --text-xl: 1.1875rem;   /* 19px */
+    --text-2xl: 1.425rem;   /* 22.8px */
+    --text-3xl: 1.78125rem; /* 28.5px */
+    --text-4xl: 2.1375rem;  /* 34.2px */
+    --text-5xl: 2.85rem;    /* 45.6px */
+  }
+}
+
 @media (min-width: 1024px) {
   :root {
-    --text-xs: 0.6875rem;   /* 12px -> 11px */
-    --text-sm: 0.8125rem;   /* 14px -> 13px */
-    --text-base: 0.9rem;    /* 16px -> 14.4px */
-    --text-lg: 1.0125rem;   /* 18px -> 16.2px */
-    --text-xl: 1.125rem;    /* 20px -> 18px */
-    --text-2xl: 1.35rem;    /* 24px -> 21.6px */
-    --text-3xl: 1.6875rem;  /* 30px -> 27px */
-    --text-4xl: 2.025rem;   /* 36px -> 32.4px */
-    --text-5xl: 2.7rem;     /* 48px -> 43.2px */
+    --text-xs: 0.6875rem;   /* 11px */
+    --text-sm: 0.8125rem;   /* 13px */
+    --text-base: 0.9rem;    /* 14.4px */
+    --text-lg: 1.0125rem;   /* 16.2px */
+    --text-xl: 1.125rem;    /* 18px */
+    --text-2xl: 1.35rem;    /* 21.6px */
+    --text-3xl: 1.6875rem;  /* 27px */
+    --text-4xl: 2.025rem;   /* 32.4px */
+    --text-5xl: 2.7rem;     /* 43.2px */
   }
-  body {
-    font-size: var(--text-base);
-  }
+}
+
+body {
+  font-size: var(--text-base);
 }
 
 html,

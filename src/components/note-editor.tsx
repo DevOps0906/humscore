@@ -32,8 +32,8 @@ export const DURATION_LABELS: Record<number, string> = {
 };
 
 const chipBtn = (on: boolean) =>
-  `h-11 rounded-full px-3.5 text-sm sm:h-9 ${on ? "border-accent bg-accent/15 text-accent hover:bg-accent/20 hover:text-accent" : "bg-surface"}`;
-const actBtn = "h-11 rounded-full bg-surface px-3.5 text-sm sm:h-9";
+  `h-11 rounded-full px-3.5 text-sm lg:h-9 ${on ? "border-accent bg-accent/15 text-accent hover:bg-accent/20 hover:text-accent" : "bg-surface"}`;
+const actBtn = "h-11 rounded-full bg-surface px-3.5 text-sm lg:h-9";
 
 /** 음가 선택 (16분~온음표 + 점) */
 export function DurationPicker({ value, onChange }: { value: number; onChange: (v: number) => void }) {
@@ -198,13 +198,13 @@ export function NoteEditor({
                     setSelected(i === sel ? null : i);
                     if (n.midi !== null) playNote(n.midi + transpose, { duration: 0.4 });
                   }}
-                  className={`h-11 px-2.5 text-sm tabular-nums sm:h-9 ${
+                  className={`h-11 px-2.5 text-sm tabular-nums lg:h-9 ${
                     i === sel ? "border-accent bg-accent/20 font-semibold hover:bg-accent/25" : "bg-paper"
                   }`}
                   aria-pressed={i === sel}
                 >
                   {label(n)}
-                  <span className="ml-1 text-[11px] text-ink-soft">{DURATION_LABELS[n.durationBeats] ?? n.durationBeats}</span>
+                  <span className="ml-1 text-xs text-ink-soft">{DURATION_LABELS[n.durationBeats] ?? n.durationBeats}</span>
                 </Button>
               ))}
             </div>
@@ -240,7 +240,7 @@ export function NoteEditor({
           <Button type="button" variant="outline" className={actBtn} onClick={addRest}>
             쉼표 추가
           </Button>
-          <Button type="button" variant="destructive" className="h-11 rounded-full px-3.5 text-sm sm:h-9" disabled={sel === null} onClick={remove}>
+          <Button type="button" variant="destructive" className="h-11 rounded-full px-3.5 text-sm lg:h-9" disabled={sel === null} onClick={remove}>
             <Trash2 aria-hidden /> 삭제
           </Button>
         </div>

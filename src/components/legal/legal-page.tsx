@@ -18,7 +18,7 @@ export function LegalPage({
       <header className="border-b border-line pb-6">
         <h1 className="text-3xl font-medium tracking-tight md:text-4xl">{title}</h1>
         <p className="mt-2 text-sm text-ink-soft">시행일: {effectiveDate}</p>
-        {intro && <div className="mt-4 text-[15px] leading-7 text-ink-soft">{intro}</div>}
+        {intro && <div className="mt-4 text-base leading-7 text-ink-soft">{intro}</div>}
       </header>
 
       <nav aria-label="목차" className="my-8 rounded-2xl border border-line p-5">
@@ -40,7 +40,7 @@ export function LegalPage({
             <h2 id={s.id} className="scroll-mt-20 break-keep text-xl font-semibold tracking-tight">
               {s.title}
             </h2>
-            <div className="mt-3 flex flex-col gap-3 break-words text-[15px] leading-7 text-ink-soft">{s.body}</div>
+            <div className="mt-3 flex flex-col gap-3 break-words text-base leading-7 text-ink-soft">{s.body}</div>
           </section>
         ))}
       </div>

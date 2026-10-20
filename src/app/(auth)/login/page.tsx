@@ -62,7 +62,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="mx-auto flex w-full max-w-sm flex-col gap-5 pt-6">
+    <div className="mx-auto flex w-full max-w-sm flex-col gap-5 pt-6 md:max-w-md md:pt-14 lg:pt-20">
       <header>
         <h1 className="text-3xl font-medium tracking-tight">로그인</h1>
         <p className="mt-1 text-sm text-ink-soft">로그인하면 악보가 모든 기기에 동기화돼요. 로그인 없이도 쓸 수 있어요.</p>

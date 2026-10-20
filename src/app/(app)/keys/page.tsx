@@ -254,7 +254,7 @@ function KeysPageInner() {
     router.push(`/scores/${saved.id}`);
   }
 
-  const btn = "h-11 rounded-full px-4 text-sm sm:h-9";
+  const btn = "h-11 rounded-full px-4 text-sm lg:h-9";
 
   return (
     <div className="flex flex-col gap-5">
@@ -270,7 +270,7 @@ function KeysPageInner() {
           variant="outline"
           onClick={() => setEntry((v) => !v)}
           aria-pressed={entry}
-          className={`h-11 shrink-0 rounded-full px-4 text-sm sm:h-9 ${entry ? "border-accent bg-accent/15 text-accent hover:bg-accent/20 hover:text-accent" : ""}`}
+          className={`h-11 shrink-0 rounded-full px-4 text-sm lg:h-9 ${entry ? "border-accent bg-accent/15 text-accent hover:bg-accent/20 hover:text-accent" : ""}`}
         >
           악보 입력
         </Button>
@@ -310,7 +310,7 @@ function KeysPageInner() {
                 max={240}
                 value={bpm}
                 onChange={(e) => setBpm(Math.min(240, Math.max(30, Number(e.target.value) || 90)))}
-                className="h-11 w-20 sm:h-9"
+                className="h-11 w-20 lg:h-9"
               />
             </label>
             {[3, 4].map((b) => (
@@ -320,7 +320,7 @@ function KeysPageInner() {
                 variant="outline"
                 onClick={() => setBeats(b)}
                 aria-pressed={beats === b}
-                className={`h-11 rounded-full px-4 sm:h-9 ${beats === b ? "border-accent bg-accent/15 text-accent hover:bg-accent/20 hover:text-accent" : ""}`}
+                className={`h-11 rounded-full px-4 lg:h-9 ${beats === b ? "border-accent bg-accent/15 text-accent hover:bg-accent/20 hover:text-accent" : ""}`}
               >
                 {b}/4
               </Button>

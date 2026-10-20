@@ -27,7 +27,7 @@ export default function MarketingLayout({ children }: LayoutProps<"/">) {
         </nav>
       </header>
       {children}
-      <footer className="mx-auto flex max-w-[1200px] flex-wrap justify-between gap-4 px-5 pb-14 pt-10 text-[13px] text-ink-soft md:px-[clamp(20px,5vw,72px)]">
+      <footer className="mx-auto flex max-w-[1200px] flex-wrap justify-between gap-4 px-5 pb-14 pt-10 text-sm text-ink-soft md:px-[clamp(20px,5vw,72px)]">
         <span>© 2026 HumScore</span>
         <nav className="flex flex-wrap gap-5" aria-label="푸터">
           <Link href="/terms" className="hover:text-accent">

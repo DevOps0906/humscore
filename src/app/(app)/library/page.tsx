@@ -17,7 +17,7 @@ function LibraryPageInner() {
 
   return (
     <div className="flex flex-col gap-5">
-      <AppLogo className="self-start" />
+      <AppLogo className="self-start lg:hidden" />
       <header className="flex flex-wrap items-end justify-between gap-2">
         <div>
           <h1 className="text-3xl font-medium tracking-tight sm:text-4xl">내 악보</h1>
@@ -36,7 +36,7 @@ function LibraryPageInner() {
       {scores === null ? null : scores.length === 0 ? (
         <p className="rounded-2xl border border-dashed border-line px-6 py-10 text-center text-sm text-ink-soft">아직 악보가 없어요</p>
       ) : (
-        <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {scores.map((s) => (
             <li key={s.id}>
               <Link href={`/scores/${s.id}`} className="group block rounded-2xl outline-none transition active:scale-[0.99] focus-visible:ring-3 focus-visible:ring-ring/60">

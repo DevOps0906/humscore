@@ -49,7 +49,7 @@ export function ScoreEditToolbar({
   const canDot = dotted || STEP_DURATIONS.includes(duration * 1.5);
   return (
     <div role="toolbar" aria-label="음표 편집" data-testid="score-toolbar" className="flex flex-col gap-1.5">
-      <div className="flex items-center justify-between gap-2 text-[11px] text-ink-soft">
+      <div className="flex items-center justify-between gap-2 text-xs text-ink-soft">
         <span>
           <strong className="text-ink">{noteLabel}</strong>
           {interval && <span className="ml-1.5">{interval}</span>}

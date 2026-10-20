@@ -25,7 +25,7 @@ export function MidiConnectButton({ status, devices, message, onConnect }: Props
         variant="outline"
         onClick={onConnect}
         disabled={connected || status === "connecting"}
-        className={`h-11 w-fit rounded-full px-4 text-sm sm:h-9 ${connected ? "border-accent bg-accent/15 text-accent" : ""}`}
+        className={`h-11 w-fit rounded-full px-4 text-sm lg:h-9 ${connected ? "border-accent bg-accent/15 text-accent" : ""}`}
       >
         <Cable className="size-4" aria-hidden />
         {connected ? "MIDI 건반 연결됨" : "MIDI 건반 연결"}

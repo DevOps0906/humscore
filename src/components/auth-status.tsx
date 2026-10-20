@@ -19,7 +19,7 @@ export function AuthStatus() {
 
   if (auth.status === "signed-out") {
     return (
-      <Button asChild variant="outline" className="h-11 shrink-0 px-4 text-accent sm:h-9">
+      <Button asChild variant="outline" className="h-11 shrink-0 px-4 text-accent lg:h-9">
         <Link href="/login">로그인</Link>
       </Button>
     );

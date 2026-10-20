@@ -55,14 +55,14 @@ function WelcomePageInner() {
 
       <section
         aria-label="HumScore 기능 수치"
-        className="-mx-4 px-4 py-12 md:-mx-8 md:px-8"
+        className="-mx-4 px-4 py-12 md:-mx-8 md:px-8 lg:-mx-10 lg:px-10"
         style={{ background: "radial-gradient(900px 420px at 85% -40%, rgba(145,132,217,0.28), transparent 64%), #262a60" }}
       >
         <div className="mx-auto grid max-w-5xl grid-cols-2 gap-8 md:grid-cols-4">
           {STATS.map((s) => (
             <div key={s.num}>
               <p className="mb-2 text-[clamp(28px,3.4vw,44px)] font-medium leading-none tracking-tight">{s.num}</p>
-              <p className="text-[13px] text-ink/70">{s.label}</p>
+              <p className="text-sm text-ink/70">{s.label}</p>
             </div>
           ))}
         </div>
@@ -78,7 +78,7 @@ function WelcomePageInner() {
                 <span className="hr-fade flex-1" aria-hidden />
               </div>
               <h3 className="mb-2 text-xl">{s.title}</h3>
-              <p className="text-[15px] leading-relaxed text-ink-soft">{s.body}</p>
+              <p className="text-base leading-relaxed text-ink-soft">{s.body}</p>
             </div>
           ))}
         </div>

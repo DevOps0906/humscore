@@ -51,10 +51,10 @@ export default function LandingPage() {
               <span className="block">흥얼거리면</span>
               <span className="block">악보가 됩니다.</span>
             </h1>
-            <p className="mb-7 max-w-[46ch] text-[17px] leading-relaxed text-ink/70">
+            <p className="mb-7 max-w-[46ch] text-lg leading-relaxed text-ink/70">
               떠오른 멜로디를 마이크에 불러 보세요. 음정을 실시간으로 따라가 음표와 코드를 붙인 악보로 정리합니다.
             </p>
-            <p className="text-[13px] text-ink/70">가입 없이 바로 시작 · 목소리는 저장하지 않아요</p>
+            <p className="text-sm text-ink/70">가입 없이 바로 시작 · 목소리는 저장하지 않아요</p>
           </div>
           <div className={`${styles.heroGlow} flex flex-col gap-3 rounded-2xl bg-surface p-5 shadow-[var(--shadow-md)]`}>
             <p className="text-xs text-ink-soft">지금 바로 시작하기</p>
@@ -72,7 +72,7 @@ export default function LandingPage() {
                 <small className="text-xs text-ink-soft">화면 피아노로 직접 음을 찍어 보세요</small>
               </span>
             </Link>
-            <Button asChild size="lg" className="mt-1 h-10 text-[15px]">
+            <Button asChild size="lg" className="mt-1 h-10 text-base">
               <Link href="/library">
                 <Library aria-hidden />내 악보 보기
               </Link>
@@ -87,7 +87,7 @@ export default function LandingPage() {
           {STATS.map((s) => (
             <div key={s.label}>
               <p className="mb-2.5 text-[clamp(34px,3.4vw,48px)] font-medium leading-none tracking-tight">{s.num}</p>
-              <p className="text-[13px] text-ink/70">{s.label}</p>
+              <p className="text-sm text-ink/70">{s.label}</p>
             </div>
           ))}
         </div>
@@ -121,8 +121,8 @@ export default function LandingPage() {
             {STEPS.map((s) => (
               <div key={s.num}>
                 <div className={`${styles.stepLine} mb-3.5 flex items-center gap-3 text-sm tabular-nums text-accent`}>{s.num}</div>
-                <h3 className="mb-2 text-[21px] font-semibold">{s.title}</h3>
-                <p className="text-[15px] leading-relaxed text-ink/70">{s.body}</p>
+                <h3 className="mb-2 text-xl font-semibold">{s.title}</h3>
+                <p className="text-base leading-relaxed text-ink/70">{s.body}</p>
               </div>
             ))}
           </div>
@@ -136,7 +136,7 @@ export default function LandingPage() {
               <span className={kicker}>에디터</span>
               <h2 className={h2}>받아 적은 악보를 바로 다듬으세요</h2>
               <p className="text-base leading-[1.7] text-ink/70">리드시트와 피아노 대보표를 오가며 음표와 코드를 고치고, 피아노 소리로 바로 확인합니다.</p>
-              <ul className="mt-6 flex flex-col gap-3 text-[15px]">
+              <ul className="mt-6 flex flex-col gap-3 text-base">
                 {CHECKS.map((c) => (
                   <li key={c} className="flex items-start gap-2.5">
                     <CircleCheck className="mt-0.5 size-[18px] shrink-0 text-accent" aria-hidden />
@@ -158,7 +158,7 @@ export default function LandingPage() {
               <div key={f.name} className="flex min-w-[200px] flex-1 items-center gap-3 rounded-lg bg-surface px-[18px] py-3.5">
                 <Icon name={f.icon} className="size-[22px] text-accent" />
                 <div>
-                  <b className="block text-[15px] font-medium">{f.name}</b>
+                  <b className="block text-base font-medium">{f.name}</b>
                   <small className="text-xs text-ink-soft">{f.desc}</small>
                 </div>
               </div>
@@ -188,11 +188,11 @@ export default function LandingPage() {
           <div className="max-w-[820px]">
             {FAQS.map((f, i) => (
               <details key={f.q} open={i === 0} className={`${styles.faqItem} py-5`}>
-                <summary className="flex cursor-pointer items-center justify-between gap-4 text-[17px] font-medium">
+                <summary className="flex cursor-pointer items-center justify-between gap-4 text-lg font-medium">
                   {f.q}
                   <Plus className={`${styles.plus} size-5 shrink-0 text-accent transition-transform`} aria-hidden />
                 </summary>
-                <p className="mt-3 max-w-[64ch] text-[15px] leading-[1.7] text-ink/70">{f.a}</p>
+                <p className="mt-3 max-w-[64ch] text-base leading-[1.7] text-ink/70">{f.a}</p>
               </details>
             ))}
           </div>
@@ -204,13 +204,13 @@ export default function LandingPage() {
           <h2 className="mb-3.5 text-[clamp(30px,3.6vw,44px)] font-semibold leading-tight tracking-tight">오늘 떠오른 멜로디, 지금 악보로.</h2>
           <p className="text-base text-ink/70">가입 없이 바로 시작하세요.</p>
           <div className="mt-6 flex flex-wrap gap-2.5">
-            <Button asChild className="h-[42px] px-[18px] text-[15px]">
+            <Button asChild className="h-[42px] px-[18px] text-base">
               <Link href="/library">
                 <ArrowRight aria-hidden />
                 바로 시작하기
               </Link>
             </Button>
-            <Button asChild variant="secondary" className="h-[42px] px-[18px] text-[15px]">
+            <Button asChild variant="secondary" className="h-[42px] px-[18px] text-base">
               <Link href="/record">흥얼거려 보기</Link>
             </Button>
           </div>
