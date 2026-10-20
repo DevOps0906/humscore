@@ -22,3 +22,13 @@ test("녹음: 가짜 마이크로 시작/정지 가능", async ({ page }) => {
     expect(onScore || idle).toBe(true);
   }).toPass({ timeout: 15_000 });
 });
+
+test("녹음: 박자 3/4·4/4·6/8 선택과 음가 안내", async ({ page }) => {
+  await page.goto("/record");
+  for (const label of ["3/4", "4/4", "6/8"]) {
+    await expect(page.getByRole("button", { name: label, exact: true })).toBeVisible();
+  }
+  await page.getByRole("button", { name: "6/8", exact: true }).click();
+  await expect(page.getByRole("button", { name: "6/8", exact: true })).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByText("녹음이 끝나면 소리의 길이(음가)대로 악보에 적혀요")).toBeVisible();
+});

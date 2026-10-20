@@ -12,6 +12,8 @@ import { loadManualLatencyMs, saveManualLatencyMs } from "@/lib/audio/latency";
 import { MIN_RMS, startPitchTracking, type TrackerSession } from "@/lib/audio/pitch-tracker";
 import { getAudioContext } from "@/lib/audio/context";
 import { centsOff, freqToNearestMidi, freqToMidiFloat, midiToName } from "@/lib/music/frequency";
+import { METERS, beatsPerMeasureOf } from "@/lib/music/meter";
+import { liveAriaSummary, liveSummaryFromFrames, liveSummaryFromRaw, type LiveSummary } from "@/lib/audio/live-notes";
 import { buildScoreFromFrames, buildScoreFromRawNotes } from "@/lib/music/pipeline";
 import { midiEventsToRawNotes, startMetronomeSession, type MetronomeSession } from "@/lib/audio/midi-recorder";
 import type { MidiEvent } from "@/lib/audio/midi-input";
@@ -20,15 +22,32 @@ import { usePianoSound } from "@/hooks/use-piano-sound";
 import { MidiConnectButton } from "@/components/midi-connect-button";
 import { RecordSourcePicker, loadRecordSource, saveRecordSource, type RecordSource } from "@/components/record-source-picker";
 import { saveScore } from "@/lib/storage/scores";
-import type { PitchFrame, Score } from "@/lib/music/types";
+import type { Meter, PitchFrame, Score } from "@/lib/music/types";
 import { TitleDialog } from "@/components/title-dialog";
 
 type Status = "idle" | "countin" | "recording" | "processing";
 
+const METER_KEY = "humscore.record.meter";
+/** 예전 저장값(숫자 "2"|"3"|"4")도 허용 */
+function loadMeter(): Meter {
+  try {
+    const v = localStorage.getItem(METER_KEY);
+    if (v === "3/4" || v === "4/4" || v === "6/8") return v;
+    if (v === "3") return "3/4";
+  } catch {
+    /* 저장소 사용 불가 */
+  }
+  return "4/4";
+}
+
+const LIVE_INTERVAL_MS = 280;
+const EMPTY_LIVE: LiveSummary = { measures: [], active: null, totalMeasures: 0, noteCount: 0 };
+
 function RecordPageInner() {
   const router = useRouter();
   const [bpm, setBpm] = useState(90);
-  const [beats, setBeats] = useState(4);
+  const [meterId, setMeterId] = useState<Meter>("4/4");
+  const beats = beatsPerMeasureOf(meterId);
   const [metronome, setMetronome] = useState(true);
   const [status, setStatus] = useState<Status>("idle");
   const [beat, setBeat] = useState<number | null>(null);
@@ -41,6 +60,12 @@ function RecordPageInner() {
   /** 진행 중인 start() 식별자. 마이크 권한 대기 중 정지를 누르면 null 이 되어 늦게 열린 세션을 바로 닫음 */
   const starting = useRef<object | null>(null);
   const trace = useRef<PitchFrame[]>([]);
+  /** 라이브 음가 미리보기용 전체 프레임 (피치 숫자만, 녹음 종료 시 폐기) */
+  const allFrames = useRef<PitchFrame[]>([]);
+  const [liveSummary, setLiveSummary] = useState<LiveSummary>(EMPTY_LIVE);
+  const [liveAria, setLiveAria] = useState("");
+  const ariaAt = useRef(0);
+  const midiStartPerf = useRef(0);
   const level = useRef(0);
   const peakLevel = useRef(0);
   const canvas = useRef<HTMLCanvasElement>(null);
@@ -126,6 +151,40 @@ function RecordPageInner() {
   }, []);
 
   useEffect(() => {
+    const t = setTimeout(() => setMeterId(loadMeter()), 0);
+    return () => clearTimeout(t);
+  }, []);
+
+  // 녹음 중 약 280ms 마다 확정 음가 미리보기 갱신 (프레임은 ref 에만 쌓고 state 는 이 주기로만 바꿈)
+  const liveOn = status === "recording";
+  useEffect(() => {
+    if (!liveOn) return;
+    const id = setInterval(() => {
+      const timing = sourceRef.current === "midi" ? null : undefined;
+      let s: LiveSummary;
+      if (sourceRef.current === "midi") {
+        const nowMs = performance.now();
+        const raw = midiEventsToRawNotes(midiEvents.current, midiStartPerf.current, nowMs);
+        s = liveSummaryFromRaw(raw, (nowMs - midiStartPerf.current) / 1000, {
+          bpm, beatsPerMeasure: beats, timing, activeTolSec: heldRef.current !== null ? 1 : 0,
+        });
+      } else {
+        s = liveSummaryFromFrames(allFrames.current, {
+          bpm, beatsPerMeasure: beats, range: sourceRef.current === "instrument" ? "instrument" : "voice",
+        });
+      }
+      setLiveSummary(s);
+      // 스크린리더에는 5초에 한 번만 요약
+      const now = Date.now();
+      if (now - ariaAt.current > 5000) {
+        ariaAt.current = now;
+        setLiveAria(liveAriaSummary(s));
+      }
+    }, LIVE_INTERVAL_MS);
+    return () => clearInterval(id);
+  }, [liveOn, bpm, beats]);
+
+  useEffect(() => {
     const t = setTimeout(() => {
       const v = loadRecordSource();
       sourceRef.current = v;
@@ -133,6 +192,22 @@ function RecordPageInner() {
     }, 0);
     return () => clearTimeout(t);
   }, []);
+
+  function changeMeter(m: Meter) {
+    setMeterId(m);
+    try {
+      localStorage.setItem(METER_KEY, m);
+    } catch {
+      /* 저장소 사용 불가 */
+    }
+  }
+
+  function resetLive() {
+    allFrames.current = [];
+    setLiveSummary(EMPTY_LIVE);
+    setLiveAria("");
+    ariaAt.current = 0;
+  }
 
   function changeSource(v: RecordSource) {
     sourceRef.current = v;
@@ -146,11 +221,13 @@ function RecordPageInner() {
     if (midiSession.current) return;
     setError(null);
     midiEvents.current = [];
+    resetLive();
     getAudioContext(); // 제스처 동기 호출 (resume 은 내부 fire-and-forget)
     setStatus("countin");
     midiSession.current = startMetronomeSession({
       bpm,
       beatsPerMeasure: beats,
+      meter: meterId,
       countInMeasures: 1,
       metronome,
       manualLatencyMs: latencyMs,
@@ -159,6 +236,7 @@ function RecordPageInner() {
         if (b >= 0) setStatus("recording");
       },
     });
+    midiStartPerf.current = midiSession.current.startPerf;
   }
 
   function finishMidi() {
@@ -168,9 +246,11 @@ function RecordPageInner() {
     ms.stop();
     setBeat(null);
     setStatus("processing");
+    setLiveSummary(EMPTY_LIVE);
     const raw = midiEventsToRawNotes(midiEvents.current, ms.startPerf, performance.now());
     midiEvents.current = [];
-    const { score } = buildScoreFromRawNotes(raw, { bpm, beatsPerMeasure: beats });
+    const built = buildScoreFromRawNotes(raw, { bpm, beatsPerMeasure: beats });
+    const score: Score = { ...built.score, meter: meterId };
     if (!score.notes.some((n) => n.midi !== null)) {
       setStatus("idle");
       setError("연주한 음이 없어요. 건반 연결을 확인하고 메트로놈에 맞춰 다시 연주해 주세요.");
@@ -194,6 +274,7 @@ function RecordPageInner() {
     setError(null);
     setNoInput(false);
     trace.current = [];
+    resetLive();
     level.current = 0;
     peakLevel.current = 0;
     const token = {};
@@ -204,6 +285,7 @@ function RecordPageInner() {
       const s = await startPitchTracking({
         bpm,
         beatsPerMeasure: beats,
+        meter: meterId,
         countInMeasures: 1,
         metronome,
         manualLatencyMs: latencyMs,
@@ -222,6 +304,7 @@ function RecordPageInner() {
           if (rms > peakLevel.current) peakLevel.current = rms;
         },
         onFrame: (f) => {
+          if (f.time >= 0) allFrames.current.push(f);
           trace.current.push(f);
           if (trace.current.length > 600) trace.current.shift();
           setLive(f);
@@ -268,6 +351,8 @@ function RecordPageInner() {
     }
     const frames = session.current.stop();
     session.current = null;
+    allFrames.current = [];
+    setLiveSummary(EMPTY_LIVE);
     setBeat(null);
     setLive(null);
     level.current = 0;
@@ -277,11 +362,12 @@ function RecordPageInner() {
       return;
     }
     setStatus("processing");
-    const { score } = buildScoreFromFrames(frames, {
+    const built = buildScoreFromFrames(frames, {
       bpm,
       beatsPerMeasure: beats,
       range: sourceRef.current === "instrument" ? "instrument" : "voice",
     });
+    const score: Score = { ...built.score, meter: meterId };
     if (!score.notes.some((n) => n.midi !== null)) {
       setStatus("idle");
       setError(
@@ -298,10 +384,10 @@ function RecordPageInner() {
     setPending({ score, interrupted });
   }
 
-  async function confirmSave({ title, composer }: { title: string; composer?: string }) {
+  async function confirmSave(meta: { title: string; composer?: string; lyricist?: string; arranger?: string }) {
     if (!pending) return;
     const { score, interrupted } = pending;
-    await saveScore({ ...score, title });
+    await saveScore({ ...score, ...meta });
     if (interrupted) toast.info("마이크 연결이 끊겨 여기까지 저장했어요.");
     router.push(`/scores/${score.id}`);
   }
@@ -321,6 +407,7 @@ function RecordPageInner() {
   const recording = status === "countin" || status === "recording";
   const isMidi = source === "midi";
   const midiBlocked = isMidi && midi.status !== "connected";
+  const dots = meterId === "6/8" ? 2 : beats;
   const noun = source === "voice" ? "부르는" : "연주하는";
 
   return (
@@ -395,9 +482,11 @@ function RecordPageInner() {
       )}
 
       {/* 박자 표시 */}
-      <div className="flex items-center justify-center gap-3" aria-live="polite">
-        {Array.from({ length: beats }, (_, i) => {
-          const on = beat !== null && ((beat % beats) + beats) % beats === i && recording;
+      <div className="flex items-center justify-center gap-3">
+        {Array.from({ length: dots }, (_, i) => {
+          const q = beat !== null ? ((beat % beats) + beats) % beats : 0;
+          const cur = meterId === "6/8" ? Math.floor(q / 1.5) : q;
+          const on = beat !== null && cur === i && recording;
           return <span key={i} className={`h-3 w-3 rounded-full ${on ? (i === 0 ? "bg-accent" : "bg-ink") : "bg-line"}`} />;
         })}
         <span className="ml-2 w-28 text-sm text-ink-soft">
@@ -418,6 +507,32 @@ function RecordPageInner() {
           isMidi ? <Piano className="size-10" strokeWidth={2} aria-hidden /> : <Mic className="size-10" strokeWidth={2} fill="currentColor" aria-hidden />
         )}
       </button>
+      <p className="text-center text-xs text-ink-soft">녹음이 끝나면 소리의 길이(음가)대로 악보에 적혀요</p>
+      {recording && (
+        <Card className="gap-3 rounded-2xl p-4 lg:p-5" data-testid="live-notes">
+          <p className="text-xs text-ink-soft">악보에 적히는 중 (미리보기)</p>
+          <p className="min-h-9 text-2xl font-bold lg:min-h-10 lg:text-3xl" data-testid="live-active">
+            {liveSummary.active ? liveSummary.active.text : <span className="text-ink-soft/40">–</span>}
+          </p>
+          <div className="max-h-48 space-y-2 overflow-y-auto">
+            {liveSummary.measures.length === 0 && <p className="text-sm text-ink-soft">첫 음을 기다리는 중…</p>}
+            {liveSummary.measures.map((m) => (
+              <div key={m.measure} className="flex flex-wrap items-center gap-1.5">
+                <span className="w-12 shrink-0 text-xs text-ink-soft">{m.measure}마디</span>
+                {m.chips.map((c) => (
+                  <span
+                    key={c.key}
+                    className={`rounded-full border px-2.5 py-1 text-sm lg:text-base ${c.midi === null ? "border-line text-ink-soft" : "border-accent/40 bg-accent/10"}`}
+                  >
+                    {c.text}
+                  </span>
+                ))}
+              </div>
+            ))}
+          </div>
+          <p className="sr-only" aria-live="polite">{liveAria}</p>
+        </Card>
+      )}
       {error && <p role="alert" className="text-center text-sm text-tune-bad">{error}</p>}
 
       {/* 설정 */}
@@ -427,18 +542,18 @@ function RecordPageInner() {
           <input type="range" min={50} max={160} step={1} value={bpm} onChange={(e) => setBpm(+e.target.value)} className="flex-1 accent-accent" />
           <span className="w-16 text-right tabular-nums">{bpm} BPM</span>
         </label>
-        <div className="flex items-center gap-3 text-sm">
+        <div className="flex flex-wrap items-center gap-3 text-sm">
           <span className="w-14 text-ink-soft">박자</span>
-          {[2, 3, 4].map((b) => (
+          {METERS.map((m) => (
             <Button
-              key={b}
+              key={m.id}
               type="button"
               variant="outline"
-              onClick={() => setBeats(b)}
-              aria-pressed={beats === b}
-              className={`h-11 rounded-full px-5 lg:h-9 ${beats === b ? "border-accent bg-accent/15 text-accent hover:bg-accent/20 hover:text-accent" : ""}`}
+              onClick={() => changeMeter(m.id)}
+              aria-pressed={meterId === m.id}
+              className={`h-11 min-w-11 rounded-full px-5 lg:h-9 ${meterId === m.id ? "border-accent bg-accent/15 text-accent hover:bg-accent/20 hover:text-accent" : ""}`}
             >
-              {b}/4
+              {m.label}
             </Button>
           ))}
         </div>

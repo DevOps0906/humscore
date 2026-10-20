@@ -1,8 +1,8 @@
 import { getAudioContext } from "./context";
 import { outputLatencySec } from "./latency";
-import { playClick } from "./piano-synth";
+import { startClickScheduler } from "./click-scheduler";
 import type { MidiEvent } from "./midi-input";
-import type { RawNote } from "../music/types";
+import type { Meter, RawNote } from "../music/types";
 
 /** 너무 짧은 음(잡음·실수 터치)은 버림 */
 const MIN_NOTE_SEC = 0.03;
@@ -41,6 +41,8 @@ export function midiEventsToRawNotes(events: MidiEvent[], startTime: number, end
 export interface MetronomeSessionOptions {
   bpm: number;
   beatsPerMeasure: number;
+  /** 박자표. 있으면 클릭 패턴에 반영 */
+  meter?: Meter;
   countInMeasures: number;
   metronome: boolean;
   manualLatencyMs?: number;
@@ -65,14 +67,9 @@ export function startMetronomeSession(opts: MetronomeSessionOptions): MetronomeS
   // 사용자는 "들리는" 클릭에 맞춰 치므로 출력 지연 + 수동 보정만큼 기준을 뒤로 민다
   const startPerf = performance.now() + (recordStart - ctx.currentTime + outLatency + (opts.manualLatencyMs ?? 0) / 1000) * 1000;
 
-  let nextBeat = 0;
-  const scheduler = setInterval(() => {
-    while (t0 + nextBeat * spb < ctx.currentTime + 0.1) {
-      const isCountIn = nextBeat < countInBeats;
-      if (isCountIn || opts.metronome) playClick(ctx, t0 + nextBeat * spb, nextBeat % opts.beatsPerMeasure === 0);
-      nextBeat++;
-    }
-  }, 25);
+  const stopScheduler = startClickScheduler(ctx, {
+    spb, t0, beatsPerMeasure: opts.beatsPerMeasure, meter: opts.meter, countInBeats, metronome: opts.metronome,
+  });
 
   let lastBeat = -Infinity;
   let raf = 0;
@@ -91,7 +88,7 @@ export function startMetronomeSession(opts: MetronomeSessionOptions): MetronomeS
     startPerf,
     stop: () => {
       cancelAnimationFrame(raf);
-      clearInterval(scheduler);
+      stopScheduler();
     },
   };
 }

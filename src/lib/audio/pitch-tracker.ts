@@ -1,8 +1,8 @@
 import { PitchDetector } from "pitchy";
 import { getAudioContext, setAudioSessionType } from "./context";
 import { computeLatencySec, outputLatencySec } from "./latency";
-import { playClick } from "./piano-synth";
-import type { PitchFrame } from "../music/types";
+import { startClickScheduler } from "./click-scheduler";
+import type { Meter, PitchFrame } from "../music/types";
 
 /**
  * 마이크 → 실시간 피치 프레임.
@@ -12,6 +12,8 @@ import type { PitchFrame } from "../music/types";
 export interface TrackerOptions {
   bpm: number;
   beatsPerMeasure: number;
+  /** 박자표. 있으면 클릭 패턴(6/8 은 8분음표 6번)에 반영, 시간축은 4분음표 박 기준 그대로 */
+  meter?: Meter;
   /** 녹음 전 카운트인 마디 수 */
   countInMeasures: number;
   /** 녹음 중 메트로놈 클릭 */
@@ -104,15 +106,10 @@ export async function startPitchTracking(opts: TrackerOptions): Promise<TrackerS
   const t0 = ctx.currentTime + 0.15; // 카운트인 시작
   const recordStart = t0 + countInBeats * spb; // 1마디 1박
 
-  // 메트로놈 스케줄러 (100ms 앞까지 미리 예약)
-  let nextBeat = 0;
-  const scheduler = setInterval(() => {
-    while (t0 + nextBeat * spb < ctx.currentTime + 0.1) {
-      const isCountIn = nextBeat < countInBeats;
-      if (isCountIn || opts.metronome) playClick(ctx, t0 + nextBeat * spb, nextBeat % opts.beatsPerMeasure === 0);
-      nextBeat++;
-    }
-  }, 25);
+  // 메트로놈 스케줄러 (100ms 앞까지 미리 예약, 분수 박 클릭 포함)
+  const stopScheduler = startClickScheduler(ctx, {
+    spb, t0, beatsPerMeasure: opts.beatsPerMeasure, meter: opts.meter, countInBeats, metronome: opts.metronome,
+  });
 
   const frames: PitchFrame[] = [];
   let lastBeat = -Infinity;
@@ -150,7 +147,7 @@ export async function startPitchTracking(opts: TrackerOptions): Promise<TrackerS
       stopped = true;
       setAudioSessionType("playback");
       cancelAnimationFrame(raf);
-      clearInterval(scheduler);
+      stopScheduler();
       source.disconnect();
       stream.getTracks().forEach((t) => t.stop());
       return frames;
