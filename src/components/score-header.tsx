@@ -79,7 +79,7 @@ export function HeaderSettings({
         variant="outline"
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
-        aria-controls="header-settings-panel"
+        aria-controls={open ? "header-settings-panel" : undefined}
         className="h-11 rounded-full px-4 text-sm lg:h-9"
       >
         머리글 설정

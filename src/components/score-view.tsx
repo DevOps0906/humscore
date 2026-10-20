@@ -184,6 +184,24 @@ export function ScoreView({
     };
   }, [hasCursor, updateMarks]);
 
+  // 머리글 높이가 바뀌면(글자 크기·글꼴, 줄바꿈, 웹폰트 로딩) 그 아래 악보가 밀리므로 좌표를 다시 잰다
+  const headerRef = useRef<HTMLDivElement>(null);
+  const hasHeader = !!header;
+  useEffect(() => {
+    const el = headerRef.current;
+    if (!hasCursor || !hasHeader || !el || typeof ResizeObserver === "undefined") return;
+    let raf = 0;
+    const ro = new ResizeObserver(() => {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(updateMarks);
+    });
+    ro.observe(el);
+    return () => {
+      ro.disconnect();
+      cancelAnimationFrame(raf);
+    };
+  }, [hasCursor, hasHeader, updateMarks]);
+
   // 로딩 표시("악보 그리는 중…")가 사라지면 악보가 위로 당겨지므로 그 뒤에 위치를 다시 잰다
   useEffect(() => {
     if (!rendering && hasCursor) updateMarks();
@@ -289,7 +307,7 @@ export function ScoreView({
         ? { tabIndex: 0, role: "application", "aria-label": "악보 편집 — 방향키로 음표 이동", onClick: onSheetClick }
         : {})}
     >
-      {header}
+      {header && <div ref={headerRef}>{header}</div>}
       {rendering && (
         <div className="no-print flex items-center justify-center gap-2 p-4 text-sm text-neutral-600" aria-live="polite">
           <LoadingSpinner size="sm" />

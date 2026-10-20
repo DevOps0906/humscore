@@ -37,6 +37,7 @@ export function PianoKeyboard({ onPress, active = null, highlight, pressed: exte
   const scroller = useRef<HTMLDivElement>(null);
   const touches = useRef<Map<number, TouchState>>(new Map());
   const positioned = useRef(false);
+  const [tabStop, setTabStop] = useState(MIDDLE_C);
 
   /** 건반 midi 를 가로 가운데로 */
   const centerOn = useCallback((midi: number, smooth: boolean) => {
@@ -105,11 +106,13 @@ export function PianoKeyboard({ onPress, active = null, highlight, pressed: exte
     });
   const isDown = (m: number) => inner.has(m) || !!externalPressed?.has(m);
 
-  // 마우스/펜은 즉시 입력, 터치는 눌림 표시만 하고 손을 뗄 때 탭이면 입력
+  // 마우스는 즉시 입력, 터치·펜은 눌림 표시만 하고 손을 뗄 때 탭(이동 없음)이면 입력
+  // (스크롤 제스처는 pointercancel 로 끝나므로 touches 항목이 지워져 입력되지 않는다)
   const handlers = (midi: number) => ({
     onPointerDown: (e: React.PointerEvent) => {
+      if (e.pointerType === "mouse" && e.button !== 0) return; // 우클릭·보조 버튼 무시
       markDown(midi);
-      if (e.pointerType === "touch") {
+      if (e.pointerType !== "mouse") {
         touches.current.set(e.pointerId, {
           midi,
           x: e.clientX,
@@ -131,16 +134,33 @@ export function PianoKeyboard({ onPress, active = null, highlight, pressed: exte
       if (!t.cancelled && moved < TAP_SLOP && !scrolled) onPress(t.midi);
     },
     onPointerLeave: (e: React.PointerEvent) => {
-      if (e.pointerType !== "touch") release(midi);
+      if (e.pointerType === "touch") return; // 터치는 포인터 캡처로 계속 이 건반이 받음
+      if (e.pointerType === "pen") touches.current.delete(e.pointerId); // 펜이 건반을 벗어나면 입력 취소
+      release(midi);
     },
     onPointerCancel: (e: React.PointerEvent) => {
       touches.current.delete(e.pointerId);
       release(midi);
     },
-    // 키보드(Enter/Space) 활성화: detail 0
+    // 키보드(Enter/Space) 활성화: detail 0. 눌림 표시를 잠깐 보여준다
     onClick: (e: React.MouseEvent) => {
-      if (e.detail === 0) onPress(midi);
+      if (e.detail !== 0) return;
+      onPress(midi);
+      markDown(midi);
+      window.setTimeout(() => release(midi), 120);
     },
+    // roving tabindex: 포커스된 건반만 Tab 정지점, 좌우 방향키로 이웃 건반 이동
+    tabIndex: midi === tabStop ? 0 : -1,
+    onFocus: () => setTabStop(midi),
+    onKeyDown: (e: React.KeyboardEvent) => {
+      const d = e.key === "ArrowRight" ? 1 : e.key === "ArrowLeft" ? -1 : 0;
+      if (!d) return;
+      const next = scroller.current?.querySelector<HTMLElement>(`[data-midi="${midi + d}"]`);
+      if (!next) return;
+      e.preventDefault();
+      next.focus();
+    },
+    "aria-pressed": isDown(midi),
   });
 
   const nav =
@@ -162,7 +182,7 @@ export function PianoKeyboard({ onPress, active = null, highlight, pressed: exte
       <div
         ref={scroller}
         className="relative overflow-x-auto pb-2"
-        style={{ touchAction: "pan-x" }}
+        style={{ touchAction: "pan-x pan-y" }}
         data-testid="piano-scroller"
       >
         <div className="relative flex h-40 min-w-[1800px] select-none touch-manipulation">

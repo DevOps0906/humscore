@@ -1,3 +1,5 @@
+import { z } from "zod";
+import { noteEventSchema } from "./score-schema";
 import { fifthsFor } from "../music/theory";
 import { PROGRESSIONS } from "../music/progressions";
 import type { KeyInfo, Meter, NoteEvent } from "../music/types";
@@ -16,6 +18,9 @@ export const AUTO_PROGRESSION = "auto";
 export const DEFAULT_KEYS_KEY: KeyInfo = { tonic: 0, mode: "major", fifths: 0 };
 
 const METER_IDS: readonly Meter[] = ["3/4", "4/4", "6/8"];
+const BPM_MIN = 30;
+const BPM_MAX = 240;
+const notesSchema = z.array(noteEventSchema).max(6_000);
 
 export function parseKeysDraft(raw: string | null): KeysDraft | null {
   if (!raw) return null;
@@ -29,7 +34,15 @@ export function parseKeysDraft(raw: string | null): KeysDraft | null {
   const o = d as Record<string, unknown>;
   if (!Array.isArray(o.notes)) return null;
 
-  const bpm = typeof o.bpm === "number" && Number.isFinite(o.bpm) && o.bpm > 0 ? o.bpm : 90;
+  // 원소 하나라도 검증 실패하면 초안 전체 폐기: 일부만 살리면 박/음이 빠진 채 조용히
+  // 다른 선율이 되어 저장될 수 있다. 손상된 초안은 아예 없는 편이 안전하다.
+  const parsedNotes = notesSchema.safeParse(o.notes);
+  if (!parsedNotes.success) return null;
+
+  const bpm =
+    typeof o.bpm === "number" && Number.isFinite(o.bpm) && o.bpm > 0
+      ? Math.min(BPM_MAX, Math.max(BPM_MIN, o.bpm))
+      : 90;
 
   // 예전 초안은 beatsPerMeasure 만 있음: 3 → 3/4, 그 외 → 4/4
   const meter: Meter = METER_IDS.includes(o.meter as Meter)
@@ -50,7 +63,7 @@ export function parseKeysDraft(raw: string | null): KeysDraft | null {
       ? o.progressionId
       : AUTO_PROGRESSION;
 
-  return { notes: o.notes as NoteEvent[], bpm, meter, key, progressionId };
+  return { notes: parsedNotes.data, bpm, meter, key, progressionId };
 }
 
 export function serializeKeysDraft(d: KeysDraft): string {

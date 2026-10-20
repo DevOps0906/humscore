@@ -21,6 +21,30 @@ describe("keys-draft", () => {
     expect(parseKeysDraft(JSON.stringify({ notes: [], beatsPerMeasure: 5 }))!.meter).toBe("4/4");
   });
 
+  it("notes 원소가 하나라도 손상되면 초안 전체 폐기", () => {
+    const bad = [
+      { midi: 200, startBeat: 0, durationBeats: 1 },
+      { midi: 60, startBeat: -1, durationBeats: 1 },
+      { midi: 60, startBeat: 0 },
+      { midi: "60", startBeat: 0, durationBeats: 1 },
+      null,
+    ];
+    for (const b of bad) {
+      expect(parseKeysDraft(JSON.stringify({ notes: [note, b] }))).toBeNull();
+    }
+    // 쉼표(midi null)는 유효
+    expect(parseKeysDraft(JSON.stringify({ notes: [{ midi: null, startBeat: 1, durationBeats: 1 }] }))).not.toBeNull();
+  });
+
+  it("bpm 은 30~240 으로 clamp, 비정상 값은 90", () => {
+    const bpm = (v: unknown) => parseKeysDraft(JSON.stringify({ notes: [], bpm: v }))!.bpm;
+    expect(bpm(5)).toBe(30);
+    expect(bpm(999)).toBe(240);
+    expect(bpm(120)).toBe(120);
+    expect(bpm(-3)).toBe(90);
+    expect(bpm("x")).toBe(90);
+  });
+
   it("meter 가 있으면 그대로 (6/8 포함)", () => {
     expect(parseKeysDraft(JSON.stringify({ notes: [], meter: "6/8", beatsPerMeasure: 3 }))!.meter).toBe("6/8");
   });
