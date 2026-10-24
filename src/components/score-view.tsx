@@ -91,7 +91,9 @@ export function ScoreView({
   const sheetRef = useRef<HTMLDivElement>(null);
   const markerRef = useRef<HTMLSpanElement>(null);
   const cursorRef = useRef(cursor);
-  cursorRef.current = cursor;
+  useLayoutEffect(() => {
+    cursorRef.current = cursor;
+  });
   const [marks, setMarks] = useState<{ xml: string; list: (MarkRect | undefined)[] } | null>(null);
   const hasCursor = !!cursor;
 
@@ -165,7 +167,7 @@ export function ScoreView({
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [xml, zoom, updateMarks]);
+  }, [xml, zoom, updateMarks, showHeader]);
 
   // 커서 모드: OSMD 가 자체적으로 다시 그릴 때(창 크기 변경 등)도 위치 재계산
   useEffect(() => {

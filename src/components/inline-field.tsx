@@ -29,9 +29,14 @@ export function InlineField({
   const [draft, setDraft] = useState(value);
   const last = useRef(value);
   const reverting = useRef(false);
+  // value 가 바깥에서 바뀌면 렌더 중에 draft 를 맞춘다 (effect 안 setState 대신)
+  const [prevValue, setPrevValue] = useState(value);
+  if (prevValue !== value) {
+    setPrevValue(value);
+    setDraft(value);
+  }
   useEffect(() => {
     last.current = value;
-    setDraft(value);
   }, [value]);
 
   function commit() {

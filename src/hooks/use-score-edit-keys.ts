@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useLayoutEffect, useRef } from "react";
 import { applyEditKey } from "@/components/score-cursor";
 import type { NoteEvent } from "@/lib/music/types";
 
@@ -17,7 +17,9 @@ export function useScoreEditKeys(opts: {
   onEscape?: () => void;
 }) {
   const ref = useRef(opts);
-  ref.current = opts;
+  useLayoutEffect(() => {
+    ref.current = opts;
+  });
 
   useEffect(() => {
     if (!opts.enabled) return;
