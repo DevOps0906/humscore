@@ -30,6 +30,7 @@ export function useScoreEditKeys(opts: {
       if (t) {
         const tag = t.tagName;
         if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || t.isContentEditable) return;
+        if (t.closest?.('[role="menu"]')) return; // 마디 기호 메뉴 안의 키 조작
         if (tag === "BUTTON" && (e.key === "Enter" || e.key === " ")) return;
       }
       // 열려서 실제로 보이는 대화상자가 있으면 무시 (닫힌 뒤 남은 숨은 노드는 제외)

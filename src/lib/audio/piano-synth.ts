@@ -1,4 +1,6 @@
 import { midiToFreq } from "../music/frequency";
+import { DYNAMIC_VELOCITY, velocityAt } from "../music/dynamics";
+import { unrollScore } from "../music/form";
 import { chordToMidi, transposeChordSymbol, transposeKey } from "../music/theory";
 import type { InstrumentId } from "../music/midi";
 import type { Score } from "../music/types";
@@ -91,12 +93,22 @@ export interface Playback {
   durationSec: number;
 }
 
-/** 악보 전체 재생 (멜로디 + 마디별 코드 반주), 전조 반영 */
+/** mf(기본) 일 때 기존 음량(멜로디 0.8, 코드 0.45)이 그대로 나오도록 셈여림을 mf 대비 배율로 적용 */
+const MF = DYNAMIC_VELOCITY.mf;
+const MELODY_BASE = 0.8;
+const CHORD_BASE = 0.45;
+
+/**
+ * 악보 전체 재생 (멜로디 + 마디별 코드 반주), 전조 반영.
+ * 도돌이표·D.C./D.S. 를 펼친 순서로 연주하고, 셈여림은 멜로디·코드 음량에 같은 비율로 반영한다.
+ * durationSec 도 펼친 길이 기준.
+ */
 export function playScore(
   ctx: AudioContext,
-  score: Score,
+  source: Score,
   opts: { withChords?: boolean; instrument?: InstrumentId } = {},
 ): Playback {
+  const score = unrollScore(source);
   const instrument = opts.instrument ?? "piano";
   const spb = 60 / score.bpm;
   const start = ctx.currentTime + 0.1;
@@ -109,6 +121,7 @@ export function playScore(
     if (n.midi === null) continue;
     playInstrumentNote(ctx, instrument, n.midi + tp, start + n.startBeat * spb, {
       duration: n.durationBeats * spb,
+      velocity: Math.min(1, (MELODY_BASE * velocityAt(score.dynamics, n.startBeat)) / MF),
       destination: bus,
     });
   }
@@ -116,7 +129,7 @@ export function playScore(
     score.chords.forEach((c, i) => {
       const end = score.chords[i + 1]?.startBeat ?? c.startBeat + score.beatsPerMeasure;
       for (const m of chordToMidi(transposeChordSymbol(c.symbol, tp, preferFlats), 3)) {
-        playPianoNote(ctx, m, start + c.startBeat * spb, { velocity: 0.45, duration: (end - c.startBeat) * spb, destination: bus });
+        playPianoNote(ctx, m, start + c.startBeat * spb, { velocity: Math.min(1, (CHORD_BASE * velocityAt(score.dynamics, c.startBeat)) / MF), duration: (end - c.startBeat) * spb, destination: bus });
       }
     });
   }

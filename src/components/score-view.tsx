@@ -284,6 +284,15 @@ export function ScoreView({
     setTbPos({ left, top: below ? belowTop : aboveTop, below, h });
   }, [toolbarShown, mLeft, mTop, mW, mH, cursor?.selected]);
 
+  // 도구 모음이 하단 고정 바(재생·전조)에 가리지 않게 위치가 정해지면 화면 안으로 스크롤
+  const tbReady = !!tbPos;
+  useEffect(() => {
+    const tb = toolbarRef.current;
+    if (!toolbarShown || !tbReady || !tb) return;
+    const over = tb.getBoundingClientRect().bottom - (window.innerHeight - 220); // 하단 고정 바(재생·전조) 위까지
+    if (over > 0) window.scrollBy({ top: over });
+  }, [toolbarShown, tbReady, mLeft, mTop]);
+
   // 언마운트 시 OSMD 정리
   useEffect(
     () => () => {
@@ -360,7 +369,7 @@ export function ScoreView({
           ref={toolbarRef}
           onClick={(e) => e.stopPropagation()}
           onPointerDown={(e) => e.stopPropagation()}
-          className="no-print absolute z-10 w-max max-w-[min(24rem,calc(100%-8px))] rounded-xl border border-line bg-surface p-2 text-ink shadow-lg"
+          className="no-print absolute z-10 w-max max-w-[min(24rem,calc(100%-8px))] scroll-mb-44 scroll-mt-16 rounded-xl border border-line bg-surface p-2 text-ink shadow-lg"
           style={{ left: tbPos?.left ?? 0, top: tbPos?.top ?? 0, visibility: tbPos ? "visible" : "hidden", cursor: "default" }}
         >
           {cursor.toolbar}

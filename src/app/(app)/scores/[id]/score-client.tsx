@@ -25,7 +25,7 @@ import { INSTRUMENT_LABELS, INSTRUMENT_ORDER, isInstrumentId } from "@/lib/audio
 import { scoreToMidi } from "@/lib/music/midi";
 import { meterOf, timeSignatureOf } from "@/lib/music/meter";
 import { scoreToMusicXML, type ScoreLayout } from "@/lib/music/musicxml";
-import { updateNote } from "@/lib/music/edit";
+import { measureOf, removeDynamic, setDynamic, toggleMeasureMark, updateNote } from "@/lib/music/edit";
 import { midiToName } from "@/lib/music/frequency";
 import { keyName, transposeKey } from "@/lib/music/theory";
 import { exportFile, safeFileName } from "@/lib/platform/export-file";
@@ -132,6 +132,8 @@ export function ScoreClient({ id }: { id: string }) {
 
   const flats = shownKey.fifths < 0;
   const curNote = selected !== null ? score.notes[selected] : null;
+  const curMeasure = curNote ? measureOf(curNote.startBeat, score.beatsPerMeasure) : 0;
+  const dynamicHere = curNote ? (score.dynamics ?? []).find((d) => Math.abs(d.startBeat - curNote.startBeat) < 1e-6) : undefined;
 
   /** 도구 모음 버튼도 키보드와 같은 편집 함수(applyEditKey)를 사용 */
   function runKey(key: string) {
@@ -253,6 +255,14 @@ export function ScoreClient({ id }: { id: string }) {
                     onDuplicate={() => runKey("Enter")}
                     onDelete={() => runKey("Delete")}
                     onClose={() => setToolbarOpen(false)}
+                    dynamic={dynamicHere?.kind ?? null}
+                    onDynamic={(k) => {
+                      const next = k === null ? removeDynamic(score, curNote.startBeat) : setDynamic(score, curNote.startBeat, k);
+                      update({ dynamics: next.dynamics }); // 비면 undefined 로 덮어써서 키를 지움
+                    }}
+                    measureNumber={curMeasure + 1}
+                    activeMarks={(score.marks ?? []).filter((m) => m.measure === curMeasure).map((m) => m.kind)}
+                    onToggleMark={(k) => update({ marks: toggleMeasureMark(score, curMeasure, k).marks })}
                   />
                 ) : null,
               }
