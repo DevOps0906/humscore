@@ -13,7 +13,11 @@
     "native:permissions": "node scripts/native-permissions.mjs",
     "agents:check": "node scripts/check-ownership.mjs",
     "start": "next start",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "db:start": "npx --yes supabase@2.122.0 start",
+    "db:stop": "npx --yes supabase@2.122.0 stop",
+    "db:reset": "npx --yes supabase@2.122.0 db reset",
+    "db:status": "npx --yes supabase@2.122.0 status"
   },
   "dependencies": {
     "@capacitor/android": "^8.5.3",
