@@ -105,12 +105,14 @@ describe("scoreToMidi 반복·셈여림", () => {
     const notes = new Midi(scoreToMidi(sc, { withChords: false })).tracks[0].notes;
     expect(notes.map((x) => x.midi)).toEqual([60, 62, 64, 60]);
   });
-  it("셈여림 없으면 기본 mf velocity, 있으면 반영", () => {
+  it("셈여림 없으면 기본 velocity 0.85, 있으면 mf 기준 비례(최대 1)", () => {
     const plain = new Midi(scoreToMidi(makeScore(two), { withChords: false })).tracks[0].notes;
-    expect(plain[0].velocity).toBeCloseTo(0.65, 1);
+    expect(plain[0].velocity).toBeCloseTo(0.85, 1);
+    const mf = new Midi(scoreToMidi(makeScore(two, { dynamics: [{ startBeat: 0, kind: "mf" }] }), { withChords: false })).tracks[0].notes;
+    expect(mf[0].velocity).toBeCloseTo(0.85, 1);
     const dyn = new Midi(scoreToMidi(makeScore(two, { dynamics: [{ startBeat: 0, kind: "pp" }, { startBeat: 4, kind: "ff" }] }), { withChords: false })).tracks[0].notes;
-    expect(dyn[0].velocity).toBeCloseTo(0.3, 1);
-    expect(dyn[1].velocity).toBeCloseTo(0.95, 1);
+    expect(dyn[0].velocity).toBeCloseTo((0.3 / 0.65) * 0.85, 1);
+    expect(dyn[1].velocity).toBeCloseTo(1, 1);
   });
   it("원본 Score 는 바뀌지 않음", () => {
     const sc = makeScore(two, { marks: [{ measure: 1, kind: "repeatEnd" }] });

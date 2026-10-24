@@ -3,6 +3,7 @@ import { chordToMidi, tempoTerm, transposeChordSymbol, transposeKey } from "./th
 import { splitForNotation, type NotationPiece } from "./notation";
 import { AccidentalTracker, spellPitch, type AccidentalName, type SpelledPitch } from "./spelling";
 import { timeSignatureOf } from "./meter";
+import { hasUnmatchedRepeatStart } from "./form";
 import type { MeasureMarkKind, Score } from "./types";
 
 /**
@@ -97,31 +98,45 @@ function markDirectionXml(kind: MeasureMarkKind): string {
   return `<direction placement="above"><direction-type><words>${words}</words></direction-type>${sound}</direction>`;
 }
 
-const dynamicDirection = (inner: string) =>
-  `<direction placement="below"><direction-type>${inner}</direction-type><staff>1</staff></direction>`;
+/** offset: 현재 누적 위치 기준 상대값(divisions). 0 이면 생략 */
+const dynamicDirection = (inner: string, offset = 0) =>
+  `<direction placement="below"><direction-type>${inner}</direction-type>${offset ? `<offset>${offset}</offset>` : ""}<staff>1</staff></direction>`;
+
+interface PendingDirection {
+  beat: number;
+  make: (offsetDivs: number) => string;
+}
 
 /** 셈여림을 마디별로: inside=마디 안 박 위치별 방향, ends=마디 끝(헤어핀 종료) 방향 */
 function directionsByMeasure(score: Score, bpm: number, measures: number) {
-  const inside: { beat: number; xml: string }[][] = Array.from({ length: measures }, () => []);
-  const ends: string[][] = Array.from({ length: measures }, () => []);
+  const inside: PendingDirection[][] = Array.from({ length: measures }, () => []);
+  const ends: PendingDirection[][] = Array.from({ length: measures }, () => []);
   const eps = 1e-6;
   const clampM = (m: number) => Math.min(measures - 1, Math.max(0, m));
-  (score.dynamics ?? []).forEach((d, i) => {
+  const events = (score.dynamics ?? []).map((d, i) => ({ d, i })).sort((a, b) => a.d.startBeat - b.d.startBeat || a.i - b.i).map((x) => x.d);
+  const open: { number: number; end: number }[] = []; // 현재 열려 있는 wedge
+  for (const d of events) {
     const m = clampM(Math.floor(d.startBeat / bpm + eps));
-    const number = (i % 6) + 1;
     if (d.kind === "cresc" || d.kind === "dim") {
       const type = d.kind === "cresc" ? "crescendo" : "diminuendo";
-      inside[m].push({ beat: d.startBeat, xml: dynamicDirection(`<wedge type="${type}" number="${number}"/>`) });
       const end = d.startBeat + (d.durationBeats && d.durationBeats > 0 ? d.durationBeats : bpm);
-      const stop = dynamicDirection(`<wedge type="stop" number="${number}"/>`);
+      // 이미 끝난 wedge 의 번호는 재사용, 열려 있는 것과는 겹치지 않는 가장 작은 번호(1~6)
+      for (let j = open.length - 1; j >= 0; j--) if (open[j].end <= d.startBeat + eps) open.splice(j, 1);
+      const used = new Set(open.map((w) => w.number));
+      let number = 1;
+      while (used.has(number) && number < 6) number++;
+      open.push({ number, end });
+      inside[m].push({ beat: d.startBeat, make: (o) => dynamicDirection(`<wedge type="${type}" number="${number}"/>`, o) });
+      const stop: PendingDirection = { beat: end, make: (o) => dynamicDirection(`<wedge type="stop" number="${number}"/>`, o) };
       // 끝이 마디 경계면 앞 마디 끝에, 마디 중간이면 그 박 위치에
       const em = clampM(Math.ceil(end / bpm - eps) - 1);
-      if (em < m || end >= (em + 1) * bpm - eps) ends[Math.max(em, m)].push(stop);
-      else inside[em].push({ beat: end, xml: stop });
+      if (em < m || end >= (em + 1) * bpm - eps) ends[Math.max(em, m)].push({ ...stop, beat: (Math.max(em, m) + 1) * bpm });
+      else inside[em].push(stop);
     } else {
-      inside[m].push({ beat: d.startBeat, xml: dynamicDirection(`<dynamics><${d.kind}/></dynamics>`) });
+      const kind = d.kind;
+      inside[m].push({ beat: d.startBeat, make: (o) => dynamicDirection(`<dynamics><${kind}/></dynamics>`, o) });
     }
-  });
+  }
   return { inside, ends };
 }
 
@@ -181,6 +196,7 @@ export function scoreToMusicXML(score: Score, layout: ScoreLayout = "lead", opts
   const piano = layout === "piano";
   const allPieces = splitForNotation(notes, { beatsPerMeasure: bpm, measures });
   const dirs = directionsByMeasure(score, bpm, measures);
+  const unmatchedStart = hasUnmatchedRepeatStart(score);
   const marksAt = (m: number) => (score.marks ?? []).filter((x) => x.measure === m).map((x) => x.kind);
   const body: string[] = [];
   const bodyLower: string[] = []; // 피아노 레이아웃의 아래 보표(반주) 파트
@@ -213,27 +229,30 @@ export function scoreToMusicXML(score: Score, layout: ScoreLayout = "lead", opts
     if (chord) parts.push(harmonyXml(chord.symbol));
     tracker.reset();
     handTracker.reset();
-    // 이 마디 안의 셈여림은 해당 박 이후 첫 음표 앞에 끼워 넣는다
+    // 이 마디 안의 셈여림은 그 박을 포함하는 음표 앞에 두고, 음표 시작과 다르면 <offset> 으로 정확한 박에 놓는다
     const pending = dirs.inside[m].slice().sort((x, y) => x.beat - y.beat);
-    const flush = (upTo: number) => {
-      while (pending.length && pending[0].beat <= upTo + 1e-6) parts.push(pending.shift()!.xml);
+    const flush = (cursor: number, until: number) => {
+      while (pending.length && pending[0].beat < until - 1e-6) {
+        const d = pending.shift()!;
+        parts.push(d.make(Math.round((d.beat - cursor) * DIVISIONS)));
+      }
     };
     for (const p of allPieces) {
       if (p.measure !== m) continue;
       if (p.measureRest) {
-        flush(m * bpm);
+        flush(m * bpm, (m + 1) * bpm);
         parts.push(`<note><rest measure="yes"/><duration>${measureDivs}</duration><voice>1</voice><staff>1</staff></note>`);
         continue;
       }
-      flush(p.startBeat);
+      flush(p.startBeat, p.startBeat + p.durationBeats);
       const sp = p.source !== undefined ? spelled.get(p.source) ?? null : null;
       // 붙임줄로 이어지는 뒤쪽 조각은 임시표를 반복하지 않음
       const acc = sp && !p.tieStop ? tracker.next(sp) : null;
       parts.push(noteXml(p, sp, acc, 1, 1));
     }
-    flush(Infinity);
+    flush((m + 1) * bpm, Infinity);
     // 마디 끝 위치(헤어핀 종료 등) 기호
-    for (const e of dirs.ends[m]) parts.push(e);
+    for (const e of dirs.ends[m]) parts.push(e.make(0));
     for (const k of kinds) if (k !== "repeatStart" && k !== "repeatEnd" && k !== "segno" && k !== "coda") parts.push(markDirectionXml(k));
 
     if (piano) {
@@ -256,7 +275,8 @@ export function scoreToMusicXML(score: Score, layout: ScoreLayout = "lead", opts
         });
       }
     }
-    const repeatEnd = kinds.includes("repeatEnd");
+    // 끝 기호 없는 ‖: 는 곡 끝까지 한 번 반복(재생과 동일하게 마지막 마디에 명시)
+    const repeatEnd = kinds.includes("repeatEnd") || (m === measures - 1 && unmatchedStart);
     if (repeatEnd || m === measures - 1) {
       const bl = `<barline location="right"><bar-style>light-heavy</bar-style>${repeatEnd ? `<repeat direction="backward"/>` : ""}</barline>`;
       parts.push(bl);

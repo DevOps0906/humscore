@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { scoreToMusicXML } from "../musicxml";
+import { measureOrder } from "../form";
 import { tempoTerm } from "../theory";
 import { makeScore } from "./helpers";
 import type { MeasureMarkKind, NoteEvent } from "../types";
@@ -330,6 +331,37 @@ describe("scoreToMusicXML 셈여림·마디 기호", () => {
     const mid = scoreToMusicXML(makeScore(notes4, { marks: [{ measure: 1, kind: "repeatEnd" }] }));
     expect(count(mid, /<repeat direction="backward"\/>/g)).toBe(1);
     expect(count(mid, /<barline location="right">/g)).toBe(2);
+  });
+  it("끝 기호 없는 repeatStart: 마지막 마디에 backward repeat 을 명시", () => {
+    const xml = scoreToMusicXML(makeScore(notes4, { marks: [{ measure: 1, kind: "repeatStart" }] }));
+    const last = xml.split("<measure ")[4];
+    expect(last).toContain(`<barline location="right"><bar-style>light-heavy</bar-style><repeat direction="backward"/></barline>`);
+    expect(count(xml, /<repeat direction="backward"\/>/g)).toBe(1);
+    expect(measureOrder(makeScore(notes4, { marks: [{ measure: 1, kind: "repeatStart" }] }))).toEqual([0, 1, 2, 3, 1, 2, 3]);
+    // 짝이 맞으면 추가 backward 없음
+    const paired = scoreToMusicXML(makeScore(notes4, { marks: [{ measure: 0, kind: "repeatStart" }, { measure: 1, kind: "repeatEnd" }] }));
+    expect(paired.split("<measure ")[4]).not.toContain("<repeat direction=\"backward\"/>");
+  });
+  it("마디 중간 셈여림: 긴 음 도중은 offset(divisions), 음표 경계는 offset 없음", () => {
+    const xml = scoreToMusicXML(makeScore([n(60, 0, 4)], { dynamics: [{ startBeat: 0, kind: "p" }, { startBeat: 2, kind: "f" }] }));
+    expect(xml).toContain(`<dynamics><f/></dynamics></direction-type><offset>8</offset><staff>1</staff>`);
+    expect(xml).not.toContain(`<dynamics><p/></dynamics></direction-type><offset>`);
+    const m1 = xml.split("<measure ")[1];
+    expect(m1.indexOf("<f/>")).toBeLessThan(m1.indexOf("<note>"));
+  });
+  it("measureRest 마디 도중 셈여림·wedge 도 offset 으로 위치 지정", () => {
+    const xml = scoreToMusicXML(makeScore([], { dynamics: [{ startBeat: 1, kind: "cresc", durationBeats: 2 }, { startBeat: 3, kind: "f" }] }));
+    expect(xml).toContain(`<wedge type="crescendo" number="1"/></direction-type><offset>4</offset>`);
+    expect(xml).toContain(`<wedge type="stop" number="1"/></direction-type><offset>12</offset>`);
+    expect(xml).toContain(`<f/></dynamics></direction-type><offset>12</offset>`);
+  });
+  it("wedge number: 열려 있는 wedge 와 겹치지 않는 가장 작은 번호 재사용", () => {
+    const xml = scoreToMusicXML(
+      makeScore(notes4, { dynamics: [{ startBeat: 0, kind: "cresc", durationBeats: 4 }, { startBeat: 2, kind: "dim", durationBeats: 4 }, { startBeat: 8, kind: "cresc", durationBeats: 2 }] }),
+    );
+    expect(xml).toContain(`<wedge type="crescendo" number="1"/>`);
+    expect(xml).toContain(`<wedge type="diminuendo" number="2"/>`);
+    expect(count(xml, /<wedge type="crescendo" number="1"\/>/g)).toBe(2);
   });
   it("피아노: repeat barline 이 두 파트 모두에", () => {
     const xml = scoreToMusicXML(makeScore(notes4, { marks: [{ measure: 0, kind: "repeatStart" }, { measure: 2, kind: "repeatEnd" }] }), "piano");

@@ -55,15 +55,27 @@ export function velocityAt(dynamics: DynamicEvent[] | undefined, beat: number): 
 
   const from = velocityAt(evs.slice(0, idx), e.startBeat);
   const dur = e.durationBeats ?? 0;
-  const end = e.startBeat + dur;
-  const next = evs.find((d) => isLevel(d.kind) && d.startBeat >= end - EPS);
-  let to: number;
-  if (next && isLevel(next.kind)) to = DYNAMIC_VELOCITY[next.kind];
-  else {
-    const step = e.kind === "cresc" ? 1 : -1;
-    const i = Math.min(LEVELS.length - 1, Math.max(0, nearestLevelIndex(from) + step));
-    to = DYNAMIC_VELOCITY[LEVELS[i]];
-  }
+  const to = DYNAMIC_VELOCITY[targetLevel(evs, idx, from)];
   const t = dur > 0 ? Math.min(1, Math.max(0, (beat - e.startBeat) / dur)) : 1;
   return from + (to - from) * t;
+}
+
+/** 정렬된 evs 의 idx 번째 헤어핀 목표 단계: 구간 끝 이후 처음 나오는 단계 기호, 없으면 from 에서 한 단계 위/아래 */
+function targetLevel(evs: DynamicEvent[], idx: number, from: number): DynamicLevel {
+  const e = evs[idx];
+  const end = e.startBeat + (e.durationBeats ?? 0);
+  const next = evs.find((d) => isLevel(d.kind) && d.startBeat >= end - EPS);
+  if (next && isLevel(next.kind)) return next.kind;
+  const step = e.kind === "cresc" ? 1 : -1;
+  return LEVELS[Math.min(LEVELS.length - 1, Math.max(0, nearestLevelIndex(from) + step))];
+}
+
+/** 각 cresc/dim 이벤트(객체 기준)가 향하는 목표 단계. 반복 펼침 전후 목표 비교용 */
+export function hairpinTargets(dynamics: DynamicEvent[] | undefined): Map<DynamicEvent, DynamicLevel> {
+  const evs = sortedEvents(dynamics ?? []);
+  const out = new Map<DynamicEvent, DynamicLevel>();
+  evs.forEach((e, i) => {
+    if (!isLevel(e.kind)) out.set(e, targetLevel(evs, i, velocityAt(evs.slice(0, i), e.startBeat)));
+  });
+  return out;
 }

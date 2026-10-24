@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { measureOrder, unrollScore } from "../form";
-import type { MeasureMark, NoteEvent } from "../types";
+import type { DynamicEvent, MeasureMark, NoteEvent } from "../types";
+import { velocityAt } from "../dynamics";
 import { makeScore } from "./helpers";
 
 /** 4/4 에서 마디마다 4분음표 4개 대신 온음표 1개(음높이 = 60 + 마디 번호) */
@@ -47,6 +48,24 @@ describe("measureOrder", () => {
   it("coda 없는 D.C. al Coda 는 무한 루프 없이 끝", () => {
     expect(measureOrder(sc(3, [mk(1, "toCoda"), mk(2, "dcAlCoda")]))).toEqual([0, 1, 2, 0, 1, 2]);
   });
+  it("시작 기호 없는 연속 도돌이 끝: 직전 :|| 다음 마디로 되돌아감", () => {
+    expect(measureOrder(sc(8, [mk(0, "repeatStart"), mk(3, "repeatEnd"), mk(7, "repeatEnd")]))).toEqual([0, 1, 2, 3, 0, 1, 2, 3, 4, 5, 6, 7, 4, 5, 6, 7]);
+    expect(measureOrder(sc(8, [mk(3, "repeatEnd"), mk(7, "repeatEnd")]))).toEqual([0, 1, 2, 3, 0, 1, 2, 3, 4, 5, 6, 7, 4, 5, 6, 7]);
+  });
+  it("끝 기호 없는 repeatStart: 곡 끝까지 한 번 반복", () => {
+    expect(measureOrder(sc(4, [mk(1, "repeatStart")]))).toEqual([0, 1, 2, 3, 1, 2, 3]);
+    expect(measureOrder(sc(6, [mk(0, "repeatStart"), mk(1, "repeatEnd"), mk(3, "repeatStart")]))).toEqual([0, 1, 0, 1, 2, 3, 4, 5, 3, 4, 5]);
+  });
+  it("끝 기호 없는 repeatStart 도 D.C. 점프 이후엔 반복하지 않음", () => {
+    expect(measureOrder(sc(3, [mk(1, "repeatStart"), mk(2, "dc")]))).toEqual([0, 1, 2, 1, 2, 0, 1, 2]);
+  });
+  it("모든 마디에 repeatEnd 여도 잘리지 않음", () => {
+    const n = 12;
+    const order = measureOrder(sc(n, Array.from({ length: n }, (_, i) => mk(i, "repeatEnd"))));
+    expect(order.at(-1)).toBe(n - 1);
+    expect(order).toHaveLength(n * 2); // 각 마디가 정확히 한 번씩 반복
+    expect(order.slice(0, 6)).toEqual([0, 0, 1, 1, 2, 2]);
+  });
   it("순환·중복·범위 밖 기호도 유한하게 끝남", () => {
     const marks = [mk(0, "dc"), mk(1, "dc"), mk(2, "ds"), mk(1, "segno"), mk(2, "repeatEnd"), mk(0, "repeatEnd"), mk(99, "dc"), mk(-3, "ds")];
     const order = measureOrder(sc(3, marks));
@@ -83,5 +102,37 @@ describe("unrollScore", () => {
     const src = makeScore([{ midi: 60, startBeat: 0, durationBeats: 4 }, { midi: 62, startBeat: 4, durationBeats: 6 }], { marks: [mk(1, "repeatEnd")] });
     const out = unrollScore(src);
     expect(out.notes.map((x) => x.durationBeats)).toEqual([4, 4, 4, 6]);
+  });
+  it("cresc/dim 이 있는 구간을 펼쳐도 헤어핀 목표가 원본과 같음", () => {
+    const dynamics: DynamicEvent[] = [{ startBeat: 0, kind: "p" }, { startBeat: 4, kind: "cresc", durationBeats: 4 }, { startBeat: 8, kind: "f" }, { startBeat: 12, kind: "dim", durationBeats: 4 }];
+    const src = makeScore(whole(4), { dynamics, marks: [mk(3, "repeatEnd")] });
+    const out = unrollScore(src);
+    for (const b of [12, 13, 14, 15]) expect(velocityAt(out.dynamics, b)).toBeCloseTo(velocityAt(dynamics, b), 6);
+    // 16박 이후 되돌아간 첫 마디는 p
+    expect(velocityAt(out.dynamics, 16.5)).toBeCloseTo(0.42, 6);
+    // 두 번째 패스의 dim(28~32박)도 같은 목표(mf)로 내려감
+    expect(velocityAt(out.dynamics, 30)).toBeCloseTo(velocityAt(dynamics, 14), 6);
+  });
+  it("점프해 들어간 마디 첫 박에 cresc 만 있으면 승계 단계를 먼저 넣음", () => {
+    const dynamics: DynamicEvent[] = [{ startBeat: 0, kind: "f" }, { startBeat: 4, kind: "cresc", durationBeats: 4 }, { startBeat: 8, kind: "ff" }];
+    const src = makeScore(whole(3), { dynamics, marks: [mk(1, "repeatStart"), mk(2, "repeatEnd")] });
+    const out = unrollScore(src);
+    // 두 번째 패스 마디 1 은 12박: f 로 시작해 ff 로
+    expect(velocityAt(out.dynamics, 12)).toBeCloseTo(0.8, 6);
+    expect(velocityAt(out.dynamics, 14)).toBeCloseTo(0.875, 6);
+  });
+  it("점프해 들어간 마디 첫 박에 단계 기호가 있으면 승계 이벤트를 넣지 않음", () => {
+    const dynamics: DynamicEvent[] = [{ startBeat: 0, kind: "f" }, { startBeat: 4, kind: "p" }];
+    const out = unrollScore(makeScore(whole(2), { dynamics, marks: [mk(1, "repeatEnd")] }));
+    expect(out.dynamics!.filter((d) => Math.abs(d.startBeat - 12) < 1e-6)).toHaveLength(1);
+  });
+  it("점프해 들어간 마디 첫 박에 코드가 없으면 그 자리의 유효 코드를 넣음", () => {
+    const src = makeScore(whole(4), {
+      marks: [mk(2, "repeatStart"), mk(3, "repeatEnd")],
+      chords: [{ startBeat: 0, symbol: "C" }, { startBeat: 4, symbol: "F" }, { startBeat: 12, symbol: "G" }],
+    });
+    const out = unrollScore(src);
+    // 마디 3 (G) 뒤 16박에 마디 2 로 되돌아감 -> 원래 그 자리 코드는 F(4박 코드가 이어짐)
+    expect(out.chords.map((c) => [c.symbol, c.startBeat])).toEqual([["C", 0], ["F", 4], ["G", 12], ["F", 16], ["G", 20]]);
   });
 });

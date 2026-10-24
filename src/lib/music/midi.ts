@@ -1,7 +1,7 @@
 import { Midi } from "@tonejs/midi";
 import { chordToMidi, transposeChordSymbol, transposeKey } from "./theory";
 import { timeSignatureOf } from "./meter";
-import { velocityAt } from "./dynamics";
+import { DYNAMIC_VELOCITY, velocityAt } from "./dynamics";
 import { unrollScore } from "./form";
 import type { Score } from "./types";
 
@@ -59,9 +59,12 @@ export function scoreToMidi(source: Score, opts: MidiExportOptions = {}): Uint8A
   melody.name = "Melody";
   melody.channel = 0;
   melody.instrument.number = GM_INSTRUMENTS[melodyInstrument];
+  const hasDynamics = (score.dynamics?.length ?? 0) > 0;
   for (const n of score.notes) {
     if (n.midi === null) continue;
-    melody.addNote({ midi: n.midi + tp, time: n.startBeat * spb, duration: n.durationBeats * spb, velocity: velocityAt(score.dynamics, n.startBeat) });
+    // 셈여림이 없으면 기본 0.85, 있으면 mf 를 0.85 로 두고 비례
+    const velocity = hasDynamics ? Math.min(1, (velocityAt(score.dynamics, n.startBeat) / DYNAMIC_VELOCITY.mf) * 0.85) : 0.85;
+    melody.addNote({ midi: n.midi + tp, time: n.startBeat * spb, duration: n.durationBeats * spb, velocity });
   }
 
   if (withChords && score.chords.length) {
