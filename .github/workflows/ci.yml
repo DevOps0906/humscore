@@ -1,0 +1,29 @@
+# HumScore CI — PR·main 푸시마다 검사. 배포 자체는 Vercel Git 연동이 담당한다.
+# main 브랜치 보호에서 "check" 를 필수 통과로 지정하면 실패한 코드는 병합되지 않는다.
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npx eslint .
+      - run: npx tsc --noEmit
+      - run: npm test
+      # Supabase 값이 없으면 앱은 로컬 저장 모드로 빌드된다 (.env.example 참고)
+      - run: npm run build
