@@ -96,7 +96,7 @@ export function ChordEditor({ score, onChange }: { score: Score; onChange: (chor
 
   return (
     <section className="no-print">
-      <div className="mb-4 grid gap-2 rounded-xl border border-line bg-surface p-3 text-sm">
+      <div className="mb-4 grid grid-cols-[minmax(0,1fr)] gap-2 rounded-xl border border-line bg-surface p-3 text-sm">
         <p className="font-semibold">코드 진행 불러오기</p>
         <div className="flex flex-wrap items-center gap-2">
           <select
