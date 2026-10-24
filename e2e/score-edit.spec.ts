@@ -53,7 +53,7 @@ test("악보 커서 편집: → ↑ 2 키로 선택·음높이·길이 변경", 
 
 test("로고는 소개 페이지(/)로 연결", async ({ page }) => {
   await page.goto("/library");
-  await page.getByRole("link", { name: "HumScore 홈(소개 페이지)" }).click();
+  await page.getByRole("link", { name: "HumScore 홈(소개 페이지)" }).filter({ visible: true }).first().click();
   await expect(page).toHaveURL(/\/$/);
 });
 

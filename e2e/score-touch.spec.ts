@@ -105,12 +105,12 @@ test("제목·작곡자: 악보에 그려지고 Enter/Esc 로 편집", async ({ 
   await title.fill("나의 노래");
   await title.press("Enter");
   await expect(page.getByText("제목을 저장했어요")).toBeVisible();
-  await expect(page.locator(".score-sheet svg text", { hasText: "나의 노래" }).first()).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByTestId("score-header").getByRole("heading", { name: "나의 노래" })).toBeVisible({ timeout: 15_000 });
 
-  const composer = page.getByLabel("작곡·편곡", { exact: true });
+  const composer = page.getByLabel("작곡자", { exact: true });
   await composer.fill("홍길동");
   await composer.press("Enter");
-  await expect(page.locator(".score-sheet svg text", { hasText: "홍길동" }).first()).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByTestId("score-header-credits").filter({ hasText: "홍길동" })).toBeVisible({ timeout: 15_000 });
 
   // Esc 는 되돌림
   await title.fill("취소될 제목");
@@ -119,10 +119,10 @@ test("제목·작곡자: 악보에 그려지고 Enter/Esc 로 편집", async ({ 
 
   // 새로고침 후 유지
   await page.reload();
-  await expect(page.getByLabel("작곡·편곡", { exact: true })).toHaveValue("홍길동");
+  await expect(page.getByLabel("작곡자", { exact: true })).toHaveValue("홍길동");
 });
 
-test("TitleDialog: 작곡·편곡자 입력이 악보에 저장되고 대화상자가 남지 않음", async ({ page }) => {
+test("TitleDialog: 작곡자 입력이 악보에 저장되고 대화상자가 남지 않음", async ({ page }) => {
   await page.goto("/keys");
   const toggle = page.getByRole("button", { name: "악보 입력" });
   await expect(async () => {
@@ -134,9 +134,9 @@ test("TitleDialog: 작곡·편곡자 입력이 악보에 저장되고 대화상�
   await page.getByRole("button", { name: "악보로 저장" }).click();
   const dlg = page.getByRole("dialog");
   await dlg.getByLabel("제목").fill("합작곡");
-  await dlg.getByLabel("작곡·편곡자 (선택)").fill("김작곡");
+  await dlg.getByLabel("작곡 (선택)").fill("김작곡");
   await dlg.getByRole("button", { name: "저장", exact: true }).click();
   await page.waitForURL(/\/scores\/[^/]+$/);
-  await expect(page.getByLabel("작곡·편곡", { exact: true })).toHaveValue("김작곡");
+  await expect(page.getByLabel("작곡자", { exact: true })).toHaveValue("김작곡");
   await expect(page.getByRole("dialog")).toHaveCount(0); // (숨겨진 이전 화면의 노드는 제외)
 });
