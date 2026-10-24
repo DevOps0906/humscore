@@ -1,9 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
   CHORD_QUALITIES, STEP_DURATIONS, appendNote, chordAtMeasure, createBlankScore, deleteNote, insertNote,
-  isValidChordSymbol, measureOf, reflow, scoreMeasureCount, setChordAtMeasure, updateNote,
+  isValidChordSymbol, measureOf, reflow, removeDynamic, scoreMeasureCount, setChordAtMeasure, setDynamic, toggleMeasureMark, updateNote,
 } from "../edit";
 import type { NoteEvent } from "../types";
+import { makeScore } from "./helpers";
 
 const n = (midi: number | null, startBeat: number, durationBeats: number): NoteEvent => ({ midi, startBeat, durationBeats });
 
@@ -71,5 +72,49 @@ describe("edit", () => {
     expect(s.key).toEqual({ tonic: 0, mode: "major", fifths: 0 });
     expect(s.id).toBeTruthy();
     expect(createBlankScore({ title: "x", bpm: 100 })).toMatchObject({ title: "x", bpm: 100 });
+  });
+});
+
+describe("셈여림·마디 기호 편집", () => {
+  const base = makeScore([n(60, 0, 8)]);
+  it("setDynamic: 정렬, 같은 박은 교체, 원본 불변", () => {
+    const a = setDynamic(base, 4, "f");
+    const b = setDynamic(a, 0, "p");
+    const c = setDynamic(b, 4, "cresc", 2);
+    expect(base.dynamics).toBeUndefined();
+    expect(b.dynamics).toEqual([{ startBeat: 0, kind: "p" }, { startBeat: 4, kind: "f" }]);
+    expect(c.dynamics).toEqual([{ startBeat: 0, kind: "p" }, { startBeat: 4, kind: "cresc", durationBeats: 2 }]);
+    expect(b.dynamics).toHaveLength(2);
+  });
+  it("setDynamic: 헤어핀 길이 기본은 한 마디, 단계 기호엔 길이 없음", () => {
+    expect(setDynamic(base, 0, "dim").dynamics![0].durationBeats).toBe(4);
+    expect(setDynamic(base, 0, "mp", 3).dynamics![0]).toEqual({ startBeat: 0, kind: "mp" });
+  });
+  it("removeDynamic: 삭제, 비면 dynamics 제거", () => {
+    const a = setDynamic(setDynamic(base, 0, "p"), 4, "f");
+    expect(removeDynamic(a, 0).dynamics).toEqual([{ startBeat: 4, kind: "f" }]);
+    expect(removeDynamic(removeDynamic(a, 0), 4).dynamics).toBeUndefined();
+    expect(a.dynamics).toHaveLength(2);
+  });
+  it("toggleMeasureMark: 추가/제거 토글, 마디순 정렬, 원본 불변", () => {
+    const a = toggleMeasureMark(base, 3, "repeatEnd");
+    const b = toggleMeasureMark(a, 1, "repeatStart");
+    expect(b.marks).toEqual([{ measure: 1, kind: "repeatStart" }, { measure: 3, kind: "repeatEnd" }]);
+    expect(toggleMeasureMark(b, 3, "repeatEnd").marks).toEqual([{ measure: 1, kind: "repeatStart" }]);
+    expect(toggleMeasureMark(toggleMeasureMark(base, 0, "segno"), 0, "segno").marks).toBeUndefined();
+    expect(base.marks).toBeUndefined();
+    expect(a.marks).toHaveLength(1);
+  });
+  it("toggleMeasureMark: 시작 위치 그룹은 한 마디에 하나", () => {
+    const a = toggleMeasureMark(toggleMeasureMark(base, 2, "repeatStart"), 2, "segno");
+    expect(a.marks).toEqual([{ measure: 2, kind: "segno" }]);
+  });
+  it("toggleMeasureMark: dc/ds/fine/toCoda 계열은 하나만, repeatEnd 는 공존", () => {
+    let s = toggleMeasureMark(base, 1, "repeatEnd");
+    s = toggleMeasureMark(s, 1, "fine");
+    s = toggleMeasureMark(s, 1, "dsAlCoda");
+    expect(s.marks).toEqual([{ measure: 1, kind: "repeatEnd" }, { measure: 1, kind: "dsAlCoda" }]);
+    s = toggleMeasureMark(s, 1, "dc");
+    expect(s.marks!.map((m) => m.kind)).toEqual(["repeatEnd", "dc"]);
   });
 });

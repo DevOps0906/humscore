@@ -90,3 +90,32 @@ describe("scoreToMidi 박자표", () => {
     expect(ts()).toEqual([4, 4]);
   });
 });
+
+describe("scoreToMidi 반복·셈여림", () => {
+  const two = [n(60, 0, 4), n(62, 4, 4)];
+  it("도돌이표를 펼쳐 음 수와 시작 시각이 늘어남", () => {
+    const parsed = new Midi(scoreToMidi(makeScore(two, { bpm: 120, marks: [{ measure: 1, kind: "repeatEnd" }] }), { withChords: false }));
+    const notes = parsed.tracks[0].notes;
+    expect(notes.map((x) => x.midi)).toEqual([60, 62, 60, 62]);
+    expect(notes[2].time).toBeCloseTo(4, 2); // 8박 = 4초
+    expect(parsed.duration).toBeCloseTo(8, 1);
+  });
+  it("D.C. al Fine 도 펼침", () => {
+    const sc = makeScore([n(60, 0, 4), n(62, 4, 4), n(64, 8, 4)], { marks: [{ measure: 0, kind: "fine" }, { measure: 2, kind: "dcAlFine" }] });
+    const notes = new Midi(scoreToMidi(sc, { withChords: false })).tracks[0].notes;
+    expect(notes.map((x) => x.midi)).toEqual([60, 62, 64, 60]);
+  });
+  it("셈여림 없으면 기본 mf velocity, 있으면 반영", () => {
+    const plain = new Midi(scoreToMidi(makeScore(two), { withChords: false })).tracks[0].notes;
+    expect(plain[0].velocity).toBeCloseTo(0.65, 1);
+    const dyn = new Midi(scoreToMidi(makeScore(two, { dynamics: [{ startBeat: 0, kind: "pp" }, { startBeat: 4, kind: "ff" }] }), { withChords: false })).tracks[0].notes;
+    expect(dyn[0].velocity).toBeCloseTo(0.3, 1);
+    expect(dyn[1].velocity).toBeCloseTo(0.95, 1);
+  });
+  it("원본 Score 는 바뀌지 않음", () => {
+    const sc = makeScore(two, { marks: [{ measure: 1, kind: "repeatEnd" }] });
+    const snap = JSON.stringify(sc);
+    scoreToMidi(sc);
+    expect(JSON.stringify(sc)).toBe(snap);
+  });
+});

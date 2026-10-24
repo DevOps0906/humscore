@@ -115,7 +115,8 @@ describe("허밍 채보 파이프라인", () => {
     expect(lead.match(/<measure /g)).toHaveLength(4);
     expect(lead).toContain("<root-step>G</root-step>");
     const piano = scoreToMusicXML(score, "piano");
-    expect(piano).toContain("<staves>2</staves>");
+    expect(piano).toContain('<part id="P2">');
+    expect(piano).toContain("<group-symbol>brace</group-symbol>");
     expect(piano).toContain("<chord/>");
   });
 

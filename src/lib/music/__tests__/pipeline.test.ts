@@ -75,6 +75,6 @@ describe("buildScoreFromFrames", () => {
   it("end-to-end: 결과 Score 가 MusicXML 로 변환 가능", () => {
     const { score } = buildScoreFromFrames(hum([[60, 1], [64, 1], [67, 2], [60, 4]], 120), base);
     const xml = scoreToMusicXML(score, "piano");
-    expect(xml.match(/<measure /g)).toHaveLength(score.chords.length);
+    expect(xml.match(/<measure /g)).toHaveLength(score.chords.length * 2); // 멜로디 + 피아노 두 파트
   });
 });

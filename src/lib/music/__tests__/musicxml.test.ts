@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { scoreToMusicXML } from "../musicxml";
 import { tempoTerm } from "../theory";
 import { makeScore } from "./helpers";
-import type { NoteEvent } from "../types";
+import type { MeasureMarkKind, NoteEvent } from "../types";
 
 const n = (midi: number | null, startBeat: number, durationBeats: number): NoteEvent => ({ midi, startBeat, durationBeats });
 const count = (s: string, re: RegExp) => (s.match(re) ?? []).length;
@@ -15,8 +15,8 @@ describe("scoreToMusicXML 옵션", () => {
   });
   it("piano 레이아웃도 빈 마디 정상", () => {
     const xml = scoreToMusicXML(makeScore([]), "piano", { minMeasures: 3 });
-    expect(count(xml, /<measure /g)).toBe(3);
-    expect(count(xml, /<backup>/g)).toBe(3);
+    expect(count(xml, /<measure /g)).toBe(6); // 멜로디 3 + 피아노 3
+    expect(count(xml, /<backup>/g)).toBe(0);
   });
   it("음표가 9마디면 minMeasures 8 이어도 9마디", () => {
     const xml = scoreToMusicXML(makeScore([n(60, 32, 1)]), "lead", { minMeasures: 8 });
@@ -104,17 +104,26 @@ describe("scoreToMusicXML", () => {
     const xml = scoreToMusicXML(makeScore([n(60, 0, 4)], { chords: [{ startBeat: 0, symbol: "Bb" }] }));
     expect(xml).toContain("<root-alter>-1</root-alter>");
   });
-  it("피아노: 대보표, 마디당 왼손 3화음 + backup", () => {
+  it("피아노: 두 파트(Melody/Piano) + brace part-group, 마디당 왼손 3화음", () => {
     const xml = scoreToMusicXML(makeScore([n(60, 0, 4), n(62, 4, 4)], { chords: [{ startBeat: 0, symbol: "C" }, { startBeat: 4, symbol: "G" }] }), "piano");
-    expect(xml).toContain("<staves>2</staves>");
+    expect(xml).not.toContain("<staves>");
+    expect(xml).toContain("<part-name>Melody</part-name>");
     expect(xml).toContain("<part-name>Piano</part-name>");
-    expect(count(xml, /<backup>/g)).toBe(2);
-    expect(count(xml, /<chord\/>/g)).toBe(4); // 마디당 2개 (3화음 중 2번째·3번째)
-    expect(count(xml, /<staff>2<\/staff>/g)).toBe(6);
+    expect(xml).toContain('<part-group type="start" number="1"><group-symbol>brace</group-symbol><group-barline>yes</group-barline></part-group>');
+    expect(xml).toContain('<part-group type="stop" number="1"/>');
+    expect(count(xml, /<score-part /g)).toBe(2);
+    expect(count(xml, /<part id=/g)).toBe(2);
+    const [mel, low] = xml.split('<part id="P2">');
+    expect(mel).toContain("<sign>G</sign>");
+    expect(low).toContain("<sign>F</sign>");
+    expect(low).not.toContain("<sign>G</sign>");
+    expect(count(xml, /<backup>/g)).toBe(0);
+    expect(count(low, /<chord\/>/g)).toBe(4); // 마디당 2개 (3화음 중 2번째·3번째)
+    expect(count(low, /<note>/g)).toBe(6);
   });
   it("피아노: 한 음가로 안 되는 박자(6/4)는 왼손 코드를 온음표+2분음표 붙임줄로", () => {
     const xml = scoreToMusicXML(makeScore([n(60, 0, 4)], { beatsPerMeasure: 6, chords: [{ startBeat: 0, symbol: "C" }] }), "piano");
-    expect(count(xml, /<staff>2<\/staff>/g)).toBe(6); // 3화음 × 2조각
+    expect(count(xml.split('<part id="P2">')[1], /<note>/g)).toBe(6); // 3화음 × 2조각
     // 왼손 3화음 x 1 + 오른손 4박(6/4에서 온음표 불가 -> 점2분+4분 붙임줄) 1
     expect(count(xml, /<tie type="start"\/>/g)).toBe(4);
     expect(count(xml, /<tie type="stop"\/>/g)).toBe(4);
@@ -206,11 +215,12 @@ describe("악보 요소 (줄바꿈·끝마디선·헤더·빠르기말)", () => 
   for (const layout of ["lead", "piano"] as const) {
     it(`${layout}: 13마디 → 5·9·13마디에만 줄바꿈, 마지막 마디에만 끝마디선`, () => {
       const xml = scoreToMusicXML(makeScore([n(60, 48, 1)]), layout);
-      expect(count(xml, /<measure /g)).toBe(13);
-      expect(count(xml, /<print new-system="yes"\/>/g)).toBe(3);
+      const parts = layout === "piano" ? 2 : 1;
+      expect(count(xml, /<measure /g)).toBe(13 * parts);
+      expect(count(xml, /<print new-system="yes"\/>/g)).toBe(3 * parts);
       for (const k of [5, 9, 13]) expect(xml).toContain(`<measure number="${k}"><print new-system="yes"/>`);
       expect(xml).not.toContain(`<measure number="1"><print`);
-      expect(count(xml, /<bar-style>light-heavy<\/bar-style>/g)).toBe(1);
+      expect(count(xml, /<bar-style>light-heavy<\/bar-style>/g)).toBe(parts);
       const last = xml.split("<measure ").pop()!;
       expect(last).toContain("<barline location=\"right\"><bar-style>light-heavy</bar-style></barline></measure>");
       wellFormed(xml);
@@ -239,6 +249,7 @@ describe("악보 요소 (줄바꿈·끝마디선·헤더·빠르기말)", () => 
     expect(scoreToMusicXML(makeScore([]), "lead")).toContain('<part-name print-object="no">Melody</part-name>');
     const piano = scoreToMusicXML(makeScore([]), "piano");
     expect(piano).toContain("<part-name>Piano</part-name>");
+    expect(piano).toContain("<part-name>Melody</part-name>");
     expect(piano).not.toContain("print-object");
   });
 });
@@ -279,3 +290,87 @@ describe("scoreToMusicXML 6/8 · 작사/편곡 · externalHeader", () => {
     expect(scoreToMusicXML(sc, "lead", { externalHeader: false })).toBe(normal);
   });
 });
+
+describe("scoreToMusicXML 셈여림·마디 기호", () => {
+  const notes4 = [n(60, 0, 4), n(62, 4, 4), n(64, 8, 4), n(65, 12, 4)];
+  it("셈여림: dynamics 요소, 해당 박 음표 앞", () => {
+    const xml = scoreToMusicXML(makeScore(notes4, { dynamics: [{ startBeat: 0, kind: "p" }, { startBeat: 8, kind: "ff" }] }));
+    expect(xml).toContain("<dynamics><p/></dynamics>");
+    expect(xml).toContain("<dynamics><ff/></dynamics>");
+    const m3 = xml.split("<measure ")[3];
+    expect(m3.indexOf("<ff/>")).toBeLessThan(m3.indexOf("<note>"));
+    const m1 = xml.split("<measure ")[1];
+    expect(m1.indexOf("<p/>")).toBeLessThan(m1.indexOf("<note>"));
+    expect(xml).not.toContain("<wedge");
+  });
+  it("cresc/dim: wedge start~stop, 마디 경계에서 끝나면 앞 마디 끝", () => {
+    const xml = scoreToMusicXML(makeScore(notes4, { dynamics: [{ startBeat: 0, kind: "cresc", durationBeats: 8 }, { startBeat: 8, kind: "dim", durationBeats: 2 }] }));
+    expect(count(xml, /<wedge type="crescendo"/g)).toBe(1);
+    expect(count(xml, /<wedge type="diminuendo"/g)).toBe(1);
+    expect(count(xml, /<wedge type="stop"/g)).toBe(2);
+    const ms = xml.split("<measure ");
+    // 0~8박 cresc 는 마디 2(두 번째 마디) 끝에서 stop
+    expect(ms[2].indexOf('type="stop"')).toBeGreaterThan(ms[2].lastIndexOf("</note>"));
+    // 8~10박 dim 은 마디 3 안에서 시작·종료
+    expect(ms[3]).toContain('type="diminuendo"');
+    expect(ms[3]).toContain('type="stop"');
+    wellFormedXml(xml);
+  });
+  it("피아노: 셈여림은 멜로디 파트(P1)에만", () => {
+    const xml = scoreToMusicXML(makeScore(notes4, { dynamics: [{ startBeat: 0, kind: "mf" }] }), "piano");
+    const [mel, low] = xml.split('<part id="P2">');
+    expect(mel).toContain("<mf/>");
+    expect(low).not.toContain("<mf/>");
+  });
+  it("repeat barline: 시작 left forward, 끝 right backward(마지막 마디는 하나로 합쳐짐)", () => {
+    const xml = scoreToMusicXML(makeScore(notes4, { marks: [{ measure: 1, kind: "repeatStart" }, { measure: 3, kind: "repeatEnd" }] }));
+    expect(xml).toContain(`<barline location="left"><bar-style>heavy-light</bar-style><repeat direction="forward"/></barline>`);
+    expect(xml).toContain(`<barline location="right"><bar-style>light-heavy</bar-style><repeat direction="backward"/></barline>`);
+    expect(count(xml, /<barline location="right">/g)).toBe(1);
+    const mid = scoreToMusicXML(makeScore(notes4, { marks: [{ measure: 1, kind: "repeatEnd" }] }));
+    expect(count(mid, /<repeat direction="backward"\/>/g)).toBe(1);
+    expect(count(mid, /<barline location="right">/g)).toBe(2);
+  });
+  it("피아노: repeat barline 이 두 파트 모두에", () => {
+    const xml = scoreToMusicXML(makeScore(notes4, { marks: [{ measure: 0, kind: "repeatStart" }, { measure: 2, kind: "repeatEnd" }] }), "piano");
+    expect(count(xml, /<repeat direction="forward"\/>/g)).toBe(2);
+    expect(count(xml, /<repeat direction="backward"\/>/g)).toBe(2);
+  });
+  it("segno/coda: 기호 + sound", () => {
+    const xml = scoreToMusicXML(makeScore(notes4, { marks: [{ measure: 1, kind: "segno" }, { measure: 3, kind: "coda" }] }));
+    expect(xml).toContain(`<direction-type><segno/></direction-type><sound segno="segno"/>`);
+    expect(xml).toContain(`<direction-type><coda/></direction-type><sound coda="coda"/>`);
+  });
+  it("words: Fine·To Coda·D.C.·D.S. 와 sound 속성", () => {
+    const cases: [MeasureMarkKind, string, string][] = [
+      ["fine", "Fine", 'fine="yes"'],
+      ["toCoda", "To Coda", 'tocoda="coda"'],
+      ["dc", "D.C.", 'dacapo="yes"'],
+      ["dcAlFine", "D.C. al Fine", 'dacapo="yes"'],
+      ["dcAlCoda", "D.C. al Coda", 'dacapo="yes"'],
+      ["ds", "D.S.", 'dalsegno="segno"'],
+      ["dsAlFine", "D.S. al Fine", 'dalsegno="segno"'],
+      ["dsAlCoda", "D.S. al Coda", 'dalsegno="segno"'],
+    ];
+    for (const [kind, words, sound] of cases) {
+      const xml = scoreToMusicXML(makeScore(notes4, { marks: [{ measure: 3, kind }] }));
+      expect(xml).toContain(`<words>${words}</words></direction-type><sound ${sound}/>`);
+      wellFormedXml(xml);
+    }
+  });
+  it("마디 끝 words 는 음표 뒤, 오른쪽 barline 앞", () => {
+    const m = scoreToMusicXML(makeScore(notes4, { marks: [{ measure: 3, kind: "dcAlFine" }] })).split("<measure ").pop()!;
+    expect(m.indexOf("D.C. al Fine")).toBeGreaterThan(m.lastIndexOf("</note>"));
+    expect(m.indexOf("D.C. al Fine")).toBeLessThan(m.indexOf("<barline"));
+  });
+});
+
+function wellFormedXml(xml: string) {
+  const stack: string[] = [];
+  for (const m of xml.replace(/<\?xml.*?\?>|<!DOCTYPE[^>]*>/g, "").matchAll(/<(\/?)([A-Za-z0-9-]+)[^>]*?(\/?)>/g)) {
+    if (m[3]) continue;
+    if (m[1]) expect(stack.pop()).toBe(m[2]);
+    else stack.push(m[2]);
+  }
+  expect(stack).toHaveLength(0);
+}

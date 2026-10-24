@@ -94,18 +94,24 @@ describe("MusicXML 구조", () => {
   );
   it("stem 없음, time 은 1마디에만, attributes 순서", () => {
     expect(xml).not.toContain("<stem");
-    expect(count(xml, /<time>/g)).toBe(1);
-    expect(xml).toMatch(/<attributes><divisions>4<\/divisions><key>.*<\/key><time>.*<\/time><staves>2<\/staves><clef/);
+    expect(count(xml, /<time>/g)).toBe(2); // 멜로디·피아노 파트 각 1마디에만
+    expect(xml).toMatch(/<attributes><divisions>4<\/divisions><key>.*<\/key><time>.*<\/time><clef/);
   });
   it("마디마다 보표별 duration 합 = 박 x divisions (chord 겹음 제외)", () => {
-    for (const m of xml.split("<measure ").slice(1)) {
+    const [melodyPart, pianoPart] = xml.split('<part id="P2">');
+    expect(pianoPart).toBeDefined();
+    for (const m of melodyPart.split("<measure ").slice(1)) {
       const notes = m.match(/<note>.*?<\/note>/g) ?? [];
       const sum = (staff: number) =>
         notes
           .filter((x) => x.includes(`<staff>${staff}</staff>`) && !x.includes("<chord/>"))
           .reduce((s, x) => s + Number(/<duration>(\d+)<\/duration>/.exec(x)![1]), 0);
       expect(sum(1)).toBe(16);
-      expect(sum(2)).toBe(16);
+    }
+    for (const m of pianoPart.split("<measure ").slice(1)) {
+      const notes = m.match(/<note>.*?<\/note>/g) ?? [];
+      const total = notes.filter((x) => !x.includes("<chord/>")).reduce((s, x) => s + Number(/<duration>(\d+)<\/duration>/.exec(x)![1]), 0);
+      expect(total).toBe(16);
     }
   });
   it("붙임줄은 tie 와 tied 가 짝", () => {

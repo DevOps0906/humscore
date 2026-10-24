@@ -42,4 +42,24 @@ describe("score-schema", () => {
     const over = { ...base(), notes: Array.from({ length: 6_001 }, () => ({ midi: 60, startBeat: 0, durationBeats: 1 })) };
     expect(scoreSchema.safeParse(over).success).toBe(false);
   });
+  it("dynamics·marks 는 통과하고 저장 후에도 보존된다", () => {
+    const s: Score = {
+      ...base(),
+      dynamics: [{ startBeat: 0, kind: "p" }, { startBeat: 4, kind: "cresc", durationBeats: 4 }],
+      marks: [{ measure: 0, kind: "repeatStart" }, { measure: 3, kind: "dcAlFine" }],
+    };
+    expect(parseScore(s)).toEqual(s);
+    expect(parseScore({ ...base(), dynamics: [], marks: [] })).not.toBeNull();
+  });
+  it("dynamics·marks 잘못된 값은 거부", () => {
+    expect(parseScore({ ...base(), dynamics: [{ startBeat: 0, kind: "fff" }] })).toBeNull();
+    expect(parseScore({ ...base(), dynamics: [{ startBeat: -1, kind: "p" }] })).toBeNull();
+    expect(parseScore({ ...base(), dynamics: [{ startBeat: 0, kind: "cresc", durationBeats: 0 }] })).toBeNull();
+    expect(parseScore({ ...base(), dynamics: Array.from({ length: 2001 }, () => ({ startBeat: 0, kind: "p" })) })).toBeNull();
+    expect(parseScore({ ...base(), marks: [{ measure: -1, kind: "coda" }] })).toBeNull();
+    expect(parseScore({ ...base(), marks: [{ measure: 1.5, kind: "coda" }] })).toBeNull();
+    expect(parseScore({ ...base(), marks: [{ measure: 10001, kind: "coda" }] })).toBeNull();
+    expect(parseScore({ ...base(), marks: [{ measure: 0, kind: "bogus" }] })).toBeNull();
+    expect(parseScore({ ...base(), marks: Array.from({ length: 501 }, () => ({ measure: 0, kind: "coda" })) })).toBeNull();
+  });
 });

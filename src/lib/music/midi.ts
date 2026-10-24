@@ -1,6 +1,8 @@
 import { Midi } from "@tonejs/midi";
 import { chordToMidi, transposeChordSymbol, transposeKey } from "./theory";
 import { timeSignatureOf } from "./meter";
+import { velocityAt } from "./dynamics";
+import { unrollScore } from "./form";
 import type { Score } from "./types";
 
 /** GM 악기 번호(0부터). 출력 시 멜로디 악기를 바꿔 "여러 악기의 MIDI"를 만듭니다. */
@@ -41,7 +43,8 @@ export function latin1AsUtf8(text: string): string {
   return new TextDecoder().decode(bytes);
 }
 
-export function scoreToMidi(score: Score, opts: MidiExportOptions = {}): Uint8Array {
+export function scoreToMidi(source: Score, opts: MidiExportOptions = {}): Uint8Array {
+  const score = unrollScore(source); // 도돌이표·D.C./D.S. 를 펼친 타임라인
   const { melodyInstrument = "piano", withChords = true, chordInstrument = "piano" } = opts;
   const midi = new Midi();
   midi.header.setTempo(score.bpm);
@@ -58,7 +61,7 @@ export function scoreToMidi(score: Score, opts: MidiExportOptions = {}): Uint8Ar
   melody.instrument.number = GM_INSTRUMENTS[melodyInstrument];
   for (const n of score.notes) {
     if (n.midi === null) continue;
-    melody.addNote({ midi: n.midi + tp, time: n.startBeat * spb, duration: n.durationBeats * spb, velocity: 0.85 });
+    melody.addNote({ midi: n.midi + tp, time: n.startBeat * spb, duration: n.durationBeats * spb, velocity: velocityAt(score.dynamics, n.startBeat) });
   }
 
   if (withChords && score.chords.length) {

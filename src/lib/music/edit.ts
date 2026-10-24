@@ -1,5 +1,5 @@
 import { newId } from "./pipeline";
-import type { ChordEvent, KeyInfo, NoteEvent, Score } from "./types";
+import type { ChordEvent, DynamicEvent, KeyInfo, MeasureMarkKind, NoteEvent, Score } from "./types";
 
 /** 입력 가능한 음가(박). 16분=0.25, 8분=0.5, 점8분=0.75, 4분=1, 점4분=1.5, 2분=2, 점2분=3, 온음표=4 */
 export const STEP_DURATIONS: readonly number[] = [0.25, 0.5, 0.75, 1, 1.5, 2, 3, 4];
@@ -112,4 +112,41 @@ export function createBlankScore(opts: { title?: string; bpm?: number; beatsPerM
     createdAt: now,
     updatedAt: now,
   };
+}
+
+/** 셈여림 설정: 같은 startBeat 의 기존 기호는 교체. cresc/dim 만 durationBeats(기본 한 마디) 보존. startBeat 오름차순 */
+export function setDynamic(score: Score, startBeat: number, kind: DynamicEvent["kind"], durationBeats?: number): Score {
+  const rest = (score.dynamics ?? []).filter((d) => Math.abs(d.startBeat - startBeat) >= EPS).map((d) => ({ ...d }));
+  const ev: DynamicEvent = { startBeat, kind };
+  if (kind === "cresc" || kind === "dim") ev.durationBeats = durationBeats !== undefined && durationBeats > 0 ? durationBeats : score.beatsPerMeasure;
+  rest.push(ev);
+  rest.sort((a, b) => a.startBeat - b.startBeat);
+  return { ...score, dynamics: rest };
+}
+
+/** startBeat 의 셈여림 삭제. 남는 게 없으면 dynamics 를 비움(undefined) */
+export function removeDynamic(score: Score, startBeat: number): Score {
+  const rest = (score.dynamics ?? []).filter((d) => Math.abs(d.startBeat - startBeat) >= EPS).map((d) => ({ ...d }));
+  const { dynamics: _d, ...others } = score;
+  void _d;
+  return rest.length ? { ...others, dynamics: rest } : { ...others };
+}
+
+/** 한 마디에 하나만 남기는 기호 그룹: 시작 위치 / 끝 위치의 점프·종지 계열. repeatEnd 는 다른 끝 기호와 공존 가능 */
+const EXCLUSIVE_GROUPS: MeasureMarkKind[][] = [
+  ["repeatStart", "segno", "coda"],
+  ["fine", "toCoda", "dc", "dcAlFine", "dcAlCoda", "ds", "dsAlFine", "dsAlCoda"],
+];
+
+/** 마디 기호 토글: 이미 있으면 제거, 없으면 추가(같은 그룹의 다른 기호는 대체). marks 는 마디순 정렬, 비면 undefined */
+export function toggleMeasureMark(score: Score, measure: number, kind: MeasureMarkKind): Score {
+  const cur = score.marks ?? [];
+  const exists = cur.some((m) => m.measure === measure && m.kind === kind);
+  const group = EXCLUSIVE_GROUPS.find((g) => g.includes(kind));
+  let next = cur.filter((m) => !(m.measure === measure && (m.kind === kind || (group && group.includes(m.kind))))).map((m) => ({ ...m }));
+  if (!exists) next.push({ measure, kind });
+  next = next.map((m, i) => ({ m, i })).sort((a, b) => a.m.measure - b.m.measure || a.i - b.i).map((x) => x.m);
+  const { marks: _m, ...others } = score;
+  void _m;
+  return next.length ? { ...others, marks: next } : { ...others };
 }

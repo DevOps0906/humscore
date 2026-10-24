@@ -23,6 +23,45 @@ export interface KeyInfo {
   fifths: number;
 }
 
+/** 셈여림 단계 (여린 → 센) */
+export type DynamicLevel = "pp" | "p" | "mp" | "mf" | "f" | "ff";
+
+/**
+ * 셈여림 기호. 단계 기호(pp~ff)는 그 박부터 다음 단계 기호 전까지 유지되고,
+ * cresc/dim(헤어핀)은 durationBeats 동안 점점 세게/여리게 바뀐다.
+ */
+export interface DynamicEvent {
+  startBeat: number;
+  kind: DynamicLevel | "cresc" | "dim";
+  /** 헤어핀 길이(박). cresc/dim 에만 쓴다 */
+  durationBeats?: number;
+}
+
+/**
+ * 도돌이표·진행 기호 종류.
+ * 마디 시작에 붙는 것: repeatStart, segno, coda
+ * 마디 끝에 붙는 것: repeatEnd, fine, toCoda, dc, dcAlFine, dcAlCoda, ds, dsAlFine, dsAlCoda
+ */
+export type MeasureMarkKind =
+  | "repeatStart"
+  | "repeatEnd"
+  | "segno"
+  | "coda"
+  | "fine"
+  | "toCoda"
+  | "dc"
+  | "dcAlFine"
+  | "dcAlCoda"
+  | "ds"
+  | "dsAlFine"
+  | "dsAlCoda";
+
+export interface MeasureMark {
+  /** 0부터 센 마디 번호 */
+  measure: number;
+  kind: MeasureMarkKind;
+}
+
 /** 선택 가능한 박자표. 6/8 은 내부적으로 4분음표 3박(beatsPerMeasure=3)이며 표기·묶음만 다르다 */
 export type Meter = "3/4" | "4/4" | "6/8";
 
@@ -48,6 +87,10 @@ export interface Score {
   key: KeyInfo;
   notes: NoteEvent[];
   chords: ChordEvent[];
+  /** 셈여림 기호. 생략하면 전체 mf */
+  dynamics?: DynamicEvent[];
+  /** 도돌이표·진행 기호. 생략하면 처음부터 끝까지 한 번 */
+  marks?: MeasureMark[];
   /** 원본 대비 반음 이동량(전조). 데이터는 원본 그대로 두고 출력 시 적용 */
   transpose: number;
   createdAt: string;

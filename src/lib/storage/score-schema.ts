@@ -24,6 +24,20 @@ export const keyInfoSchema = z.object({
   fifths: z.number().int().min(-7).max(7),
 });
 
+export const dynamicEventSchema = z.object({
+  startBeat: z.number().finite().min(0).max(100_000),
+  kind: z.enum(["pp", "p", "mp", "mf", "f", "ff", "cresc", "dim"]),
+  durationBeats: z.number().finite().gt(0).max(100_000).optional(),
+});
+
+export const measureMarkSchema = z.object({
+  measure: z.number().int().min(0).max(10_000),
+  kind: z.enum([
+    "repeatStart", "repeatEnd", "segno", "coda", "fine", "toCoda",
+    "dc", "dcAlFine", "dcAlCoda", "ds", "dsAlFine", "dsAlCoda",
+  ]),
+});
+
 export const scoreSchema = z.object({
   id: z.uuid(),
   title: z.string().max(200),
@@ -39,6 +53,8 @@ export const scoreSchema = z.object({
   key: keyInfoSchema,
   notes: z.array(noteEventSchema).max(6_000),
   chords: z.array(chordEventSchema).max(1_500),
+  dynamics: z.array(dynamicEventSchema).max(2_000).optional(),
+  marks: z.array(measureMarkSchema).max(500).optional(),
   transpose: z.number().int().min(-24).max(24),
   createdAt: isoDate,
   updatedAt: isoDate,
