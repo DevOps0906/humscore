@@ -9,6 +9,10 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   cacheComponents: true,
   partialPrefetching: true,
+  experimental: {
+    // 보안 패치가 나오면 next dev 가 에이전트에게 업그레이드를 안내
+    agentUpgrade: "security",
+  },
   async redirects() {
     // 정적 export 시절 쿼리 기반 URL(/score/?id=…) → 동적 세그먼트
     return [
