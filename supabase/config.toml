@@ -321,6 +321,17 @@ max_frequency = "5s"
 # Use an external OAuth provider. The full list of providers are: `apple`, `azure`, `bitbucket`,
 # `discord`, `facebook`, `github`, `gitlab`, `google`, `keycloak`, `linkedin_oidc`, `notion`, `twitch`,
 # `twitter`, `x`, `slack`, `spotify`, `workos`, `zoom`.
+# Google 로그인 (로컬). 사용하려면:
+#  1) Google Cloud Console > OAuth 클라이언트의 승인된 리디렉션 URI 에
+#     http://127.0.0.1:55321/auth/v1/callback 추가
+#  2) supabase/.env 에 SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_ID / _SECRET 작성 (git 제외됨)
+#  3) 아래 enabled = true 로 바꾸고 npm run db:stop && npm run db:start
+[auth.external.google]
+enabled = false
+client_id = "env(SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_ID)"
+secret = "env(SUPABASE_AUTH_EXTERNAL_GOOGLE_SECRET)"
+# 로컬 Google 로그인에 필요
+skip_nonce_check = true
 [auth.external.apple]
 enabled = false
 client_id = ""
