@@ -1,14 +1,14 @@
 // 부에이전트 작업 후 영역 밖 변경이 있는지 검사 (CLAUDE.md "병렬 작업 충돌 방지 규칙")
 // 사용: npm run agents:check -- <에이전트명>[,<에이전트명>...]
-// 예:   npm run agents:check -- feature-implementer
-//       npm run agents:check -- feature-implementer,tester   (병렬 실행한 경우)
+// 예:   npm run agents:check -- builder
+//       npm run agents:check -- builder,tester   (병렬 실행한 경우)
 import { execSync } from "node:child_process";
 
 const TEST = [/(^|\/)__tests__\//, /\.test\.tsx?$/, /^e2e\//];
 
 const OWNERSHIP = {
   "music-logic-coder": [/^src\/lib\/music\/(?!types\.ts$)/, ...TEST],
-  "feature-implementer": [
+  builder: [
     /^src\/app\//,
     /^src\/proxy\.ts$/,
     /^src\/components\//,
@@ -21,9 +21,10 @@ const OWNERSHIP = {
     ...TEST,
   ],
   tester: TEST,
-  "code-reviewer": [],
-  architect: [],
-  "file-finder": [],
+  reviewer: [],
+  advisor: [],
+  challenger: [],
+  scout: [],
 };
 
 const arg = process.argv[2];

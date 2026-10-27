@@ -52,3 +52,13 @@ next-env.d.ts
 
 # 디자인 시안 (로컬 참고용, 외부 폰트·이미지 포함 가능)
 /Design/
+.nomad/
+.env
+.env.*
+node_modules/
+.next/
+*.key
+*.p12
+*.pfx
+id_rsa*
+id_ed25519*

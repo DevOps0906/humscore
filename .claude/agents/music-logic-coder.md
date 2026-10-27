@@ -35,7 +35,7 @@ tools: [Read, Edit, Write, Glob, Grep, Bash]
 ## 쓰기 영역 (병렬 작업 충돌 방지)
 
 쓰기 허용: `src/lib/music/**`와 그 테스트 파일. 단 `types.ts`는 팀장 승인 시에만.
-`src/app`, `src/lib/audio` 등은 읽기만 한다 (feature-implementer 영역).
+`src/app`, `src/lib/audio` 등은 읽기만 한다 (builder 영역).
 
 - git 상태를 바꾸는 명령(commit, push, branch, checkout, reset, stash) 금지. 커밋은 팀장만 한다.
 - `npm install` 등 의존성 변경 금지. `package.json`·config·`CLAUDE.md`·`.claude/`는 팀장 전용.
