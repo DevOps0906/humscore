@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { PIANO_KEYS } from "@/lib/music/frequency";
+import { useLandscapeLock } from "@/hooks/use-landscape-lock";
 
 const WHITES = PIANO_KEYS.filter((k) => !k.isBlack);
 const W = 100 / WHITES.length;
@@ -29,7 +30,7 @@ interface TouchState {
 }
 
 /**
- * 88건반(폭 1800px 이상, 가로 스크롤). 마운트 시 가온 C(C4)를 가운데에 둔다.
+ * 88건반(가로 스크롤). ~1199px 은 보이는 폭에 흰건반 15개(C3~C5), 1200px~ 은 폭 1800px. 마운트 시 가온 C(C4)를 가운데에 둔다.
  * active가 바뀌면 보이는 영역 밖일 때 부드럽게 스크롤. 터치는 탭일 때만 onPress(스크롤 오입력 방지).
  */
 export function PianoKeyboard({ onPress, active = null, highlight, pressed: externalPressed, className = "" }: Props) {
@@ -38,6 +39,8 @@ export function PianoKeyboard({ onPress, active = null, highlight, pressed: exte
   const touches = useRef<Map<number, TouchState>>(new Map());
   const positioned = useRef(false);
   const [tabStop, setTabStop] = useState(MIDDLE_C);
+  const { needsRotate, dismiss } = useLandscapeLock();
+  const userMoved = useRef(false);
 
   /** 건반 midi 를 가로 가운데로 */
   const centerOn = useCallback((midi: number, smooth: boolean) => {
@@ -65,22 +68,32 @@ export function PianoKeyboard({ onPress, active = null, highlight, pressed: exte
     const box = scroller.current;
     if (!box) return;
     let ro: ResizeObserver | null = null;
+    // 폭이 바뀔 때(회전·resize)마다 C4 기준으로 재정렬. 사용자가 직접 스크롤한 뒤에는 건드리지 않는다
     const place = () => {
-      if (positioned.current || box.clientWidth === 0) return false;
+      if (box.clientWidth === 0) return;
+      if (positioned.current && userMoved.current) return;
       centerOn(MIDDLE_C, false);
-      const a = activeAtMount.current;
-      if (a !== null && !isVisible(a)) centerOn(a, false);
+      if (!positioned.current) {
+        const a = activeAtMount.current;
+        if (a !== null && !isVisible(a)) centerOn(a, false);
+      }
       positioned.current = true;
-      ro?.disconnect();
-      return true;
     };
-    if (!place() && typeof ResizeObserver !== "undefined") {
-      ro = new ResizeObserver(() => {
-        place();
-      });
+    const markMoved = () => {
+      userMoved.current = true;
+    };
+    place();
+    box.addEventListener("pointerdown", markMoved);
+    box.addEventListener("wheel", markMoved, { passive: true });
+    if (typeof ResizeObserver !== "undefined") {
+      ro = new ResizeObserver(place);
       ro.observe(box);
     }
-    return () => ro?.disconnect();
+    return () => {
+      ro?.disconnect();
+      box.removeEventListener("pointerdown", markMoved);
+      box.removeEventListener("wheel", markMoved);
+    };
   }, [centerOn, isVisible]);
 
   // active 변경: 화면 밖이면 부드럽게 이동 (초기 배치 전에는 건너뜀)
@@ -168,6 +181,22 @@ export function PianoKeyboard({ onPress, active = null, highlight, pressed: exte
 
   return (
     <div className={className}>
+      {needsRotate && (
+        <div
+          role="alert"
+          className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-3 bg-paper px-8 text-center text-ink"
+        >
+          <p className="text-lg font-bold">가로로 돌려 주세요</p>
+          <p className="text-sm text-ink-soft">건반을 넓게 보려면 기기를 가로 방향으로 두세요.</p>
+          <button
+            type="button"
+            onClick={dismiss}
+            className="mt-2 h-11 rounded-full border border-line bg-surface px-5 text-sm text-ink outline-none hover:bg-section focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            세로로 그냥 보기
+          </button>
+        </div>
+      )}
       <div className="mb-2 flex flex-wrap items-center gap-2">
         <button type="button" className={nav} onClick={() => scrollByOctave(-1)}>
           ◀ 옥타브
@@ -185,7 +214,7 @@ export function PianoKeyboard({ onPress, active = null, highlight, pressed: exte
         style={{ touchAction: "pan-x pan-y" }}
         data-testid="piano-scroller"
       >
-        <div className="relative flex h-40 min-w-[1800px] select-none touch-manipulation">
+        <div className="relative flex h-40 min-w-[max(1800px,346.67%)] select-none min-[1200px]:min-w-[1800px] touch-manipulation">
           {WHITES.map((k) => {
             const down = isDown(k.midi);
             const isActive = active === k.midi;

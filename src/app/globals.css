@@ -225,6 +225,10 @@ h3 {
 .safe-bottom {
   padding-bottom: max(env(safe-area-inset-bottom), 8px);
 }
+/* 하단 탭바 전용: 최소 여백만 */
+.safe-bottom-tight {
+  padding-bottom: max(env(safe-area-inset-bottom), 2px);
+}
 .safe-top {
   padding-top: env(safe-area-inset-top);
 }

@@ -23,12 +23,12 @@ export function TabBar() {
     <nav
       aria-label="주요 메뉴"
       data-app-nav
-      className="no-print safe-bottom fixed inset-x-0 bottom-0 z-20 bg-paper/95 backdrop-blur lg:inset-y-0 lg:right-auto lg:bottom-auto lg:flex lg:w-60 lg:flex-col lg:border-r lg:border-line lg:bg-paper lg:px-4 lg:pb-6 lg:pt-5 lg:backdrop-blur-none"
+      className="no-print safe-bottom-tight fixed inset-x-0 bottom-0 z-20 bg-paper/95 backdrop-blur lg:inset-y-0 lg:right-auto lg:bottom-auto lg:flex lg:w-60 lg:flex-col lg:border-r lg:border-line lg:bg-paper lg:px-4 lg:pb-6 lg:pt-5 lg:backdrop-blur-none"
     >
       <div className="hr-fade lg:hidden" aria-hidden />
       {/* 데스크톱 사이드바 전용 로고 (모바일·태블릿은 각 화면 상단에 로고가 있다) */}
       <AppLogo className="mb-4 hidden self-start lg:inline-flex" />
-      <ul className="mx-auto flex max-w-md justify-around pt-2 md:max-w-xl lg:mx-0 lg:max-w-none lg:flex-col lg:justify-start lg:gap-1 lg:pt-0">
+      <ul className="mx-auto flex max-w-md justify-around md:max-w-xl lg:mx-0 lg:max-w-none lg:flex-col lg:justify-start lg:gap-1">
         {TABS.map(({ href, label, icon: Icon }) => {
           const active = href === "/library" ? pathname.startsWith("/library") || pathname.startsWith("/scores") : pathname.startsWith(href);
           return (
@@ -36,7 +36,7 @@ export function TabBar() {
               <Link
                 href={href}
                 aria-current={active ? "page" : undefined}
-                className={`flex min-h-12 min-w-20 flex-col items-center justify-center gap-1 rounded-lg px-3 py-1 text-xs outline-none transition-colors focus-visible:ring-3 focus-visible:ring-ring/60 md:min-w-28 md:text-sm lg:min-w-0 lg:flex-row lg:justify-start lg:gap-3 lg:px-3 lg:text-sm ${active ? "text-accent lg:bg-section/60" : "text-ink-soft hover:text-ink lg:hover:bg-section/40"}`}
+                className={`flex min-w-20 flex-col items-center justify-center gap-0.5 rounded-lg px-3 py-1 text-xs lg:min-h-12 outline-none transition-colors focus-visible:ring-3 focus-visible:ring-ring/60 md:min-w-28 md:text-sm lg:min-w-0 lg:flex-row lg:justify-start lg:gap-3 lg:px-3 lg:text-sm ${active ? "text-accent lg:bg-section/60" : "text-ink-soft hover:text-ink lg:hover:bg-section/40"}`}
               >
                 <Icon className="size-6 lg:size-5" strokeWidth={1.8} aria-hidden />
                 {label}
