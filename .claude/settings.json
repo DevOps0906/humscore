@@ -23,5 +23,35 @@
   },
   "enabledPlugins": {
     "unity@unity-agent-plugin": false
+  },
+  "skillOverrides": {
+    "unity-cli": "off",
+    "google-workspace": "off",
+    "anthropic-skills:google-workspace": "off",
+    "morning": "off",
+    "anthropic-skills:morning": "off",
+    "computer-use": "off",
+    "anthropic-skills:computer-use": "off",
+    "orca-cli": "name-only",
+    "orca-linear": "name-only",
+    "codebase-memory": "name-only",
+    "docs": "name-only",
+    "anthropic-skills:docs": "name-only",
+    "docx": "name-only",
+    "anthropic-skills:docx": "name-only",
+    "pptx": "name-only",
+    "anthropic-skills:pptx": "name-only",
+    "xlsx": "name-only",
+    "anthropic-skills:xlsx": "name-only",
+    "pdf": "name-only",
+    "anthropic-skills:pdf": "name-only",
+    "chrome-browser": "name-only",
+    "anthropic-skills:chrome-browser": "name-only",
+    "built-in-browser": "name-only",
+    "anthropic-skills:built-in-browser": "name-only",
+    "deep-research": "name-only",
+    "anthropic-skills:deep-research": "name-only",
+    "skill-creator": "name-only",
+    "anthropic-skills:skill-creator": "name-only"
   }
 }
