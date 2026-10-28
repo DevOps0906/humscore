@@ -1,0 +1,15 @@
+node_modules
+.next
+out
+.git
+.env*
+!.env.example
+ios
+android
+Design
+test-results
+playwright-report
+.serena
+.nomad
+.claude
+*.log

@@ -16,6 +16,19 @@ E2E_BASE_URL=https://humscore.vercel.app npm run test:e2e   # 운영 배포본 �
 환경변수(`.env.local`): `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` — 없으면 로컬 저장 모드로 동작.
 `vercel env pull`로 받을 수 있습니다. Supabase Auth Redirect URLs에 `<도메인>/auth/callback`을 등록하세요.
 
+### Docker로 실행
+
+```bash
+docker compose up -d           # 빌드 후 백그라운드 실행 → http://localhost:3200
+docker compose up -d --build   # 코드 변경 후 다시 빌드
+docker compose logs -f web     # 로그 보기
+docker compose down            # 중지
+```
+
+- 접속 주소: **http://localhost:3200** (컨테이너 내부 3000 → 호스트 3200. 3100은 `npm run dev` 기본 포트와 겹치지 않게 비워 둠)
+- Supabase 로그인·동기화를 켜려면 프로젝트 루트 `.env`에 `NEXT_PUBLIC_SUPABASE_URL`·`NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`를 넣고 `--build`로 다시 빌드합니다(빌드 때 번들에 들어감). 비우면 이 기기 저장 모드로 동작합니다.
+- 마이크는 localhost 또는 https에서만 동작하므로 같은 PC 브라우저에서 접속하세요.
+
 ### 앱으로 실행
 
 ```bash

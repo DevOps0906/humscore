@@ -1,0 +1,15 @@
+# docker compose up -d → http://localhost:3200
+# Supabase 로그인·동기화를 켜려면 같은 폴더 .env 에 NEXT_PUBLIC_SUPABASE_URL / NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY 를 넣고
+# docker compose up -d --build 로 다시 빌드한다(값은 빌드 때 번들에 들어감). 비우면 로컬 저장 모드.
+services:
+  web:
+    build:
+      context: .
+      args:
+        NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL:-}
+        NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY:-}
+    image: humscore-web
+    container_name: humscore-web
+    ports:
+      - "3200:3000"
+    restart: unless-stopped
