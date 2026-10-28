@@ -40,6 +40,7 @@
   --tune-warn: #e0b04a;
   --tune-bad: #f07a6e;
   --score-paper: #f7f7fb;
+  --shadow-ink: #000; /* 그림자·암부 혼합 기준색 */
   --shadow-sm: 0 0 0 1px var(--tono-gray-700);
   --shadow-md: 0 0 0 1px var(--tono-gray-600), 0 6px 18px rgba(0, 0, 0, 0.55);
 

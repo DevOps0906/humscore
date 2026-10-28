@@ -1,12 +1,28 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight, CircleCheck, Keyboard, Mic, ShieldCheck } from "lucide-react";
+import { ArrowDown, ArrowRight, Check, CircleCheck, Keyboard, Mic, ShieldCheck } from "lucide-react";
 import { Icon } from "@/components/landing/icon";
-import { CHECKS, FORMATS, NEW_FEATURES, PRODUCTS, SAMPLE_NOTES, STEPS, TOOLS, TRUST, TRY_CARDS, WHY } from "@/components/landing/data";
+import {
+  CHECKS,
+  FLOW_ENGINE,
+  FLOW_INPUTS,
+  FLOW_VIEWS,
+  FORMATS,
+  NEW_FEATURES,
+  PRODUCTS,
+  SAMPLE_CHORDS,
+  SAMPLE_NOTES,
+  STEPS,
+  TOOLS,
+  TRUST,
+  TRY_CARDS,
+  WHY,
+} from "@/components/landing/data";
 import { CompareDemo } from "@/components/landing/compare-demo";
 import { EditorDemo } from "@/components/landing/editor-demo";
 import { Faq } from "@/components/landing/faq";
+import { FlowProgress } from "@/components/landing/flow-progress";
 import { Reveal } from "@/components/landing/reveal";
 import styles from "@/components/landing/landing.module.css";
 
@@ -31,6 +47,8 @@ const btnGhost = `${styles.btn} ${styles.btnGhost}`;
 
 /** --d: 스크롤 진입 지연(초) */
 const delay = (s: number) => ({ "--d": `${s}s` }) as React.CSSProperties;
+/** --k: 순차 효과 순번 */
+const order = (k: number) => ({ "--k": k }) as React.CSSProperties;
 
 function SecHead({ kick, title, desc }: { kick: string; title: string; desc?: string }) {
   return (
@@ -224,6 +242,137 @@ export default function LandingPage() {
         </section>
         <Rule />
 
+        {/* 주요 기능 흐름 1~4: 세로 타임라인(스크롤 진행만큼 채움) */}
+        <section id="features-flow" className={sectionPad}>
+          <SecHead kick="주요 기능" title="흥얼거림이 악보가 되기까지" desc="입력만 고르면 나머지는 HumScore가 맡습니다. 네 단계로 살펴보세요." />
+          <FlowProgress />
+          <ol className={styles.ff} data-flow>
+            <FlowStep
+              n={1}
+              title="입력 방식을 고르세요"
+              body="부르거나, 파일을 올리거나, 건반을 눌러도 됩니다. 어떤 방식이든 같은 악보로 이어집니다."
+              cta={
+                <Link href="/record" className={`${styles.btn} ${styles.btnSolid}`}>
+                  <Mic aria-hidden />
+                  지금 녹음해 보기
+                </Link>
+              }
+            >
+              <div className={styles.ffCards}>
+                {FLOW_INPUTS.map((c, i) =>
+                  c.href ? (
+                    <Link key={c.title} href={c.href} className={styles.ffCard} data-reveal style={delay(0.1 + i * 0.1)}>
+                      <FlowCardBody icon={c.icon} title={c.title} body={c.body} />
+                    </Link>
+                  ) : (
+                    <div key={c.title} className={`${styles.ffCard} ${styles.ffSoon}`} aria-disabled="true" data-reveal style={delay(0.1 + i * 0.1)}>
+                      <FlowCardBody icon={c.icon} title={c.title} body={c.body} soon />
+                    </div>
+                  ),
+                )}
+              </div>
+            </FlowStep>
+
+            <FlowStep
+              n={2}
+              title="무거운 일은 HumScore가 맡습니다"
+              body="흥얼거린 소리를 음표로 옮기는 계산은 모두 기기 안에서 자동으로 처리됩니다."
+              cta={
+                <a href="#demo" className={btnOutline}>
+                  변환 과정 보기 <ArrowRight aria-hidden />
+                </a>
+              }
+            >
+              <div className={styles.ffSplit}>
+                <ul className={styles.ffChecks} data-reveal style={delay(0.1)}>
+                  {FLOW_ENGINE.map((e, i) => (
+                    <li key={e.title} style={order(i)}>
+                      <span className={styles.ffIco}>
+                        <Icon name={e.icon} />
+                      </span>
+                      <span>
+                        <b>{e.title}</b>
+                        <small>{e.body}</small>
+                      </span>
+                      <span className={styles.ffTick} aria-hidden>
+                        <Check />
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+                <div data-reveal style={delay(0.2)}>
+                  <AnalyzeMock />
+                </div>
+              </div>
+            </FlowStep>
+
+            <FlowStep
+              n={3}
+              title="보고, 듣고, 고치세요"
+              body="받아 적은 멜로디를 여러 화면으로 바꿔 보며 들어 보고, 마음에 들 때까지 다듬습니다."
+              cta={
+                <a href="#editor" className={btnOutline}>
+                  에디터 살펴보기 <ArrowRight aria-hidden />
+                </a>
+              }
+            >
+              <div className={styles.ffSplit}>
+                <div className={styles.iso} data-reveal style={delay(0.1)} aria-hidden>
+                  <div className={styles.isoStack}>
+                    <div className={styles.isoLayer} style={order(0)}>
+                      <TabMedia />
+                    </div>
+                    <div className={styles.isoLayer} style={order(1)}>
+                      <RollMedia />
+                    </div>
+                    <div className={`${styles.isoLayer} ${styles.isoPaper}`} style={order(2)}>
+                      <MiniStaff />
+                    </div>
+                  </div>
+                </div>
+                <ul className={styles.ffViews}>
+                  {FLOW_VIEWS.map((v, i) => (
+                    <li key={v.title} data-reveal style={delay(0.15 + i * 0.12)}>
+                      <span className={styles.ffIco}>
+                        <Icon name={v.icon} />
+                      </span>
+                      <span>
+                        <b>{v.title}</b>
+                        <small>{v.body}</small>
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </FlowStep>
+
+            <FlowStep
+              n={4}
+              title="여러 형식으로 내보내세요"
+              body="인쇄할 악보는 PDF로, 편곡은 MIDI로, 다른 악보 프로그램에서는 MusicXML로 이어 갑니다."
+              cta={
+                <a href="#formats" className={btnOutline}>
+                  호환 프로그램 보기 <ArrowRight aria-hidden />
+                </a>
+              }
+            >
+              <div className={styles.ffFmts}>
+                {FORMATS.map((f, i) => (
+                  <div key={f.name} className={styles.ffFmt} data-reveal style={{ ...delay(0.1 + i * 0.1), ...order(i) }}>
+                    <span className={styles.ffDrop} aria-hidden>
+                      <ArrowDown />
+                    </span>
+                    <Icon name={f.icon} />
+                    <b>{f.name}</b>
+                    <small>{f.desc}</small>
+                  </div>
+                ))}
+              </div>
+            </FlowStep>
+          </ol>
+        </section>
+        <Rule />
+
         {/* 신규 기능 블록 3 */}
         <section id="new" className={sectionPad}>
           <SecHead kick="신규 기능" title="같은 악보를 더 많은 방식으로" desc="모두 브라우저 안에서 처리하며, 한 번에 한 멜로디(단선율)를 다룹니다." />
@@ -253,10 +402,26 @@ export default function LandingPage() {
 
         {/* 숫자 띠·후기·언론·대상별 링크: 근거가 생기면 추가 (시안 [B] 주석 자리) */}
 
-        {/* 호환 형식 */}
+        {/* 호환: 어두운 스튜디오 배경 + 프로그램 8(이름·이니셜 모노그램만) + 형식 3 */}
         <section id="formats" className={sectionPad}>
-          <SecHead kick="내보내기" title="쓰던 프로그램 그대로" desc="MuseScore, Finale, Sibelius와 DAW에서 열 수 있습니다." />
-          <div className={styles.fmts} data-reveal>
+          <div className={styles.compat} data-reveal>
+            <span className={styles.kicker}>호환</span>
+            <h2 className={styles.h2}>즐겨 쓰는 프로그램에서 그대로 열립니다</h2>
+            <ul className={styles.compatRow}>
+              {TOOLS.map((t, i) => (
+                <li key={t.name} style={order(i)}>
+                  <span className={styles.mono} aria-hidden>
+                    {t.mono}
+                  </span>
+                  <span className={styles.monoName}>{t.name}</span>
+                </li>
+              ))}
+            </ul>
+            <p className={styles.compatNote}>
+              MusicXML · MIDI 표준 형식으로 내보내므로 악보 편집기와 DAW에서 바로 열어 이어서 작업할 수 있습니다.
+            </p>
+          </div>
+          <div className={`${styles.fmts} mt-4`} data-reveal>
             {FORMATS.map((f) => (
               <div key={f.name} className={styles.fmt}>
                 <Icon name={f.icon} />
@@ -265,11 +430,6 @@ export default function LandingPage() {
                   <small>{f.desc}</small>
                 </div>
               </div>
-            ))}
-          </div>
-          <div className={styles.tools} data-reveal>
-            {TOOLS.map((t) => (
-              <span key={t}>{t}</span>
             ))}
           </div>
         </section>
@@ -396,6 +556,90 @@ function DeviceMock() {
               </span>
             </div>
           ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function FlowStep({
+  n,
+  title,
+  body,
+  cta,
+  children,
+}: {
+  n: number;
+  title: string;
+  body: string;
+  cta: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  return (
+    <li className={styles.ffStep}>
+      <span className={styles.ffNode} data-node aria-hidden>
+        {n}
+      </span>
+      <div className={styles.ffBody}>
+        <div className={styles.ffText} data-reveal>
+          <span className={styles.ffNum}>{n}단계</span>
+          <h3>{title}</h3>
+          <p>{body}</p>
+          {cta}
+        </div>
+        {children}
+      </div>
+    </li>
+  );
+}
+
+function FlowCardBody({
+  icon,
+  title,
+  body,
+  soon,
+}: {
+  icon: (typeof FLOW_INPUTS)[number]["icon"];
+  title: string;
+  body: string;
+  soon?: boolean;
+}) {
+  return (
+    <>
+      <span className={styles.ffIco}>
+        <Icon name={icon} />
+      </span>
+      <b>
+        {title} {soon && <span className={styles.badge}>곧 제공</span>}
+      </b>
+      <small>{body}</small>
+    </>
+  );
+}
+
+/** 2단계 기기 목업: 분석 결과 화면(조성·코드 칩 + 악보 + 훑는 선) */
+function AnalyzeMock() {
+  return (
+    <div className={styles.ffDevice} aria-hidden>
+      <div className={styles.bar}>
+        <i />
+        <i />
+        <i />
+        <b>분석 결과</b>
+      </div>
+      <div className={styles.ffScreen}>
+        <div className={styles.ffChips}>
+          <span>C장조</span>
+          <span>4/4</span>
+          {SAMPLE_CHORDS.map((c) => (
+            <span key={c} className={styles.on}>
+              {c}
+            </span>
+          ))}
+        </div>
+        <div className={styles.ffStaff}>
+          <MiniStaff />
+          <span className={styles.ffScan} />
         </div>
       </div>
     </div>

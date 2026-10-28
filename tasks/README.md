@@ -15,7 +15,8 @@
 | task-010 | 따라 치기 연습 — 악보를 보며 피아노를 치면 마이크·MIDI로 다음 음 일치 판정·표시(단음부터, 학습 앱 구조 제외) | W2 | task-001 | 보통 | planner → music-logic-coder → builder → reviewer(code) | 완료 |
 | task-011 | 외부 소리 실시간 받아 적기 (스피커 재생 음원 → 음표, 모바일 유튜브 대체 경로) | W3 | task-004 | 높음 | planner → challenger → builder | 대기 |
 | task-012 | 동기화 통합 검증 — 로컬 Supabase에서 RLS·LWW 트리거·2000개 제한·타인 id upsert + 실제 로그인 e2e(Mailpit OTP, 로컬 URL 가드, OTP 발송 한도 조정) | W2 | task-003 | 높음 | challenger → tester → reviewer(security) | 완료 |
-| task-013 | 랜딩·내 악보 재디자인 반영 (시안 `docs/design/redesign-{landing,library}.html`, 비회원 기기 저장 배너·최근 수정 3개·검색·정렬·상태 4종, 태블릿 히어로 세로; 폴더·태그·복구 제외) | W2 | — | 보통 | codex-designer → designer → builder → codex-reviewer(design·code) | 진행 |
+| task-013 | 랜딩·내 악보 재디자인 반영 (시안 `docs/design/redesign-{landing,library}.html`, 비회원 기기 저장 배너·최근 수정 3개·검색·정렬·상태 4종, 태블릿 히어로 세로; 폴더·태그·복구 제외) | W2 | — | 보통 | codex-designer → designer → builder → codex-reviewer(design·code) | 완료 |
+| task-014 | 악보 편집 '가사 등록'(기기 안 음성인식만, 음표별 lyric·MusicXML) · '음원 등록'(오디오 파일 업로드 + 악기 마이크 목소리 필터) | W2 | — | 보통 | music-logic-coder → builder → codex-reviewer(code) | 진행 |
 
 상태: 대기 / 진행 / 완료 / 보류
 
@@ -28,3 +29,4 @@
 
 ## 교훈 (다음 작업에 그대로 적용할 것만, 20줄 이내 유지)
 - 
+| 2026-10-29 | `src/components/landing/landing.module.css` | 히어로 장식 음표(.f1~.f5)·휴대폰 목업(.pscr·.prow) 글자 크기 px 리터럴 잔존, 섹션 패딩 px | 목업 전용 `--lp-*` 크기 변수로 토큰화 |

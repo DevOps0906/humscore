@@ -78,7 +78,39 @@ export const WHY = [
   { icon: "ListMusic", title: "조성 찾기와 코드 추천", body: "멜로디의 조성을 찾고 어울리는 코드를 제안합니다." },
 ] as const;
 
-export const TOOLS = ["MuseScore", "Finale", "Sibelius", "DAW"] as const;
+/** 호환 프로그램 8: 이름 텍스트 + 직접 만든 이니셜 모노그램만(타사 로고·상표 그래픽 금지) */
+export const TOOLS = [
+  { name: "MuseScore", mono: "Ms" },
+  { name: "Sibelius", mono: "Si" },
+  { name: "Finale", mono: "Fi" },
+  { name: "Dorico", mono: "Do" },
+  { name: "Logic Pro", mono: "Lp" },
+  { name: "Cubase", mono: "Cu" },
+  { name: "FL Studio", mono: "FL" },
+  { name: "Ableton Live", mono: "Al" },
+] as const;
+
+/** 주요 기능 흐름(#features-flow) 1단계: 입력 방식. href 없음 = 곧 제공 */
+export const FLOW_INPUTS = [
+  { icon: "Mic", title: "목소리 녹음", body: "마이크에 흥얼거리면 바로 받아 적기 시작합니다.", href: "/record" },
+  { icon: "Upload", title: "오디오 파일", body: "녹음해 둔 단선율 파일을 올려 악보로 바꿉니다.", href: "" },
+  { icon: "Piano", title: "88건반 · MIDI", body: "화면 피아노나 MIDI 키보드로 직접 연주해 넣습니다.", href: "/keys" },
+] as const;
+
+/** 2단계: 앱이 대신 하는 일 */
+export const FLOW_ENGINE = [
+  { icon: "AudioWaveform", title: "음정 추적", body: "목소리의 높낮이를 따라가 가장 가까운 음으로 맞춥니다." },
+  { icon: "Timer", title: "박자 정렬", body: "메트로놈 박에 맞춰 음 길이를 가지런히 정리합니다." },
+  { icon: "KeyRound", title: "키 추정", body: "멜로디에 쓰인 음을 보고 조성을 찾아 조표를 붙입니다." },
+  { icon: "ListMusic", title: "코드 추천", body: "마디마다 어울리는 코드를 골라 멜로디 위에 적습니다." },
+] as const;
+
+/** 3단계: 보기·재생·편집 */
+export const FLOW_VIEWS = [
+  { icon: "Eye", title: "악보로 보기", body: "오선 악보, 피아노 롤, 기타 TAB으로 같은 멜로디를 봅니다." },
+  { icon: "Play", title: "바로 재생", body: "피아노 소리로 들으며 재생 위치를 악보 위에서 따라갑니다." },
+  { icon: "PencilLine", title: "직접 편집", body: "틀린 음과 박자, 코드를 눌러서 바로 고칩니다." },
+] as const;
 
 export const CHECKS = ["음표·박자 편집", "코드 수정과 추천", "피아노 재생과 조옮김"] as const;
 
