@@ -138,13 +138,13 @@ h2.t{font-size:var(--text-h2);line-height:1.25;letter-spacing:-.02em;font-weight
 .hero .note{margin-top:14px;font-size:var(--text-caption);color:var(--ink-soft)}
 .fade-in{opacity:0;animation:fadeIn 1s .15s ease-out forwards}
 @keyframes fadeIn{to{opacity:1}}
-.mock{display:none;position:relative;width:100%;max-width:640px;height:380px}
+.mock{display:none;position:relative;width:100%;max-width:640px;height:440px}
 @media(min-width:768px){.mock{display:block}}
 @media(min-width:900px){
   .hero-grid{grid-template-columns:minmax(0,5fr) minmax(0,6fr);text-align:left;justify-items:stretch;align-items:center;gap:clamp(24px,4vw,64px);padding:72px 0 56px}
   .hero .sub{margin-left:0}.hero .btnrow{align-items:flex-start}.entry{justify-content:flex-start}
 }
-@media(min-width:1200px){.mock{height:430px}}
+@media(min-width:1200px){.mock{height:450px}}
 .laptop{position:absolute;left:0;top:0;width:86%;animation:rise 1s .3s ease-out both}
 .lid{background:#0e1019;border:1px solid var(--gray-600);border-radius:12px 12px 4px 4px;padding:8px;box-shadow:0 24px 60px rgba(0,0,0,.6),0 0 60px color-mix(in srgb,var(--accent) 22%,transparent)}
 .base{height:10px;margin:0 -4%;background:linear-gradient(#3a3d4a,#23252f);border-radius:0 0 12px 12px}
@@ -156,13 +156,16 @@ h2.t{font-size:var(--text-h2);line-height:1.25;letter-spacing:-.02em;font-weight
 .tabs-m span{padding:5px 10px;border-radius:6px 6px 0 0;font-size:11px;color:var(--ink-soft)}
 .tabs-m span.on{background:var(--score-paper);color:var(--score-ink);font-weight:600}
 .paper{position:relative;background:var(--score-paper);padding:14px 12px 8px;color:var(--score-ink)}
-.paper .ttl{font-size:11px;font-weight:600;margin-bottom:2px;color:var(--score-ink)}
-.playhead{position:absolute;top:34px;bottom:10px;width:2px;background:var(--accent);box-shadow:0 0 10px var(--glow);left:16%;animation:play 7s linear infinite}
-@keyframes play{from{left:16%}to{left:94%}}
+/* 히어로 악보: assets/hero-score.svg(OSMD 렌더 1400×1082.5, 한 단 4마디·4단 16마디). 휴대폰 목업에 가리지 않게 창 너비 84%로 왼쪽 정렬해
+   전곡을 스크롤 없이 표시(세로는 마지막 단 아래 1030까지). 플레이헤드가 1→4단을 7초씩 차례로 지난다 */
+.sheet{position:relative;aspect-ratio:1400/866;overflow:hidden;container-type:inline-size;background:var(--score-paper)}
+.sheet img{display:block;width:84%;height:auto}
+.playhead{position:absolute;top:calc(190*.06cqw);height:calc(150*.06cqw);width:2px;background:var(--accent);box-shadow:0 0 10px var(--glow);left:6.7%;animation:play 28s linear infinite}
+@keyframes play{0%{top:calc(190*.06cqw);left:6.7%}24.99%{top:calc(190*.06cqw);left:82%}25%{top:calc(405*.06cqw);left:5.5%}49.99%{top:calc(405*.06cqw);left:82%}50%{top:calc(607*.06cqw);left:5.5%}74.99%{top:calc(607*.06cqw);left:82%}75%{top:calc(857*.06cqw);left:5.5%}99.99%{top:calc(857*.06cqw);left:82%}100%{top:calc(190*.06cqw);left:6.7%}}
 .trans{display:flex;align-items:center;gap:10px;padding:8px 12px;background:#1b1d2a;font-size:11px;color:var(--ink-soft)}
 .trans .pl{width:22px;height:22px;border-radius:50%;background:var(--accent);display:grid;place-items:center;color:var(--accent-ink);font-size:9px}
 .trans .pg{flex:1;height:3px;border-radius:2px;background:var(--gray-700);overflow:hidden}
-.trans .pg i{display:block;height:100%;width:100%;background:var(--accent);transform-origin:left;animation:prog 7s linear infinite}
+.trans .pg i{display:block;height:100%;width:100%;background:var(--accent);transform-origin:left;animation:prog 28s linear infinite}
 @keyframes prog{from{transform:scaleX(.1)}to{transform:scaleX(1)}}
 .phone{position:absolute;right:0;bottom:0;width:30%;max-width:190px;min-width:150px;aspect-ratio:9/18.5;background:#0e1019;border:1px solid var(--gray-600);border-radius:26px;padding:8px;box-shadow:0 24px 60px rgba(0,0,0,.65),0 0 50px color-mix(in srgb,var(--accent) 25%,transparent);animation:rise 1s .5s ease-out both}
 .phone .pscr{height:100%;border-radius:19px;background:var(--paper);overflow:hidden;padding:14px 10px;font-size:10px}
@@ -337,13 +340,13 @@ footer .wrap{display:flex;flex-wrap:wrap;gap:12px 24px;justify-content:space-bet
   .flow path{stroke-dashoffset:0}
   .pitch polyline{stroke-dashoffset:0}
   .steps::after{transform:none!important}
-  .playhead{left:55%}
+  .playhead{left:45%}
 }
 .static *,.static *::before,.static *::after{animation:none!important;transition:none!important}
 .static [data-reveal],.static .fade-in,.static .trust li,.static .laptop,.static .phone{opacity:1!important;transform:none!important}
 .static .flow path,.static .pitch polyline{stroke-dashoffset:0}
 .static .steps::after{transform:none!important}
-.static .playhead{left:55%}
+.static .playhead{left:45%}
 </style>
 </head>
 <body>
@@ -427,17 +430,15 @@ footer .wrap{display:flex;flex-wrap:wrap;gap:12px 24px;justify-content:space-bet
       <div class="bar"><i></i><i></i><i></i><b>HumScore · 아침 산책</b></div>
       <div class="tabs-m"><span class="on">편집</span><span>코드</span><span>전조</span><span>공연</span></div>
       <div class="paper">
-       <div class="ttl">아침 산책</div>
-       <svg class="staff" data-w="420" data-chords="C,F,G7" viewBox="0 0 420 92"></svg>
-       <span class="playhead"></span>
+       <div class="sheet"><img src="assets/hero-score.svg" alt="" width="1400" height="1083"><span class="playhead"></span></div>
       </div>
-      <div class="trans"><span class="pl">▶</span><span class="pg"><i></i></span><span>C장조 · 4/4</span></div>
+      <div class="trans"><span class="pl">▶</span><span class="pg"><i></i></span><span>G장조 · 4/4 · 16마디</span></div>
      </div></div>
      <div class="base"></div>
     </div>
     <div class="phone"><div class="pscr">
      <h5>내 악보</h5>
-     <div class="prow"><span class="th"></span><span><b>아침 산책</b><small>C장조 · 4/4</small></span></div>
+     <div class="prow"><span class="th"></span><span><b>아침 산책</b><small>G장조 · 4/4</small></span></div>
      <div class="prow"><span class="th"></span><span><b>저녁 하모니</b><small>G장조 · 3/4</small></span></div>
      <div class="prow"><span class="th"></span><span><b>연습곡</b><small>F장조 · 4/4</small></span></div>
      <div class="prow"><span class="th"></span><span><b>떠오른 멜로디</b><small>D장조 · 4/4</small></span></div>
