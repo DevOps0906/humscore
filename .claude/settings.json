@@ -20,5 +20,8 @@
       "Read(./**/pnpm-lock.yaml)",
       "Read(./**/package-lock.json)"
     ]
+  },
+  "enabledPlugins": {
+    "unity@unity-agent-plugin": false
   }
 }

@@ -4,7 +4,6 @@
 
 > 팀 구성·모델·위임 규격은 전역 `~/.claude/nomad/TEAM.md`(NOMAD)를 따른다. 이 파일은 HumScore 고유 규칙만 적는다.
 > 프로젝트 전용 팀원: `music-logic-coder`(src/lib/music/**). 나머지는 NOMAD 팀원(scout·builder·tester·reviewer·advisor 등).
-> 구조·서버 규칙은 `.claude/rules/web.md`, 오디오 패턴은 `.claude/rules/audio.md`(해당 경로 작업 때 자동 로드).
 
 ## 병렬 작업 충돌 방지 규칙 (팀장 필독)
 
@@ -29,6 +28,3 @@
 - `git commit` / `push` / `branch` / `checkout` / `reset` 등 git 상태 변경
 - `npm install` 등 의존성 변경 (`package.json`은 팀장 전용)
 - 다른 에이전트 영역 파일 수정, 포매터로 전체 파일 일괄 재작성
-
-## 플랫폼
-풀스택 Next.js 16 (Vercel) + Capacitor 8(운영 도메인 원격 로드) 한 코드베이스로 웹·iOS·Android. `npm run cap:android` / `npm run cap:ios`(macOS).

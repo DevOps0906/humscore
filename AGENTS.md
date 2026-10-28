@@ -21,6 +21,7 @@
 | 테스트 | `npm test` · `npm run test:e2e` |
 | DB | `npm run db:start` · `npm run db:reset` |
 | 영역 검사 | `npm run agents:check -- <팀원명>` |
+| 앱 | `npm run cap:android` · `npm run cap:ios`(macOS) |
 긴 출력 명령은 `~/.claude/nomad/bin/q <명령>`으로 실행한다.
 
 ## 4. 절대 규칙 (위반 = 리뷰 🔴)
