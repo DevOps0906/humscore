@@ -63,12 +63,13 @@ function release() {
  * 네이티브는 Capacitor 플러그인, 웹은 screen.orientation.lock 을 시도(실패는 무시).
  * 잠금 시도가 끝난 뒤에도 세로로 남으면 needsRotate 가 true. dismiss 로 안내를 닫을 수 있다.
  */
-export function useLandscapeLock(): { needsRotate: boolean; dismiss: () => void } {
+export function useLandscapeLock(enabled = true): { needsRotate: boolean; dismiss: () => void } {
   const [attempted, setAttempted] = useState(false);
   const [portrait, setPortrait] = useState(false);
   const [dismissed, setDismissed] = useState(false);
 
   useEffect(() => {
+    if (!enabled) return;
     let alive = true;
     void acquire().then(() => {
       if (alive) setAttempted(true);
@@ -86,8 +87,8 @@ export function useLandscapeLock(): { needsRotate: boolean; dismiss: () => void 
       window.removeEventListener("orientationchange", update);
       release();
     };
-  }, []);
+  }, [enabled]);
 
   const dismiss = useCallback(() => setDismissed(true), []);
-  return { needsRotate: attempted && portrait && !dismissed, dismiss };
+  return { needsRotate: enabled && attempted && portrait && !dismissed, dismiss };
 }

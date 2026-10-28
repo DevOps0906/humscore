@@ -116,6 +116,7 @@ export async function startPitchTracking(opts: TrackerOptions): Promise<TrackerS
   let raf = 0;
   let lastTime = -Infinity;
   const tick = () => {
+    if (stopped) return;
     const now = ctx.currentTime;
     // 박자 표시는 출력 지연만큼 늦춰 실제로 들리는 클릭에 맞춤
     const heard = now - outLatency;
@@ -138,6 +139,7 @@ export async function startPitchTracking(opts: TrackerOptions): Promise<TrackerS
     lastTime = frame.time;
     opts.onFrame?.(frame);
     if (frame.time >= 0) frames.push(frame);
+    if (stopped) return; // onFrame 안에서 stop() 된 경우 루프를 다시 예약하지 않는다
     raf = requestAnimationFrame(tick);
   };
   raf = requestAnimationFrame(tick);

@@ -37,8 +37,9 @@ export function useMidiInput(options: UseMidiInputOptions = {}) {
     };
   }, []);
 
-  const connect = useCallback(async () => {
-    if (closeRef.current) return;
+  /** 연결 성공(이미 연결됨 포함) 여부 */
+  const connect = useCallback(async (): Promise<boolean> => {
+    if (closeRef.current) return true;
     setStatus("connecting");
     setMessage("");
     const r = await connectMidi({
@@ -53,15 +54,16 @@ export function useMidiInput(options: UseMidiInputOptions = {}) {
     });
     if (!aliveRef.current) {
       if (r.ok) r.close();
-      return;
+      return false;
     }
     if (r.ok) {
       closeRef.current = r.close;
       setStatus("connected");
-    } else {
-      setStatus(r.reason);
-      setMessage(r.message);
+      return true;
     }
+    setStatus(r.reason);
+    setMessage(r.message);
+    return false;
   }, []);
 
   return {

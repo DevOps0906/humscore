@@ -19,6 +19,8 @@ interface Props {
   /** 외부(PC 키보드 등)에서 눌린 건반 */
   pressed?: Set<number>;
   className?: string;
+  /** 힌트 표시용: 가로 회전 안내·옥타브 버튼 줄을 숨기고 건반 높이를 줄인다 (기본 false) */
+  compact?: boolean;
 }
 
 interface TouchState {
@@ -33,13 +35,13 @@ interface TouchState {
  * 88건반(가로 스크롤). ~1199px 은 보이는 폭에 흰건반 15개(C3~C5), 1200px~ 은 폭 1800px. 마운트 시 가온 C(C4)를 가운데에 둔다.
  * active가 바뀌면 보이는 영역 밖일 때 부드럽게 스크롤. 터치는 탭일 때만 onPress(스크롤 오입력 방지).
  */
-export function PianoKeyboard({ onPress, active = null, highlight, pressed: externalPressed, className = "" }: Props) {
+export function PianoKeyboard({ onPress, active = null, highlight, pressed: externalPressed, className = "", compact = false }: Props) {
   const [inner, setInner] = useState<Set<number>>(new Set());
   const scroller = useRef<HTMLDivElement>(null);
   const touches = useRef<Map<number, TouchState>>(new Map());
   const positioned = useRef(false);
   const [tabStop, setTabStop] = useState(MIDDLE_C);
-  const { needsRotate, dismiss } = useLandscapeLock();
+  const { needsRotate, dismiss } = useLandscapeLock(!compact);
   const userMoved = useRef(false);
 
   /** 건반 midi 를 가로 가운데로 */
@@ -197,6 +199,7 @@ export function PianoKeyboard({ onPress, active = null, highlight, pressed: exte
           </button>
         </div>
       )}
+      {!compact && (
       <div className="mb-2 flex flex-wrap items-center gap-2">
         <button type="button" className={nav} onClick={() => scrollByOctave(-1)}>
           ◀ 옥타브
@@ -208,13 +211,14 @@ export function PianoKeyboard({ onPress, active = null, highlight, pressed: exte
           옥타브 ▶
         </button>
       </div>
+      )}
       <div
         ref={scroller}
         className="relative overflow-x-auto pb-2"
         style={{ touchAction: "pan-x pan-y" }}
         data-testid="piano-scroller"
       >
-        <div className="relative flex h-40 min-w-[max(1800px,346.67%)] select-none min-[1200px]:min-w-[1800px] touch-manipulation">
+        <div className={`relative flex ${compact ? "h-20" : "h-40"} min-w-[max(1800px,346.67%)] select-none min-[1200px]:min-w-[1800px] touch-manipulation`}>
           {WHITES.map((k) => {
             const down = isDown(k.midi);
             const isActive = active === k.midi;
@@ -263,7 +267,7 @@ export function PianoKeyboard({ onPress, active = null, highlight, pressed: exte
                 data-midi={k.midi}
                 {...handlers(k.midi)}
                 className={[
-                  "absolute top-0 z-10 h-24 rounded-b outline-none transition-all duration-75 focus-visible:ring-2 focus-visible:ring-ring",
+                  `absolute top-0 z-10 ${compact ? "h-12" : "h-24"} rounded-b outline-none transition-all duration-75 focus-visible:ring-2 focus-visible:ring-ring`,
                   down
                     ? "translate-y-1 bg-accent"
                     : active === k.midi || highlight?.has(k.midi)

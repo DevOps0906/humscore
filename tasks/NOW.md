@@ -1,9 +1,9 @@
 # NOW — 재진입 스냅샷 (30줄 이내, 매 작업 끝에 덮어쓴다)
 
 - 갱신: 2026-10-28
-- 현재 작업: 없음 (task-003 완료)
-- 마지막으로 한 일: task-003 동기화 버그 수정 — saveScore/deleteScore(…, expectedUserId)·"mismatch"/"stale" 오류, dirty 추적(humscore.dirty.v1), 로그아웃 경고, online·화면 복귀 재동기화, 로그아웃 후 부활·계정 전환 오프라인 노출 차단. 테스트 520건
-- 다음 한 걸음: task-012(로컬 Supabase 통합 검증: RLS·LWW 트리거 0행 반환·타인 id upsert + 로그인 e2e)로 mock 밖 동작 확인
-- 알려진 한계: 세션 만료 후 다른 계정(B)이 저장하면 이전 계정(A)의 못 올린 변경은 이 기기에서 지워짐(클라우드에 올라간 것만 남음). unsyncable 개수는 메모리 기준(새로고침 직후 0, flush 후 재계산)
-- 열린 결정: task-002 범위, task-008·task-010 착수 여부
+- 현재 작업: 없음 (task-010 따라 치기 완료, task-012 완료)
+- 마지막으로 한 일: 공연 모드 따라 치기 — `src/lib/music/follow.ts`(buildFollowPlan·judge, 상수 FOLLOW_*), `src/hooks/use-follow-along.ts`, `src/components/follow-panel.tsx`, PianoKeyboard `compact`, pitch-tracker tick 정지 가드
+- 다음 한 걸음: 실기기 실측(task-005 + 010-d) — 피아노 마이크 옥타브 오인식·같은 음 재타건·잔향, 앱 PDF, 동기화. 결과로 FOLLOW_* 상수 조정
+- 미확인: rAF 누수 수정은 코드로만(브라우저 실측 필요). OSMD 시스템 경계 단위(task-001)
+- 열린 결정: task-002 범위, task-008 착수 여부, 토큰 감사 2·3·5번 승인 대기
 - 주의: 영역은 `CLAUDE.md` ①표 + `npm run agents:check -- <팀원>`. 푸시는 사용자 지시가 있을 때만. `.serena/`는 커밋하지 않음.

@@ -12,7 +12,7 @@
 | task-007 | 피아노 교육 앱 벤치마킹 (`docs/06_BENCHMARK.md`) | W1 | — | 낮음 | 조사 | 완료 |
 | task-008 | 빠른 패시지 인식 개선 (고정 hop 측정 · 세기 기반 온셋 · 최소 음 길이 0.06초) — 착수 여부 사용자 확인 | W2 | — | 보통 | music-logic-coder → tester → reviewer(code) | 대기 |
 | task-009 | 기획 문서 (PRD · 화면 · 데이터 모델 · 경쟁 분석 · DESIGN.md · ADR 0001 유튜브 탭 캡처) | W1 | — | 낮음 | 팀장 | 완료 |
-| task-010 | 따라 치기 연습 — 악보를 보며 피아노를 치면 마이크·MIDI로 다음 음 일치 판정·표시(단음부터, 학습 앱 구조 제외) | W2 | task-001 | 보통 | planner → music-logic-coder → builder → reviewer(code) | 대기 |
+| task-010 | 따라 치기 연습 — 악보를 보며 피아노를 치면 마이크·MIDI로 다음 음 일치 판정·표시(단음부터, 학습 앱 구조 제외) | W2 | task-001 | 보통 | planner → music-logic-coder → builder → reviewer(code) | 완료 |
 | task-011 | 외부 소리 실시간 받아 적기 (스피커 재생 음원 → 음표, 모바일 유튜브 대체 경로) | W3 | task-004 | 높음 | planner → challenger → builder | 대기 |
 | task-012 | 동기화 통합 검증 — 로컬 Supabase에서 RLS·LWW 트리거·2000개 제한·타인 id upsert + 실제 로그인 e2e(Mailpit OTP, 로컬 URL 가드, OTP 발송 한도 조정) | W2 | task-003 | 높음 | challenger → tester → reviewer(security) | 완료 |
 
@@ -23,6 +23,7 @@
 |---|---|---|---|
 | 2026-10-28 | `.gitignore` | NOMAD 템플릿의 `.env.*`가 `.env.example`도 매칭 (추적 중이라 현재 무해) | NOMAD 템플릿에 `!.env.example` 추가 |
 | 2026-10-28 | `supabase/config.toml`·`supabase/templates/` | 로컬 메일 템플릿에 6자리 코드({{ .Token }})가 없어 e2e가 OTP 입력 대신 매직링크로 로그인. `email_sent=2`/시간이라 e2e는 시간당 1회만 가능 | OTP 템플릿 추가 + 로컬 한도 상향(팀장) |
+| 2026-10-28 | `follow-panel.tsx` | 스펙 6장의 데스크톱(1200~) 우측 상태 패널 미구현(하단 패널로 대체). 판정 임계값(±50센트·3프레임·무음 5프레임)은 실측 전 초안 | 실기기 실측(task-010-d) 후 조정 |
 
 ## 교훈 (다음 작업에 그대로 적용할 것만, 20줄 이내 유지)
 - 
