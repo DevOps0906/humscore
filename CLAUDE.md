@@ -26,9 +26,7 @@
 - 구현 에이전트는 자기 함수의 테스트 파일은 추가해도 된다. 영역 밖 수정이 필요하면 고치지 말고 보고서에 `요청: <파일> — <이유>`.
 - **공유 계약**: `src/lib/music/types.ts`의 `Score`, `src/lib/audio/context.ts`의 공개 함수. 변경은 팀장 결정 → 한 에이전트 단독 실행.
 
-### ② 병렬 판단 · ③ 통합 흐름
-- 쓰기 영역 안 겹침 → 같은 트리 동시 실행 / 겹침 → `isolation: "worktree"` 후 팀장이 순서대로 병합 / 공유 계약 변경 → 병렬 금지 / 읽기 전용 → 언제든.
-- 배정 전 `git status` 깨끗 → 완료 후 `npm run agents:check -- <에이전트명>` → `npm test` · `npx tsc --noEmit` → 위험도별 검증(보통 이상: codex-reviewer(code), Codex 불가 시 reviewer) → 팀장이 커밋(작업 1건 = 커밋 1개).
+### ② 병렬 판단 · ③ 통합 흐름 → `.claude/rules/delegation.md` (src·supabase·e2e·docs 작업 때 로드)
 
 ### 모든 부에이전트 공통 금지
 - `git commit` / `push` / `branch` / `checkout` / `reset` 등 git 상태 변경

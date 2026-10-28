@@ -427,17 +427,6 @@ export default function LandingPage() {
               MusicXML · MIDI 표준 형식으로 내보내므로 악보 편집기와 DAW에서 바로 열어 이어서 작업할 수 있습니다.
             </p>
           </div>
-          <div className={`${styles.fmts} mt-4`} data-reveal>
-            {FORMATS.map((f) => (
-              <div key={f.name} className={styles.fmt}>
-                <Icon name={f.icon} />
-                <div>
-                  <b>{f.name}</b>
-                  <small>{f.desc}</small>
-                </div>
-              </div>
-            ))}
-          </div>
         </section>
         <Rule />
 
