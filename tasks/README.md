@@ -5,7 +5,7 @@
 | task-000 | NOMAD 적용 (팀 통합 · AGENTS.md · 영역 규칙) | W0 | — | 낮음 | 팀장 | 완료 |
 | task-001 | 앱(Capacitor)에서 PDF 내보내기 — 의존성 없는 이미지 PDF → 공유 시트 (실기기 확인은 task-005) | W1 | — | 보통 | builder → reviewer(code) | 완료 |
 | task-002 | 공연 모드 보강 (범위는 착수 전 사용자 확정) | W1 | — | 보통 | builder → reviewer(design) | 대기 |
-| task-003 | 클라우드 동기화 회귀 테스트 강화 (merge 단위 테스트 · 로그인 e2e 실행 조건) | W2 | — | 높음 | challenger → tester → reviewer(security) | 대기 |
+| task-003 | 클라우드 동기화 버그 수정 + 회귀 테스트 (계정 전환 유출 · 시계 지연 유실 · 로그아웃 경고 · 자동 재시도) | W2 | — | 높음 | challenger → builder → reviewer(code+security) | 완료 |
 | task-004 | 음원 파일 업로드 → 음표 변환 (Basic Pitch) | W3 | task-003 | 높음 | planner → challenger → builder | 대기 |
 | task-005 | 실기기 체크리스트 수행 · 기록 (README 하단) | W1 | task-001 | 낮음 | 사용자 | 대기 |
 | task-006 | 건반 가로 고정(모바일·태블릿) · C4 중심 흰건반 15개 · 하단 탭바 높이 축소 | W1 | — | 높음(새 의존성) | builder → reviewer(code) | 완료 |
@@ -14,6 +14,7 @@
 | task-009 | 기획 문서 (PRD · 화면 · 데이터 모델 · 경쟁 분석 · DESIGN.md · ADR 0001 유튜브 탭 캡처) | W1 | — | 낮음 | 팀장 | 완료 |
 | task-010 | 따라 치기 연습 — 악보를 보며 피아노를 치면 마이크·MIDI로 다음 음 일치 판정·표시(단음부터, 학습 앱 구조 제외) | W2 | task-001 | 보통 | planner → music-logic-coder → builder → reviewer(code) | 대기 |
 | task-011 | 외부 소리 실시간 받아 적기 (스피커 재생 음원 → 음표, 모바일 유튜브 대체 경로) | W3 | task-004 | 높음 | planner → challenger → builder | 대기 |
+| task-012 | 동기화 통합 검증 — 로컬 Supabase에서 RLS·LWW 트리거·2000개 제한·타인 id upsert + 실제 로그인 e2e(Mailpit OTP, 로컬 URL 가드, OTP 발송 한도 조정) | W2 | task-003 | 높음 | challenger → tester → reviewer(security) | 대기 |
 
 상태: 대기 / 진행 / 완료 / 보류
 

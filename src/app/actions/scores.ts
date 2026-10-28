@@ -5,7 +5,8 @@ import type { CloudTombstone } from "@/lib/storage/merge";
 import { MAX_SCORE_BYTES, parseScore, scoreBytes, scoreIdSchema, scoreSchema } from "@/lib/storage/score-schema";
 import { createSupabaseServer } from "@/lib/storage/supabase/server";
 
-export type ActionError = "disabled" | "unauthenticated" | "invalid" | "failed";
+export type ActionError = "disabled" | "unauthenticated" | "mismatch" | "stale" | "invalid" | "failed";
+// mismatch: 요청을 시작한 계정(expectedUserId)과 현재 쿠키 계정이 다름 / stale: DB LWW 가드가 더 오래된 버전이라 반영하지 않음
 export type ActionResult<T> = { ok: true; data: T } | { ok: false; error: ActionError };
 
 const FUTURE_SKEW_MS = 5 * 60 * 1000;
@@ -49,7 +50,7 @@ export async function listScores(): Promise<ActionResult<{ userId: string; score
   }
 }
 
-export async function saveScore(input: unknown): Promise<ActionResult<{ id: string }>> {
+export async function saveScore(input: unknown, expectedUserId: string): Promise<ActionResult<{ id: string }>> {
   try {
     const parsed = scoreSchema.safeParse(input);
     if (!parsed.success) return { ok: false, error: "invalid" };
@@ -59,7 +60,8 @@ export async function saveScore(input: unknown): Promise<ActionResult<{ id: stri
     if (Date.parse(score.updatedAt) > now + FUTURE_SKEW_MS) score = { ...score, updatedAt: new Date(now).toISOString() };
     const a = await authed();
     if (!a.ok) return { ok: false, error: a.error };
-    const { error } = await a.sb.from("scores").upsert({
+    if (a.userId !== expectedUserId) return { ok: false, error: "mismatch" };
+    const { data: rows, error } = await a.sb.from("scores").upsert({
       id: score.id,
       user_id: a.userId,
       title: score.title,
@@ -67,8 +69,9 @@ export async function saveScore(input: unknown): Promise<ActionResult<{ id: stri
       created_at: score.createdAt,
       updated_at: score.updatedAt,
       deleted_at: null, // 삭제 후 다시 수정된 악보는 되살림
-    });
+    }).select("id");
     if (error) return { ok: false, error: error.code === "53400" ? "invalid" : "failed" };
+    if (!rows || rows.length === 0) return { ok: false, error: "stale" }; // LWW 트리거가 건너뜀 — 조용한 ok 금지
     return { ok: true, data: { id: score.id } };
   } catch {
     return { ok: false, error: "failed" };
@@ -76,12 +79,13 @@ export async function saveScore(input: unknown): Promise<ActionResult<{ id: stri
 }
 
 /** 소프트 삭제: deleted_at 과 updated_at 을 함께 올린다(LWW 가드를 통과하도록 기존 값보다 항상 큼). */
-export async function deleteScore(id: unknown): Promise<ActionResult<{ id: string }>> {
+export async function deleteScore(id: unknown, expectedUserId: string): Promise<ActionResult<{ id: string }>> {
   try {
     const parsed = scoreIdSchema.safeParse(id);
     if (!parsed.success) return { ok: false, error: "invalid" };
     const a = await authed();
     if (!a.ok) return { ok: false, error: a.error };
+    if (a.userId !== expectedUserId) return { ok: false, error: "mismatch" };
     const { data: row, error: readErr } = await a.sb.from("scores").select("updated_at").eq("id", parsed.data).maybeSingle();
     if (readErr) return { ok: false, error: "failed" };
     if (!row) return { ok: true, data: { id: parsed.data } }; // 클라우드에 없음 — 할 일 없음
