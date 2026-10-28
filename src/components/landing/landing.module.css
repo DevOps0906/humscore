@@ -32,3 +32,9 @@
 .heroGlow {
   background: radial-gradient(500px 300px at 50% 0%, color-mix(in srgb, var(--tono-accent) 20%, transparent), transparent 70%);
 }
+.wave {
+  height: 2.25rem;
+  background: repeating-linear-gradient(90deg, var(--tono-section-ghost) 0 3px, transparent 3px 8px);
+  -webkit-mask: linear-gradient(transparent 0, var(--ink) 30%, var(--ink) 70%, transparent 100%);
+  mask: linear-gradient(transparent 0, var(--ink) 30%, var(--ink) 70%, transparent 100%);
+}

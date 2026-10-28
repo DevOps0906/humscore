@@ -164,6 +164,12 @@
   --text-3xl: 1.75rem;    /* 28px  (기본 30px → 좁은 화면 줄바꿈 방지) */
   --text-4xl: 2rem;       /* 32px  (기본 36px) */
   --text-5xl: 2.5rem;     /* 40px  (기본 48px) */
+
+  /* 레이아웃 (task-013 재디자인) */
+  --tap-min: 2.75rem;          /* 44px 최소 터치 영역 */
+  --content-max: 70rem;        /* 1120px 본문 최대 폭 */
+  --space-section: 3.5rem;     /* 랜딩 섹션 간격 56px */
+  --space-section-sm: 2rem;    /* 앱 화면 섹션 간격 32px */
 }
 
 @media (min-width: 768px) {
@@ -177,6 +183,8 @@
     --text-3xl: 1.78125rem; /* 28.5px */
     --text-4xl: 2.1375rem;  /* 34.2px */
     --text-5xl: 2.85rem;    /* 45.6px */
+    --space-section: 4.5rem;    /* 72px */
+    --space-section-sm: 2.5rem; /* 40px */
   }
 }
 
@@ -191,6 +199,8 @@
     --text-3xl: 1.6875rem;  /* 27px */
     --text-4xl: 2.025rem;   /* 32.4px */
     --text-5xl: 2.7rem;     /* 43.2px */
+    --space-section: 6rem;      /* 96px */
+    --space-section-sm: 3rem;   /* 48px */
   }
 }
 
