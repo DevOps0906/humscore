@@ -326,7 +326,7 @@ export default function LandingPage() {
                       <RollMedia />
                     </div>
                     <div className={`${styles.isoLayer} ${styles.isoPaper}`} style={order(2)}>
-                      <MiniStaff />
+                      <Image src="/landing/hero-score.svg" alt="" width={1240} height={904} className={styles.isoScore} unoptimized />
                     </div>
                   </div>
                 </div>
@@ -402,7 +402,7 @@ export default function LandingPage() {
 
         {/* 숫자 띠·후기·언론·대상별 링크: 근거가 생기면 추가 (시안 [B] 주석 자리) */}
 
-        {/* 호환: 어두운 스튜디오 배경 + 프로그램 8(이름·이니셜 모노그램만) + 형식 3 */}
+        {/* 호환: 어두운 스튜디오 배경 + 프로그램 8(로고 또는 이니셜 모노그램) + 형식 3 */}
         <section id="formats" className={sectionPad}>
           <div className={styles.compat} data-reveal>
             <span className={styles.kicker}>호환</span>
@@ -410,9 +410,15 @@ export default function LandingPage() {
             <ul className={styles.compatRow}>
               {TOOLS.map((t, i) => (
                 <li key={t.name} style={order(i)}>
-                  <span className={styles.mono} aria-hidden>
-                    {t.mono}
-                  </span>
+                  {t.logo ? (
+                    <span className={styles.mono}>
+                      <Image src={t.logo} alt="" width={24} height={24} className={styles.brandLogo} unoptimized />
+                    </span>
+                  ) : (
+                    <span className={styles.mono} aria-hidden>
+                      {t.mono}
+                    </span>
+                  )}
                   <span className={styles.monoName}>{t.name}</span>
                 </li>
               ))}

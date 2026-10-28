@@ -78,17 +78,20 @@ export const WHY = [
   { icon: "ListMusic", title: "조성 찾기와 코드 추천", body: "멜로디의 조성을 찾고 어울리는 코드를 제안합니다." },
 ] as const;
 
-/** 호환 프로그램 8: 이름 텍스트 + 직접 만든 이니셜 모노그램만(타사 로고·상표 그래픽 금지) */
-export const TOOLS = [
-  { name: "MuseScore", mono: "Ms" },
+/**
+ * 호환 프로그램 8: 이름 + 로고(Simple Icons CC0, public/landing/brands/). logo 없음 = 이니셜 모노그램.
+ * Cubase는 제조사 Steinberg 로고. Simple Icons에 없는 브랜드는 공식 로고를 임의로 가져오지 않는다.
+ */
+export const TOOLS: ReadonlyArray<{ name: string; mono: string; logo?: string }> = [
+  { name: "MuseScore", mono: "Ms", logo: "/landing/brands/musescore.svg" },
   { name: "Sibelius", mono: "Si" },
   { name: "Finale", mono: "Fi" },
   { name: "Dorico", mono: "Do" },
   { name: "Logic Pro", mono: "Lp" },
-  { name: "Cubase", mono: "Cu" },
+  { name: "Cubase", mono: "Cu", logo: "/landing/brands/steinberg.svg" },
   { name: "FL Studio", mono: "FL" },
-  { name: "Ableton Live", mono: "Al" },
-] as const;
+  { name: "Ableton Live", mono: "Al", logo: "/landing/brands/abletonlive.svg" },
+];
 
 /** 주요 기능 흐름(#features-flow) 1단계: 입력 방식. href 없음 = 곧 제공 */
 export const FLOW_INPUTS = [

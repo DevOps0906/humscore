@@ -384,6 +384,8 @@ html:not(.js) .pitch polyline { stroke-dashoffset: 0; }
   box-shadow: inset 0 0 0 1px var(--tono-lavender-200), 0 0 28px var(--lp-glow);
 }
 .monoName { font-size: var(--text-sm); color: var(--tono-lavender-100); }
+/* 브랜드 로고(검은 단색 SVG) → 흰색 단색 */
+.brandLogo { display: block; width: 46%; height: auto; filter: brightness(0) invert(1); }
 .compatNote { color: var(--lp-soft); max-width: 52ch; margin: 0 auto; font-size: var(--text-sm); }
 @media (min-width: 768px) {
   .mono { width: 72px; height: 72px; font-size: var(--text-xl); }
@@ -500,8 +502,12 @@ a.ffCard:hover .ffIco::after { animation: pulse 1.2s ease-out infinite; }
 .ffChips { display: flex; flex-wrap: wrap; gap: 6px; }
 .ffChips span { padding: 4px 10px; border-radius: 999px; font-size: var(--text-xs); border: 1px solid var(--line); color: var(--tono-lavender-100); }
 .ffChips .on { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: 600; }
-.ffStaff { position: relative; margin-top: 12px; overflow: hidden; border-radius: var(--radius-lg); }
-.ffStaff svg { display: block; width: 100%; height: auto; }
+/* 악보는 1/2 크기, 종이 영역(높이 = 원래 악보 비율)은 그대로 */
+.ffStaff {
+  position: relative; margin-top: 12px; overflow: hidden; border-radius: var(--radius-lg);
+  display: grid; place-items: center; aspect-ratio: 360 / 92; background: var(--score-paper);
+}
+.ffStaff svg { display: block; width: 50%; height: auto; }
 .ffScan {
   position: absolute; top: 0; bottom: 0; left: 0; width: 18%;
   background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--accent) 40%, transparent), transparent);
@@ -516,7 +522,7 @@ a.ffCard:hover .ffIco::after { animation: pulse 1.2s ease-out infinite; }
   transform-style: preserve-3d; transform: rotateX(56deg) rotateZ(-36deg);
 }
 .isoLayer {
-  position: absolute; inset: 0; display: grid; place-items: center; padding: 10px; border-radius: var(--radius-xl); background: var(--surface);
+  position: absolute; inset: 0; display: grid; place-items: center; padding: 10px; border-radius: var(--radius-xl); overflow: hidden; background: var(--surface);
   box-shadow: 0 0 0 1px var(--tono-gray-600), 0 18px 40px color-mix(in srgb, var(--shadow-ink) 45%, transparent);
   transform: translateZ(calc(var(--k, 0) * 64px));
   transition: transform 1.1s cubic-bezier(0.2, 0.8, 0.2, 1) calc(0.35s + var(--k, 0) * 0.08s);
@@ -524,6 +530,7 @@ a.ffCard:hover .ffIco::after { animation: pulse 1.2s ease-out infinite; }
 }
 .isoLayer svg { display: block; width: 100%; height: auto; }
 .isoPaper { background: var(--score-paper); box-shadow: 0 0 0 1px var(--accent), 0 0 32px var(--lp-glow); }
+.isoScore { display: block; width: 100%; height: 100%; object-fit: cover; object-position: top left; }
 .js .iso:not(.in) .isoLayer { transform: translateZ(calc(var(--k, 0) * 10px)); }
 @keyframes bob { from { translate: 0 0 0; } to { translate: 0 0 12px; } }
 .ffViews { list-style: none; padding: 0; margin: 0; display: grid; gap: 20px; }
