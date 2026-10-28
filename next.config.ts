@@ -33,6 +33,8 @@ const nextConfig: NextConfig = {
   turbopack: {
     rules: {
       "*.css": {
+        // CSS Modules(*.module.css)는 제외 — 일반 CSS로 바뀌면 styles.x가 undefined가 된다
+        condition: { not: { path: /\.module\.css$/ } },
         loaders: ["@tailwindcss/turbopack"],
         as: "*.css",
       },

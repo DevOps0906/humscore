@@ -1,6 +1,41 @@
-import { ArrowUpDown, Download, FileCode, FileText, ListMusic, MonitorPlay, Music, Piano, Mic, type LucideProps } from "lucide-react";
+import {
+  ArrowUpDown,
+  ChartNoAxesGantt,
+  Download,
+  FileCode,
+  FileText,
+  Guitar,
+  Keyboard,
+  Library,
+  ListMusic,
+  Mic,
+  MonitorPlay,
+  Music,
+  Piano,
+  ShieldCheck,
+  Upload,
+  Zap,
+  type LucideProps,
+} from "lucide-react";
 
-const ICONS = { ArrowUpDown, Download, FileCode, FileText, ListMusic, MonitorPlay, Music, Piano, Mic };
+const ICONS = {
+  ArrowUpDown,
+  ChartNoAxesGantt,
+  Download,
+  FileCode,
+  FileText,
+  Guitar,
+  Keyboard,
+  Library,
+  ListMusic,
+  Mic,
+  MonitorPlay,
+  Music,
+  Piano,
+  ShieldCheck,
+  Upload,
+  Zap,
+};
 export type IconName = keyof typeof ICONS;
 
 export function Icon({ name, ...props }: { name: IconName } & LucideProps) {

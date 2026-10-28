@@ -11,6 +11,9 @@ const STEP_SEC = 0.45;
 const NOTE_X = [24, 54, 84, 128, 158, 188, 234, 264, 294];
 const STAFF_LINES = [20, 30, 40, 50, 60];
 const BARS = [106, 213, 319];
+const PITCH_GRID = [20, 50, 80, 110];
+/** 흥얼거린 음정 곡선(시안 v2): 음마다 살짝 흔들리며 계단식으로 오르내린다 */
+const PITCH_CURVE = "10,84 40,84 52,70 80,70 92,58 120,57 132,46 160,46 172,58 200,58 212,70 240,70 252,84 280,84 292,46 320,46 332,34 352,34";
 
 /** 허밍 <-> 악보 비교 데모. 음성 파일 없이 합성 피아노음으로 샘플 멜로디를 재생하며 음표를 순서대로 강조한다. */
 export function CompareDemo() {
@@ -69,12 +72,12 @@ export function CompareDemo() {
   };
 
   return (
-    <div id="demo" className="mt-12 scroll-mt-28 rounded-2xl bg-surface p-5 shadow-[var(--shadow-sm)] md:scroll-mt-20">
+    <div id="demo" data-reveal className="mt-14 scroll-mt-[72px] rounded-2xl bg-surface p-5 shadow-[var(--shadow-sm)]">
       <h3 className="mb-1 text-xl font-semibold">내가 부른 멜로디, 이렇게 바뀌어요</h3>
       <p className="text-sm text-ink-soft">샘플 멜로디를 들으며, 같은 멜로디가 악보에서 어디인지 따라가 보세요.</p>
       <div className="mt-4 grid gap-4 md:grid-cols-2">
         <div className="flex flex-col">
-          <p className="mb-2 font-mono text-xs text-ink-soft">샘플 허밍</p>
+          <p className="mb-2 font-mono text-xs text-ink-soft">흥얼거린 음정 곡선</p>
           <div className="flex min-h-[180px] flex-1 flex-col justify-between gap-4 rounded-lg bg-gradient-to-br from-section to-paper p-5">
             <div className="flex items-center gap-3.5">
               <button
@@ -86,7 +89,12 @@ export function CompareDemo() {
               >
                 {playing ? <Pause className="size-5" aria-hidden /> : <Play className="size-5" aria-hidden />}
               </button>
-              <div className={`${styles.wave} flex-1`} aria-hidden />
+              <svg className={`${styles.pitch} min-w-0 flex-1`} viewBox="0 0 360 120" role="img" aria-label="허밍 음정이 계단식으로 오르내리는 곡선">
+                {PITCH_GRID.map((y) => (
+                  <line key={y} x1="0" y1={y} x2="360" y2={y} />
+                ))}
+                <polyline points={PITCH_CURVE} />
+              </svg>
             </div>
             <p className="text-xs text-lavender-100">녹음 파일이 아니라 합성 피아노음으로 들려드려요. 소리가 안 나면 오른쪽 악보를 확인하세요.</p>
           </div>

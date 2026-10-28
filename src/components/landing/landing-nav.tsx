@@ -42,7 +42,7 @@ export function LandingNav() {
   return (
     <nav
       aria-label="주 메뉴"
-      className="order-last -mx-2 flex w-full gap-1 overflow-x-auto md:order-none md:mx-0 md:w-auto md:overflow-visible"
+      className="hidden gap-1 md:flex"
     >
       {NAV_LINKS.map((l) => {
         const on = active === l.href.slice(1);

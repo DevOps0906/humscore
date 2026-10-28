@@ -12,6 +12,16 @@ export const STATS = [
   { num: "0", label: "저장되는 음성 데이터", href: "#privacy" },
 ] as const;
 
+/** 히어로 신뢰 띠: STATS 4 + 1 (v2) */
+export const TRUST = [...STATS, { num: "설치 없이", label: "브라우저에서 바로", href: "#how" }] as const;
+
+/** 체험 띠 카드 */
+export const TRY_CARDS = [
+  { icon: "Mic", title: "흥얼거려서 악보 만들기", body: "마이크로 허밍하면 음표로 받아 적습니다", href: "/record", cta: true },
+  { icon: "Keyboard", title: "건반으로 입력하기", body: "화면 피아노로 직접 음을 찍어 보세요", href: "/keys", cta: false },
+  { icon: "Library", title: "내 악보 보기", body: "저장해 둔 악보를 열어 이어서 다듬기", href: "/library", cta: false },
+] as const;
+
 export const PRODUCTS = [
   { icon: "Mic", title: "허밍 채보", body: "흥얼거린 멜로디의 음정과 박자를 따라가 음표로 받아 적고 조성을 찾아 줍니다.", href: "#demo" },
   { icon: "Piano", title: "건반 입력", body: "88건반 화면 피아노나 PC 키보드로 음을 직접 찍고 바로 들어 봅니다.", href: "/keys" },
@@ -22,10 +32,53 @@ export const PRODUCTS = [
 ] as const;
 
 export const STEPS = [
-  { num: "01", title: "흥얼거리기", body: "녹음 버튼을 누르고 메트로놈에 맞춰 멜로디를 불러 보세요." },
-  { num: "02", title: "다듬기", body: "틀린 음과 코드를 고치고, 피아노로 들어 보며 키를 맞춥니다." },
-  { num: "03", title: "연주하고 내보내기", body: "공연 모드로 연주하거나 MIDI·MusicXML·PDF로 저장합니다." },
+  { num: "01", icon: "Mic", title: "흥얼거리기", body: "녹음 버튼을 누르고 메트로놈에 맞춰 멜로디를 불러 보세요." },
+  { num: "02", icon: "ListMusic", title: "다듬기", body: "틀린 음과 코드를 고치고, 피아노로 들어 보며 키를 맞춥니다." },
+  { num: "03", icon: "Download", title: "연주하고 내보내기", body: "공연 모드로 연주하거나 MIDI·MusicXML·PDF로 저장합니다." },
 ] as const;
+
+/** 신규 기능(v2). CTA 화면은 아직 없어 "곧 제공"으로 비활성. 모두 단선율. */
+export const NEW_FEATURES = [
+  {
+    id: "new-upload",
+    icon: "Upload",
+    title: "오디오 파일 업로드 채보",
+    card: "녹음해 둔 단선율 오디오 파일을 올리면 브라우저 안에서 음표로 받아 적습니다.",
+    heading: "오디오 파일을 올려 악보로",
+    body: "마이크 대신 가지고 있는 단선율 오디오 파일을 올려 보세요. 같은 방식으로 음표와 코드가 붙은 악보가 됩니다.",
+    cta: "파일로 시작하기",
+  },
+  {
+    id: "new-roll",
+    icon: "ChartNoAxesGantt",
+    title: "피아노 롤",
+    card: "음표를 막대로 보고 길이와 높이를 끌어서 고칩니다.",
+    heading: "피아노 롤로 끌어서 고치기",
+    body: "음표를 가로 막대로 보면서 길이와 높이를 직접 끌어 맞춥니다. 오선 악보와 함께 바뀝니다.",
+    cta: "피아노 롤 열기",
+  },
+  {
+    id: "new-tab",
+    icon: "Guitar",
+    title: "기타 TAB",
+    card: "단선율 악보를 기타 줄·프렛 번호로 바꿔 보여 줍니다.",
+    heading: "기타 TAB으로 바꿔 보기",
+    body: "단선율 악보를 기타 6줄 위의 프렛 번호로 보여 줍니다. 연습하기 편한 줄 위치를 고를 수 있습니다.",
+    cta: "TAB 보기",
+  },
+] as const;
+
+/** 장점 6: 현행 기능·FAQ 사실만 */
+export const WHY = [
+  { icon: "Zap", title: "가입 없이 바로", body: "계정 없이 열어서 바로 흥얼거릴 수 있습니다." },
+  { icon: "ShieldCheck", title: "목소리는 저장하지 않아요", body: "음성은 기기 안에서 음표로만 바뀝니다." },
+  { icon: "Keyboard", title: "건반으로도 입력", body: "88건반 화면 피아노나 PC 키보드로 찍어 넣습니다." },
+  { icon: "ArrowUpDown", title: "원본을 지키는 전조", body: "키를 바꿔도 원본은 그대로, 언제든 원키로 돌아옵니다." },
+  { icon: "MonitorPlay", title: "보면대가 되는 공연 모드", body: "탭이나 페달로 페이지를 넘기며 연주합니다." },
+  { icon: "ListMusic", title: "조성 찾기와 코드 추천", body: "멜로디의 조성을 찾고 어울리는 코드를 제안합니다." },
+] as const;
+
+export const TOOLS = ["MuseScore", "Finale", "Sibelius", "DAW"] as const;
 
 export const CHECKS = ["음표·박자 편집", "코드 수정과 추천", "피아노 재생과 조옮김"] as const;
 
