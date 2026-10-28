@@ -561,6 +561,64 @@ a.ffCard:hover .ffIco::after { animation: pulse 1.2s ease-out infinite; }
   .iso { height: 400px; }
 }
 
+/* 에디터 데모: 히어로와 같은 12마디 악보(public/landing/hero-score.svg, 1240×904) 위 오버레이.
+   좌표는 SVG 단위(--x·--y·--w·--h) → 1240·904로 나눠 % 배치 */
+.edPanel {
+  --lp-ed-step: calc(10 / 904 * 100%); /* 악보 한 칸(5선 간격 10단위) */
+  position: relative; overflow: hidden; border-radius: var(--radius-2xl);
+  background: var(--score-paper); padding: 10px; box-shadow: var(--shadow-sm);
+}
+.edStage { position: relative; aspect-ratio: 1240 / 904; overflow: hidden; }
+.edImg { display: block; width: 100%; height: auto; }
+.edScore { position: relative; transition: transform 0.45s cubic-bezier(0.2, 0.8, 0.2, 1); }
+.edScore[data-up] { transform: translateY(calc(-1 * var(--lp-ed-step))); }
+.edGhost {
+  position: absolute; inset: 0; opacity: 0.22;
+  outline: 2px dashed var(--tono-gray-400); outline-offset: -2px; border-radius: var(--radius-md);
+}
+.edSel, .edCaret, .edChip { position: absolute; left: calc(var(--x) / 1240 * 100%); top: calc(var(--y) / 904 * 100%); }
+.edSel {
+  width: calc(var(--w) / 1240 * 100%); height: calc(var(--h) / 904 * 100%);
+  border-radius: var(--radius-sm); border: 2px solid var(--accent);
+  background: color-mix(in srgb, var(--accent) 22%, transparent); box-shadow: 0 0 10px var(--lp-glow);
+}
+.edCaret {
+  left: calc((var(--x) + var(--w) + 4) / 1240 * 100%); top: calc((var(--y) - 4) / 904 * 100%);
+  width: 2px; height: calc((var(--h) + 8) / 904 * 100%); background: var(--accent);
+  animation: edBlink 1s steps(1) infinite;
+}
+@keyframes edBlink { 50% { opacity: 0; } }
+.edChip {
+  width: calc(var(--w) / 1240 * 100%); height: calc(var(--h) / 904 * 100%); border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--accent) 30%, transparent); box-shadow: inset 0 0 0 1.5px var(--accent);
+  animation: edPop 0.4s calc(var(--row) * 0.25s + var(--i) * 0.03s) ease-out both;
+}
+@keyframes edPop { from { opacity: 0; transform: scale(0.6); } to { opacity: 1; transform: none; } }
+/* 공연: 히어로 @keyframes play와 같은 방식(21초에 3단, 단마다 7초) */
+.edPlay {
+  position: absolute; left: calc(30 / 1240 * 100%); top: calc(122 / 904 * 100%); height: calc(160 / 904 * 100%);
+  width: 2px; background: var(--accent); box-shadow: 0 0 10px var(--lp-glow); animation: edPlay 21s linear infinite;
+}
+@keyframes edPlay {
+  0% { top: calc(122 / 904 * 100%); left: calc(30 / 1240 * 100%); }
+  33.32% { top: calc(122 / 904 * 100%); left: calc(1210 / 1240 * 100%); }
+  33.33% { top: calc(376 / 904 * 100%); left: calc(30 / 1240 * 100%); }
+  66.65% { top: calc(376 / 904 * 100%); left: calc(1210 / 1240 * 100%); }
+  66.66% { top: calc(663 / 904 * 100%); left: calc(30 / 1240 * 100%); }
+  99.99% { top: calc(663 / 904 * 100%); left: calc(1210 / 1240 * 100%); }
+  100% { top: calc(122 / 904 * 100%); left: calc(30 / 1240 * 100%); }
+}
+.edBadge, .edHint {
+  position: absolute; padding: 4px 10px; border-radius: 999px; font-size: var(--text-xs); font-weight: 600;
+}
+.edBadge { bottom: 14px; right: 14px; background: var(--accent); color: var(--accent-ink); }
+.edHint { left: 0; right: 0; bottom: 14px; width: fit-content; margin: 0 auto; background: color-mix(in srgb, var(--paper) 80%, transparent); color: var(--ink); font-weight: 400; }
+@media (prefers-reduced-motion: reduce) {
+  .edScore { transition: none; }
+  .edCaret, .edChip { animation: none; }
+  .edPlay { animation: none; left: calc(520 / 1240 * 100%); }
+}
+
 /* 움직임 줄이기: 모든 애니메이션 정지, 콘텐츠는 최종 상태로 */
 @media (prefers-reduced-motion: reduce) {
   .body *,

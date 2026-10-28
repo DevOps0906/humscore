@@ -21,3 +21,21 @@ test("랜딩: 헤더 '내 악보 보기'로 /library 이동", async ({ page }) =
   await expect(page).toHaveURL(/\/library$/);
   await expect(page.getByRole("heading", { name: "내 악보" })).toBeVisible();
 });
+
+test("랜딩: 에디터 데모 탭 4개가 해시와 연동되고 같은 12마디 악보를 쓴다", async ({ page }) => {
+  await page.goto("/");
+  const panel = page.locator("#editor-panel");
+  await expect(panel.locator('img[src*="hero-score.svg"]').first()).toBeAttached();
+  for (const [id, name, label] of [
+    ["chords", "코드", /코드/],
+    ["transpose", "전조", /G장조에서 A장조/],
+    ["perform", "공연", /공연 모드/],
+    ["edit", "편집", /음표 하나를 선택/],
+  ] as const) {
+    await page.getByRole("tab", { name, exact: true }).click();
+    await expect(page).toHaveURL(new RegExp(`#editor-${id}$`));
+    await expect(page.getByRole("tab", { name, exact: true })).toHaveAttribute("aria-selected", "true");
+    await expect(panel.getByRole("img")).toHaveAttribute("aria-label", label);
+  }
+  await expect(panel.getByText("G → A")).toHaveCount(0);
+});
