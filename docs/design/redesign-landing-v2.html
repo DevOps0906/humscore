@@ -156,16 +156,16 @@ h2.t{font-size:var(--text-h2);line-height:1.25;letter-spacing:-.02em;font-weight
 .tabs-m span{padding:5px 10px;border-radius:6px 6px 0 0;font-size:11px;color:var(--ink-soft)}
 .tabs-m span.on{background:var(--score-paper);color:var(--score-ink);font-weight:600}
 .paper{position:relative;background:var(--score-paper);padding:14px 12px 8px;color:var(--score-ink)}
-/* 히어로 악보: assets/hero-score.svg(OSMD 렌더 1400×1082.5, 한 단 4마디·4단 16마디). 휴대폰 목업에 가리지 않게 창 너비 84%로 왼쪽 정렬해
-   전곡을 스크롤 없이 표시(세로는 마지막 단 아래 1030까지). 플레이헤드가 1→4단을 7초씩 차례로 지난다 */
-.sheet{position:relative;aspect-ratio:1400/866;overflow:hidden;container-type:inline-size;background:var(--score-paper)}
+/* 히어로 악보: assets/hero-score.svg(OSMD 렌더 1240×904, 피아노 독주 12마디 = 한 단 4마디 × 3단). 휴대폰 목업에 가리지 않게 창 너비 84%로 왼쪽 정렬해
+   전곡을 스크롤 없이 표시(y 1240 단위 → cqw는 ×0.84/1240×100 = ×.06774). 플레이헤드가 1→3단을 7초씩 차례로 지난다 */
+.sheet{position:relative;aspect-ratio:1240/760;overflow:hidden;container-type:inline-size;background:var(--score-paper)}
 .sheet img{display:block;width:84%;height:auto}
-.playhead{position:absolute;top:calc(190*.06cqw);height:calc(150*.06cqw);width:2px;background:var(--accent);box-shadow:0 0 10px var(--glow);left:6.7%;animation:play 28s linear infinite}
-@keyframes play{0%{top:calc(190*.06cqw);left:6.7%}24.99%{top:calc(190*.06cqw);left:82%}25%{top:calc(405*.06cqw);left:5.5%}49.99%{top:calc(405*.06cqw);left:82%}50%{top:calc(607*.06cqw);left:5.5%}74.99%{top:calc(607*.06cqw);left:82%}75%{top:calc(857*.06cqw);left:5.5%}99.99%{top:calc(857*.06cqw);left:82%}100%{top:calc(190*.06cqw);left:6.7%}}
+.playhead{position:absolute;top:calc(132*.06774cqw);height:calc(165*.06774cqw);width:2px;background:var(--accent);box-shadow:0 0 10px var(--glow);left:7.5%;animation:play 21s linear infinite}
+@keyframes play{0%{top:calc(132*.06774cqw);left:7.5%}33.32%{top:calc(132*.06774cqw);left:81.6%}33.33%{top:calc(395*.06774cqw);left:6.1%}66.65%{top:calc(395*.06774cqw);left:81.6%}66.66%{top:calc(688*.06774cqw);left:6.1%}99.99%{top:calc(688*.06774cqw);left:81.6%}100%{top:calc(132*.06774cqw);left:7.5%}}
 .trans{display:flex;align-items:center;gap:10px;padding:8px 12px;background:#1b1d2a;font-size:11px;color:var(--ink-soft)}
 .trans .pl{width:22px;height:22px;border-radius:50%;background:var(--accent);display:grid;place-items:center;color:var(--accent-ink);font-size:9px}
 .trans .pg{flex:1;height:3px;border-radius:2px;background:var(--gray-700);overflow:hidden}
-.trans .pg i{display:block;height:100%;width:100%;background:var(--accent);transform-origin:left;animation:prog 28s linear infinite}
+.trans .pg i{display:block;height:100%;width:100%;background:var(--accent);transform-origin:left;animation:prog 21s linear infinite}
 @keyframes prog{from{transform:scaleX(.1)}to{transform:scaleX(1)}}
 .phone{position:absolute;right:0;bottom:0;width:30%;max-width:190px;min-width:150px;aspect-ratio:9/18.5;background:#0e1019;border:1px solid var(--gray-600);border-radius:26px;padding:8px;box-shadow:0 24px 60px rgba(0,0,0,.65),0 0 50px color-mix(in srgb,var(--accent) 25%,transparent);animation:rise 1s .5s ease-out both}
 .phone .pscr{height:100%;border-radius:19px;background:var(--paper);overflow:hidden;padding:14px 10px;font-size:10px}
@@ -430,9 +430,9 @@ footer .wrap{display:flex;flex-wrap:wrap;gap:12px 24px;justify-content:space-bet
       <div class="bar"><i></i><i></i><i></i><b>HumScore · 아침 산책</b></div>
       <div class="tabs-m"><span class="on">편집</span><span>코드</span><span>전조</span><span>공연</span></div>
       <div class="paper">
-       <div class="sheet"><img src="assets/hero-score.svg" alt="" width="1400" height="1083"><span class="playhead"></span></div>
+       <div class="sheet"><img src="assets/hero-score.svg" alt="" width="1240" height="904"><span class="playhead"></span></div>
       </div>
-      <div class="trans"><span class="pl">▶</span><span class="pg"><i></i></span><span>G장조 · 4/4 · 16마디</span></div>
+      <div class="trans"><span class="pl">▶</span><span class="pg"><i></i></span><span>G장조 · 4/4 · 12마디</span></div>
      </div></div>
      <div class="base"></div>
     </div>
