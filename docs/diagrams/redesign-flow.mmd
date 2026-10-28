@@ -1,0 +1,33 @@
+flowchart TD
+    landing["랜딩 /"]
+    start["지금 흥얼거려 보기"]
+    ready["녹음 준비 /record"]
+    permission{"마이크 사용 가능?"}
+    help["권한 설정 안내 · 재시도"]
+    keys["건반 입력 /keys?entry=1"]
+    recording["허밍 녹음 · 기기 안에서 음표 변환"]
+    notes{"인식한 음이 있는가?"}
+    retry["무음 안내 · 다시 흥얼거리기"]
+    result["결과 악보 확인 · 재생 · 편집"]
+    save["악보 데이터 저장 · 실패 시 결과 유지 및 재시도"]
+    library["내 악보 /library · 비회원 접근 정책은 팀장 결정"]
+    create["악보 만들기 · 입력 방식 선택"]
+    find["최근 수정 · 검색 · 정렬 · 폴더 탐색"]
+    detail["악보 상세 /scores/id"]
+    landing --> start --> ready --> permission
+    permission -->|가능| recording --> notes
+    permission -->|거부 또는 미지원| help
+    help -->|권한 재시도| permission
+    help -->|대체 입력| keys
+    notes -->|없음| retry --> ready
+    notes -->|있음| result
+    keys --> result
+    result --> save
+    save -->|저장 완료 후 내 악보 보기| library
+    landing -->|탐색 링크| library
+    library --> create
+    create -->|허밍 시작| ready
+    create -->|건반으로 입력| keys
+    library -->|모바일 하단 허밍 시작| ready
+    library --> find --> detail
+    detail -->|내 악보로 돌아가기| library

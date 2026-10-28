@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>HumScore 내 악보 재디자인 시안</title>
+<style>
+/* 제안 토큰 (미확정 · globals.css에 없음) */
+:root{
+  --tap-min:44px;
+  --space-section:32px;
+  --content-max:1120px;
+  /* 간격·크기 스케일(제안) */
+  --px-1:1px;--px-2:2px;--px-4:4px;--px-6:6px;--px-8:8px;--px-10:10px;--px-12:12px;--px-14:14px;--px-16:16px;--px-18:18px;--px-20:20px;--px-24:24px;--px-28:28px;--px-40:40px;--px-44:44px;--px-52:52px;--px-56:56px;--px-104:104px;--px-140:140px;--px-200:200px;
+}
+/* 토큰: src/app/globals.css 값 그대로 */
+:root{
+  color-scheme:dark;
+  --tono-bg:#161826;--tono-surface:#232532;--tono-text:#e9e9ed;--tono-accent:#9184d9;
+  --tono-section:#262a60;--tono-section-glow:#353b80;--tono-section-ghost:#4c5397;
+  --tono-lavender-100:#e7e5fe;--tono-lavender-300:#b5abfc;
+  --tono-gray-400:#9397ab;--tono-gray-600:#595d6c;--tono-gray-700:#3f424d;--tono-error:#ff8a80;
+  --paper:var(--tono-bg);--ink:var(--tono-text);--ink-soft:var(--tono-gray-400);--line:var(--tono-gray-700);
+  --surface:var(--tono-surface);--accent:var(--tono-accent);--accent-ink:var(--tono-bg);
+  --score-paper:#f7f7fb;
+  --shadow-sm:0 0 0 1px var(--tono-gray-700);
+  --shadow-md:0 0 0 1px var(--tono-gray-600),0 6px 18px rgba(0,0,0,.55);
+  --input:var(--tono-gray-700);--ring:var(--tono-lavender-300);--destructive:var(--tono-error);
+  --radius-lg:8px;--radius-2xl:14px;
+  --font-sans:"Pretendard Variable",Pretendard,-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Noto Sans KR",system-ui,sans-serif;
+  --font-mono:ui-monospace,Menlo,monospace;
+  --text-xs:.75rem;--text-sm:.875rem;--text-base:1rem;--text-lg:1.125rem;--text-xl:1.25rem;
+  --text-2xl:1.5rem;--text-3xl:1.75rem;--text-4xl:2rem;--text-5xl:2.5rem;
+}
+@media (min-width:768px){:root{
+  --text-xs:.75rem;--text-sm:.84375rem;--text-base:.95rem;--text-lg:1.0625rem;--text-xl:1.1875rem;
+  --text-2xl:1.425rem;--text-3xl:1.78125rem;--text-4xl:2.1375rem;--text-5xl:2.85rem;--space-section:40px}}
+@media (min-width:1200px){:root{
+  --text-xs:.6875rem;--text-sm:.8125rem;--text-base:.9rem;--text-lg:1.0125rem;--text-xl:1.125rem;
+  --text-2xl:1.35rem;--text-3xl:1.6875rem;--text-4xl:2.025rem;--text-5xl:2.7rem;--space-section:48px}}
+
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--font-sans);font-size:var(--text-base);line-height:1.6;word-break:keep-all;overflow-x:hidden}
+h1,h2,h3,p,ul{margin:0}
+h1,h2,h3{font-weight:500;letter-spacing:-.015em}
+:focus-visible{outline:var(--px-2) solid var(--ring);outline-offset:var(--px-2)}
+a{color:inherit}
+.wrap{max-width:var(--content-max);margin:0 auto;padding:0 var(--px-20)}
+section{padding-top:var(--space-section)}
+h2{font-size:var(--text-xl);margin-bottom:var(--px-14)}
+.soft{color:var(--ink-soft)}
+
+/* 앱 헤더 */
+header{border-bottom:var(--px-1) solid var(--line)}
+header .wrap{display:flex;align-items:center;justify-content:space-between;min-height:var(--px-56);gap:var(--px-12)}
+.logo{display:inline-flex;align-items:center;min-height:var(--px-44);font-weight:700;font-size:var(--text-xl);text-decoration:none}
+.me{font-size:var(--text-sm);color:var(--ink-soft)}
+
+/* 버튼 */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:var(--px-8);min-height:var(--tap-min);min-width:var(--tap-min);padding:0 var(--px-20);border:0;border-radius:var(--radius-lg);background:var(--accent);color:var(--accent-ink);font:inherit;font-size:var(--text-base);font-weight:700;text-decoration:none;cursor:pointer}
+.btn:hover{background:var(--tono-lavender-300)}
+.btn-line{background:transparent;color:var(--ink);box-shadow:inset 0 0 0 var(--px-1) var(--tono-gray-600);font-weight:500}
+.btn-line:hover{background:var(--surface)}
+.btn-icon{padding:0;width:var(--tap-min);font-size:var(--text-xl)}
+.btn .t-wide{display:none}
+@media (min-width:768px){.btn-icon{width:auto;padding:0 var(--px-20)}.btn-icon .t-wide{display:inline}.btn-icon .t-ico{display:none}}
+
+/* 제목줄 */
+.titlebar{display:flex;align-items:center;justify-content:space-between;gap:var(--px-12);padding-top:var(--px-24)}
+.titlebar h1{font-size:var(--text-4xl);line-height:1.25;font-weight:500}
+
+/* 비회원 배너 */
+.banner{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:var(--px-8) var(--px-16);margin-top:var(--px-16);padding:var(--px-12) var(--px-16);border-radius:var(--radius-lg);background:var(--tono-section);color:var(--tono-lavender-100);font-size:var(--text-sm)}
+.banner a{color:var(--tono-lavender-300);display:inline-flex;align-items:center;min-height:var(--tap-min);font-weight:700}
+
+/* 악보 카드 */
+.cards li{position:relative}
+.cards{display:grid;gap:var(--px-16);grid-template-columns:1fr;padding:0;list-style:none}
+@media (min-width:768px){.cards{grid-template-columns:repeat(2,1fr)}}
+@media (min-width:1200px){.cards{grid-template-columns:repeat(3,1fr)}}
+.sc{position:relative;display:block;background:var(--surface);border-radius:var(--radius-2xl);box-shadow:var(--shadow-sm);padding:var(--px-12);text-decoration:none}
+.sc:hover{box-shadow:var(--shadow-md)}
+.thumb{background:var(--score-paper);color:var(--tono-bg);border-radius:var(--radius-lg);padding:var(--px-6) var(--px-10)}
+.thumb svg{display:block;width:100%;height:var(--px-56)}
+.sc .info{display:flex;flex-direction:column;gap:var(--px-2);padding:var(--px-12) var(--px-4) var(--px-2)}
+.sc h3{font-size:var(--text-lg)}
+.sc .meta{font-family:var(--font-mono);font-size:var(--text-xs);color:var(--ink-soft)}
+.sc .date{font-size:var(--text-xs);color:var(--ink-soft)}
+.cards li .more{position:absolute;right:var(--px-8);top:var(--px-8);background:var(--surface)!important;width:var(--tap-min);height:var(--tap-min);display:grid;place-items:center;border:0;border-radius:var(--radius-lg);background:transparent;color:var(--ink-soft);font-size:var(--text-xl);cursor:pointer}
+.cards li .more:hover{background:var(--tono-section)!important}
+.cards.recent .sc .cont{margin-top:var(--px-6);font-size:var(--text-xs);color:var(--tono-lavender-300)}
+
+/* 도구 */
+.tools{display:grid;gap:var(--px-10);padding-top:var(--space-section)}
+.field{display:flex;flex-direction:column;gap:var(--px-4)}
+.field label{font-size:var(--text-xs);color:var(--ink-soft)}
+.field input,.field select{min-height:var(--tap-min);width:100%;padding:0 var(--px-14);border:var(--px-1) solid var(--input);border-radius:var(--radius-lg);background:var(--surface);color:var(--ink);font:inherit;font-size:var(--text-base)}
+.field input::placeholder{color:var(--ink-soft)}
+@media (min-width:768px){.tools{grid-template-columns:1fr var(--px-200);align-items:end}}
+.count{font-size:var(--text-sm);color:var(--ink-soft);margin:var(--px-16) 0 var(--px-12)}
+
+/* 페이지 */
+.pager{display:flex;align-items:center;justify-content:center;gap:var(--px-12);padding-top:var(--px-28);font-size:var(--text-sm);color:var(--ink-soft)}
+.pager .btn{padding:0 var(--px-16)}
+.pager .btn[disabled]{background:var(--surface);color:var(--ink-soft);box-shadow:none;cursor:not-allowed}
+
+/* 상태 미리보기 */
+.states{display:grid;gap:var(--px-16)}
+@media (min-width:768px){.states{grid-template-columns:repeat(2,1fr)}}
+@media (min-width:1200px){.states{grid-template-columns:repeat(4,1fr)}}
+.st{background:var(--surface);border-radius:var(--radius-2xl);box-shadow:var(--shadow-sm);padding:var(--px-16);display:flex;flex-direction:column;gap:var(--px-8);min-height:var(--px-140)}
+.st .tag{font-family:var(--font-mono);font-size:var(--text-xs);color:var(--ink-soft)}
+.st b{font-weight:500;font-size:var(--text-base)}
+.st p{font-size:var(--text-sm);color:var(--ink-soft)}
+.st .btn{align-self:flex-start;margin-top:auto}
+.sk{height:var(--px-56);border-radius:var(--radius-lg);background:linear-gradient(90deg,var(--tono-section) 0,var(--tono-section-glow) 50%,var(--tono-section) 100%);background-size:200% 100%;animation:sk 1.4s linear infinite}
+@keyframes sk{to{background-position:-200% 0}}
+@media (prefers-reduced-motion:reduce){.sk{animation:none}}
+
+/* 후순위 와이어 박스 */
+.later{margin-top:var(--space-section);padding:var(--px-16);border:var(--px-1) dashed var(--tono-gray-600);border-radius:var(--radius-lg);background:transparent;color:var(--ink-soft)}
+.later .tag{display:inline-block;margin-bottom:var(--px-8);padding:0 var(--px-8);border-radius:var(--radius-lg);background:var(--tono-gray-700);color:var(--ink);font-size:var(--text-xs)}
+.later ul{padding-left:var(--px-18);font-size:var(--text-sm)}
+.later p{font-size:var(--text-xs);margin-top:var(--px-8)}
+
+.fab[hidden]{display:none}
+body{padding-bottom:var(--px-104)}
+@media (min-width:768px){body{padding-bottom:var(--px-40)}}
+
+/* 모바일 하단 허밍 시작 */
+.fab{position:fixed;left:0;right:0;bottom:0;padding:var(--px-10) var(--px-20) max(env(safe-area-inset-bottom),var(--px-10));background:color-mix(in srgb,var(--paper) 92%,transparent);border-top:var(--px-1) solid var(--line);z-index:5}
+.fab .btn{width:100%;min-height:var(--px-52);font-size:var(--text-lg)}
+@media (min-width:768px){.fab{display:none}}
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="mini" viewBox="0 0 200 56">
+    <g stroke="currentColor" stroke-width="1">
+      <line x1="0" y1="14" x2="200" y2="14"/><line x1="0" y1="22" x2="200" y2="22"/>
+      <line x1="0" y1="30" x2="200" y2="30"/><line x1="0" y1="38" x2="200" y2="38"/><line x1="0" y1="46" x2="200" y2="46"/>
+      <line x1="100" y1="14" x2="100" y2="46"/>
+    </g>
+    <g fill="currentColor">
+      <ellipse cx="16" cy="38" rx="4.5" ry="3.3"/><ellipse cx="40" cy="34" rx="4.5" ry="3.3"/><ellipse cx="64" cy="30" rx="4.5" ry="3.3"/><ellipse cx="86" cy="26" rx="4.5" ry="3.3"/>
+      <ellipse cx="118" cy="22" rx="4.5" ry="3.3"/><ellipse cx="142" cy="26" rx="4.5" ry="3.3"/><ellipse cx="166" cy="30" rx="4.5" ry="3.3"/><ellipse cx="188" cy="38" rx="4.5" ry="3.3"/>
+    </g>
+    <g stroke="currentColor" stroke-width="1.2">
+      <line x1="20" y1="38" x2="20" y2="14"/><line x1="44" y1="34" x2="44" y2="10"/><line x1="68" y1="30" x2="68" y2="6"/><line x1="90" y1="26" x2="90" y2="4"/>
+      <line x1="122" y1="22" x2="122" y2="2"/><line x1="146" y1="26" x2="146" y2="4"/><line x1="170" y1="30" x2="170" y2="6"/><line x1="192" y1="38" x2="192" y2="14"/>
+    </g>
+  </symbol>
+</svg>
+
+<header>
+  <div class="wrap">
+    <a class="logo" href="#home">HumScore</a>
+    <span class="me">비회원</span>
+  </div>
+</header>
+
+<main class="wrap">
+  <div class="titlebar">
+    <h1>내 악보</h1>
+    <a class="btn btn-icon" href="#new" aria-label="악보 만들기"><span class="t-ico" aria-hidden="true">＋</span><span class="t-wide">＋ 악보 만들기</span></a>
+  </div>
+
+  <!-- 비회원 배너 -->
+  <div class="banner" role="note">
+    <span>이 기기에 저장됨 · 로그인하면 동기화</span>
+    <a href="#login">로그인</a>
+  </div>
+
+  <!-- 최근 수정 3개 -->
+  <section aria-labelledby="recent">
+    <h2 id="recent">최근 수정한 악보</h2>
+    <ul class="cards recent">
+      <li><a class="sc" href="#s1"><div class="thumb"><svg aria-hidden="true"><use href="#mini"/></svg></div><div class="info"><h3>봄날의 멜로디</h3><span class="meta">C장조 · 4/4 · 12마디</span><span class="date">오늘 14:20 수정</span><span class="cont">이어서 작업 →</span></div></a></li>
+      <li><a class="sc" href="#s2"><div class="thumb"><svg aria-hidden="true"><use href="#mini"/></svg></div><div class="info"><h3>자장가</h3><span class="meta">G장조 · 3/4 · 8마디</span><span class="date">어제 22:05 수정</span><span class="cont">이어서 작업 →</span></div></a></li>
+      <li><a class="sc" href="#s3"><div class="thumb"><svg aria-hidden="true"><use href="#mini"/></svg></div><div class="info"><h3>아침 산책</h3><span class="meta">D장조 · 4/4 · 16마디</span><span class="date">10월 24일 수정</span><span class="cont">이어서 작업 →</span></div></a></li>
+    </ul>
+  </section>
+
+  <!-- 검색·정렬 -->
+  <div class="tools" role="search">
+    <div class="field"><label for="q">제목으로 검색</label><input id="q" type="search" placeholder="악보 제목을 입력하세요"></div>
+    <div class="field"><label for="sort">정렬</label>
+      <select id="sort"><option>최근 수정순</option><option>제목순</option><option>최근 생성순</option></select></div>
+  </div>
+
+  <!-- 전체 목록 -->
+  <h2 id="all">전체 악보</h2>
+  <p class="count" aria-live="polite">6개 · 최근 수정순</p>
+  <ul class="cards">
+    <li><a class="sc" href="#s1"><div class="thumb"><svg aria-hidden="true"><use href="#mini"/></svg></div><div class="info"><h3>봄날의 멜로디</h3><span class="meta">C장조 · 4/4 · 12마디</span><span class="date">오늘 14:20</span></div></a><button class="more" type="button" aria-label="봄날의 멜로디 더보기">⋯</button></li>
+    <li><a class="sc" href="#s2"><div class="thumb"><svg aria-hidden="true"><use href="#mini"/></svg></div><div class="info"><h3>자장가</h3><span class="meta">G장조 · 3/4 · 8마디</span><span class="date">어제 22:05</span></div></a><button class="more" type="button" aria-label="자장가 더보기">⋯</button></li>
+    <li><a class="sc" href="#s3"><div class="thumb"><svg aria-hidden="true"><use href="#mini"/></svg></div><div class="info"><h3>아침 산책</h3><span class="meta">D장조 · 4/4 · 16마디</span><span class="date">10월 24일</span></div></a><button class="more" type="button" aria-label="아침 산책 더보기">⋯</button></li>
+    <li><a class="sc" href="#s4"><div class="thumb"><svg aria-hidden="true"><use href="#mini"/></svg></div><div class="info"><h3>비 오는 날</h3><span class="meta">A단조 · 4/4 · 10마디</span><span class="date">10월 20일</span></div></a><button class="more" type="button" aria-label="비 오는 날 더보기">⋯</button></li>
+    <li><a class="sc" href="#s5"><div class="thumb"><svg aria-hidden="true"><use href="#mini"/></svg></div><div class="info"><h3>이름 없는 악보</h3><span class="meta">F장조 · 2/4 · 4마디</span><span class="date">10월 12일</span></div></a><button class="more" type="button" aria-label="이름 없는 악보 더보기">⋯</button></li>
+    <li><a class="sc" href="#s6"><div class="thumb"><svg aria-hidden="true"><use href="#mini"/></svg></div><div class="info"><h3>생일 노래</h3><span class="meta">C장조 · 3/4 · 8마디</span><span class="date">9월 30일</span></div></a><button class="more" type="button" aria-label="생일 노래 더보기">⋯</button></li>
+  </ul>
+  <nav class="pager" aria-label="페이지 이동">
+    <button class="btn btn-line" type="button" disabled>이전</button>
+    <span>1 / 1</span>
+    <button class="btn btn-line" type="button" disabled>다음</button>
+  </nav>
+
+  <!-- 상태 미리보기 -->
+  <section aria-labelledby="states">
+    <h2 id="states">상태 미리보기</h2>
+    <div class="states">
+      <div class="st"><span class="tag">비어 있음</span><b>아직 악보가 없어요</b><p>첫 멜로디를 흥얼거려 보세요. 소리는 기기 밖으로 나가지 않아요.</p><a class="btn" data-cta href="#record">허밍 시작</a></div>
+      <div class="st"><span class="tag">검색 결과 없음</span><b>조건에 맞는 악보가 없어요</b><p>검색어 “바다”로 찾은 결과가 없어요.</p><button class="btn btn-line" type="button">검색 지우기</button></div>
+      <div class="st"><span class="tag">오류</span><b>악보를 불러오지 못했어요</b><p>검색·정렬 조건은 그대로 유지돼요.</p><button class="btn btn-line" type="button">다시 시도</button></div>
+      <div class="st"><span class="tag">로딩</span><b>악보 불러오는 중</b><div class="sk" aria-hidden="true"></div><div class="sk" aria-hidden="true"></div></div>
+    </div>
+  </section>
+
+  <!-- 후순위 와이어 박스 -->
+  <aside class="later" aria-label="후순위 기능">
+    <span class="tag">후순위 · 이번 범위 아님</span>
+    <ul>
+      <li>폴더 (1단계, 칩 / 데스크톱 좌측)</li>
+      <li>태그 필터</li>
+      <li>최근 삭제 · 30일 복구</li>
+    </ul>
+    <p>화면에 노출하지 않습니다. 데이터 정책 확정 뒤 별도 작업.</p>
+  </aside>
+</main>
+
+<!-- 모바일 하단 허밍 시작 -->
+<div class="fab" id="fab"><a class="btn" href="#record">🎤 허밍 시작</a></div>
+<script>
+/* 시안용: 본문 주 CTA가 화면에 보이면 고정 CTA 숨김. 구현 시 키보드·시트 열림 때도 숨길 것 */
+(function(){var f=document.querySelector('.fab');if(!f||!('IntersectionObserver' in window))return;
+var v=new Set();var io=new IntersectionObserver(function(es){es.forEach(function(e){e.isIntersecting?v.add(e.target):v.delete(e.target)});f.hidden=v.size>0});
+document.querySelectorAll('[data-cta]').forEach(function(el){io.observe(el)})})();
+</script>
+</body>
+</html>

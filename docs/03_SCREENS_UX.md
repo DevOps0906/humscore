@@ -14,7 +14,7 @@
 | P01 | 악보 연습 바 | 상세 | /scores/[id] (하단 바) | 구간 반복·속도로 연습 | header, card:악보, tabs:재생·연습, form:구간 시작·구간 끝, form:속도 50~100%, button:재생, button:반복 켜기 | scores | 미정 | 로그인 | perform |
 | S01 | 공유 악보 보기 | 상세 | /s/[token] | 읽기 전용 악보 보기·재생 | header, text:제목·만든이 표시 여부, card:악보, button:재생, link:HumScore로 만들어 보기, footer | share_links, scores | 미정 | 링크 소지자 | L01 |
 | S02 | 공유 설정 | 설정 | /scores/[id]/share | 링크 만들기·끄기 | header, breadcrumb, form:공유 켜기*·만료일, text:공유 링크, button:링크 복사, button:공유 끄기 | share_links | 미정 | 로그인(소유자) | scores/[id] |
-| B01 | 내 악보 | 목록 | /library | 악보 찾고 정리 | header, search, filter:폴더·태그, sort:최근·제목·수정일, list:악보 카드, pagination, button:새 폴더, button:악보 만들기 | scores, folders, tags | 미정 | 로그인 | scores/[id], record |
+| B01 | 내 악보 | 목록 | /library | 악보 찾고 정리 | header, search, filter:폴더·태그, sort:최근·제목·수정일, list:악보 카드, pagination, button:새 폴더, button:악보 만들기 | scores, folders, tags | 미정 | 누구나(기기 저장) · 로그인 시 동기화 | scores/[id], record |
 | PR01 | 요금 안내(Pro) | 랜딩 | /pricing | 무료·Pro 차이 확인 | header, hero:허밍은 무료, pricing:무료·Pro(가격 미확인), faq, button:사전 알림 받기, footer | — | 미정 | 누구나 | L01, record |
 | C01 | 콘티 목록 | 목록 | /setlists | 찬양 콘티 찾기 | header, search, sort:최근(예배일 내림차순), list:날짜·예배명·곡 수, pagination, button:새 콘티 | setlists | 미정 | 로그인 | C02, C03 |
 | C02 | 콘티 편집 | 폼 | /setlists/[id]/edit | 곡 순서·키·진행 정하기 | header, breadcrumb, form:예배명*·예배일*·메모, list:곡(곡명·키 전조·템포·진행 순서 문자열·메모·위/아래 버튼·드래그 핸들), button:곡 추가, text:곡 사이 전환 메모, text:인도자 멘트, button:저장, link:취소 | setlists, setlist_items, scores | 미정 | 로그인(소유자) | C03, C01 |
@@ -41,7 +41,7 @@
 ## 반응형
 | ID | 모바일 ~767 | 태블릿 768~1199 | 데스크톱 1200~ |
 |---|---|---|---|
-| L01 | 1열, 영상 위·악보 아래, CTA 하단 고정 | 2열(문구/영상) | 2열 + 후기 3열 카드 |
+| L01 | 1열, 영상 위·악보 아래, CTA 하단 고정 | 1열 세로(문구 위·결과 악보 아래, 2026-10-28 결정) | 2열 + 후기 3열 카드 |
 | Y01~Y03 | 1열 마법사, 단계 상단 요약 | 중앙 카드 | 좌 안내·우 미리보기 |
 | P01 | 하단 바(구간·속도 접이식) | 하단 바 전체 노출 | 악보 옆 고정 패널 |
 | S01~S02 | 1열, 악보 가로 스크롤 | 1열 넓게 | 중앙 폭 제한 |

@@ -15,6 +15,7 @@
 | task-010 | 따라 치기 연습 — 악보를 보며 피아노를 치면 마이크·MIDI로 다음 음 일치 판정·표시(단음부터, 학습 앱 구조 제외) | W2 | task-001 | 보통 | planner → music-logic-coder → builder → reviewer(code) | 완료 |
 | task-011 | 외부 소리 실시간 받아 적기 (스피커 재생 음원 → 음표, 모바일 유튜브 대체 경로) | W3 | task-004 | 높음 | planner → challenger → builder | 대기 |
 | task-012 | 동기화 통합 검증 — 로컬 Supabase에서 RLS·LWW 트리거·2000개 제한·타인 id upsert + 실제 로그인 e2e(Mailpit OTP, 로컬 URL 가드, OTP 발송 한도 조정) | W2 | task-003 | 높음 | challenger → tester → reviewer(security) | 완료 |
+| task-013 | 랜딩·내 악보 재디자인 반영 (시안 `docs/design/redesign-{landing,library}.html`, 비회원 기기 저장 배너·최근 수정 3개·검색·정렬·상태 4종, 태블릿 히어로 세로; 폴더·태그·복구 제외) | W2 | — | 보통 | codex-designer → designer → builder → codex-reviewer(design·code) | 진행 |
 
 상태: 대기 / 진행 / 완료 / 보류
 
