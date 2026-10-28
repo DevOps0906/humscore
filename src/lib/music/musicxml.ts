@@ -4,6 +4,7 @@ import { splitForNotation, type NotationPiece } from "./notation";
 import { AccidentalTracker, spellPitch, type AccidentalName, type SpelledPitch } from "./spelling";
 import { timeSignatureOf } from "./meter";
 import { hasUnmatchedRepeatStart } from "./form";
+import { lyricText, syllabicOf, type Syllabic } from "./lyrics";
 import type { MeasureMarkKind, Score } from "./types";
 
 /**
@@ -140,12 +141,16 @@ function directionsByMeasure(score: Score, bpm: number, measures: number) {
   return { inside, ends };
 }
 
-function noteXml(p: NotationPiece, pitch: SpelledPitch | null, accidental: AccidentalName | null, staff: number, voice: number): string {
+function lyricXml(lyric?: { text: string; syllabic: Syllabic }): string {
+  return lyric ? `<lyric number="1"><syllabic>${lyric.syllabic}</syllabic><text>${esc(lyric.text)}</text></lyric>` : "";
+}
+
+function noteXml(p: NotationPiece, pitch: SpelledPitch | null, accidental: AccidentalName | null, staff: number, voice: number, lyric?: { text: string; syllabic: Syllabic }): string {
   const ties = (p.tieStop ? `<tie type="stop"/>` : "") + (p.tieStart ? `<tie type="start"/>` : "");
   const tied = (p.tieStop ? `<tied type="stop"/>` : "") + (p.tieStart ? `<tied type="start"/>` : "");
   const head = pitch === null ? "<rest/>" : pitchXml(pitch);
   const divs = Math.round(p.durationBeats * DIVISIONS);
-  return `<note>${head}<duration>${divs}</duration>${ties}<voice>${voice}</voice><type>${p.type}</type>${p.dots ? "<dot/>" : ""}${accidental ? `<accidental>${accidental}</accidental>` : ""}<staff>${staff}</staff>${tied ? `<notations>${tied}</notations>` : ""}</note>`;
+  return `<note>${head}<duration>${divs}</duration>${ties}<voice>${voice}</voice><type>${p.type}</type>${p.dots ? "<dot/>" : ""}${accidental ? `<accidental>${accidental}</accidental>` : ""}<staff>${staff}</staff>${tied ? `<notations>${tied}</notations>` : ""}${lyricXml(lyric)}</note>`;
 }
 
 export interface MusicXmlOptions {
@@ -176,6 +181,15 @@ export function scoreToMusicXML(score: Score, layout: ScoreLayout = "lead", opts
         : spellPitch(notes[idx].midi!, key, { next: nextIdx === undefined ? null : notes[nextIdx].midi }),
     );
   });
+  // 가사: 연주 순서대로 앞 음절과 이어지는지로 syllabic 결정
+  const lyrics = new Map<number, { text: string; syllabic: Syllabic }>();
+  let prevLyric: string | undefined;
+  for (const idx of order) {
+    const l = notes[idx].lyric;
+    if (!l || !lyricText(l)) continue;
+    lyrics.set(idx, { text: lyricText(l), syllabic: syllabicOf(prevLyric, l) });
+    prevLyric = l;
+  }
   const tracker = new AccidentalTracker(key.fifths);
   const handTracker = new AccidentalTracker(key.fifths);
   const chords = score.chords.map((c) => ({ ...c, symbol: transposeChordSymbol(c.symbol, tp, preferFlats) }));
@@ -248,7 +262,9 @@ export function scoreToMusicXML(score: Score, layout: ScoreLayout = "lead", opts
       const sp = p.source !== undefined ? spelled.get(p.source) ?? null : null;
       // 붙임줄로 이어지는 뒤쪽 조각은 임시표를 반복하지 않음
       const acc = sp && !p.tieStop ? tracker.next(sp) : null;
-      parts.push(noteXml(p, sp, acc, 1, 1));
+      // 가사는 붙임줄 첫 조각에만
+      const ly = p.source !== undefined && !p.tieStop ? lyrics.get(p.source) : undefined;
+      parts.push(noteXml(p, sp, acc, 1, 1, ly));
     }
     flush((m + 1) * bpm, Infinity);
     // 마디 끝 위치(헤어핀 종료 등) 기호

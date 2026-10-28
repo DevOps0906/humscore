@@ -7,6 +7,8 @@ export interface NoteEvent {
   startBeat: number;
   /** 길이(박 단위) */
   durationBeats: number;
+  /** 가사 한 음절. 끝이 "-" 이면 다음 음절과 이어지는 단어(예: "hap-" → "py") */
+  lyric?: string;
 }
 
 export interface ChordEvent {

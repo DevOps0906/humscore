@@ -2,9 +2,11 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Download, FileMusic, Play, Printer, Square, Trash2 } from "lucide-react";
+import { AudioLines, Download, FileMusic, Play, Printer, Square, Trash2, Type } from "lucide-react";
 import { toast } from "sonner";
+import { AudioImportDialog } from "@/components/audio-import-dialog";
 import { ConfirmDialog } from "@/components/confirm-dialog";
+import { LyricsDialog } from "@/components/lyrics-dialog";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ChordEditor } from "@/components/chord-editor";
@@ -44,6 +46,8 @@ export function ScoreClient({ id }: { id: string }) {
   const [playing, setPlaying] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [pdfBusy, setPdfBusy] = useState(false);
+  const [lyricsOpen, setLyricsOpen] = useState(false);
+  const [audioOpen, setAudioOpen] = useState(false);
   const viewHandle = useRef<ScoreViewHandle | null>(null);
   const playback = useRef<Playback | null>(null);
   const stopTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -303,7 +307,7 @@ export function ScoreClient({ id }: { id: string }) {
         }
       />
 
-      <div className="no-print">
+      <div className="no-print flex flex-wrap gap-2">
         <Button
           type="button"
           variant="outline"
@@ -313,7 +317,29 @@ export function ScoreClient({ id }: { id: string }) {
         >
           음표 편집
         </Button>
+        <Button type="button" variant="outline" onClick={() => setLyricsOpen(true)} className="h-11 rounded-full px-4 text-sm lg:h-9">
+          <Type aria-hidden /> 가사 등록
+        </Button>
+        <Button type="button" variant="outline" onClick={() => setAudioOpen(true)} className="h-11 rounded-full px-4 text-sm lg:h-9">
+          <AudioLines aria-hidden /> 음원 등록
+        </Button>
       </div>
+      <LyricsDialog
+        open={lyricsOpen}
+        onOpenChange={setLyricsOpen}
+        notes={score.notes}
+        fromIndex={editNotes && selected !== null ? selected : 0}
+        onApply={(notes) => update({ notes })}
+      />
+      <AudioImportDialog
+        open={audioOpen}
+        onOpenChange={setAudioOpen}
+        score={score}
+        onApply={(patch) => {
+          setSelected(null);
+          update(patch);
+        }}
+      />
       {editNotes && (
         <NoteEditor score={score} onChange={(notes) => update({ notes })} selected={selected} onSelect={setSelected} sound={sound} />
       )}

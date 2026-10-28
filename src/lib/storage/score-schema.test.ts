@@ -62,4 +62,16 @@ describe("score-schema", () => {
     expect(parseScore({ ...base(), marks: [{ measure: 0, kind: "bogus" }] })).toBeNull();
     expect(parseScore({ ...base(), marks: Array.from({ length: 501 }, () => ({ measure: 0, kind: "coda" })) })).toBeNull();
   });
+  it("음표 가사는 저장 후에도 그대로 남고, 빈 문자열·40자 초과는 거부", () => {
+    const s: Score = { ...base(), notes: [
+      { midi: 60, startBeat: 0, durationBeats: 1, lyric: "반-" },
+      { midi: 62, startBeat: 1, durationBeats: 1, lyric: "짝" },
+      { midi: null, startBeat: 2, durationBeats: 1 },
+    ] };
+    expect(parseScore(JSON.parse(JSON.stringify(s)))).toEqual(s);
+    const one = (lyric: string) => ({ ...base(), notes: [{ midi: 60, startBeat: 0, durationBeats: 1, lyric }] });
+    expect(parseScore(one("가".repeat(40)))).not.toBeNull();
+    expect(parseScore(one("가".repeat(41)))).toBeNull();
+    expect(parseScore(one(""))).toBeNull();
+  });
 });

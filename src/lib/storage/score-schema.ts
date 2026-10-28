@@ -7,10 +7,15 @@ const isoDate = z.iso.datetime({ offset: true });
 /** Server Action 본문 한도(1 MB)보다 낮게 잡은 Score 직렬화 상한(바이트) */
 export const MAX_SCORE_BYTES = 900_000;
 
+/** 음표 하나에 붙는 가사 음절 최대 길이(글자) */
+export const MAX_LYRIC_LENGTH = 40;
+
 export const noteEventSchema = z.object({
   midi: z.number().int().min(0).max(127).nullable(),
   startBeat: z.number().finite().min(0).max(100_000),
   durationBeats: z.number().finite().min(0).max(100_000),
+  /** 사용자가 확인·적용한 가사 음절 (텍스트만, 음성 아님) */
+  lyric: z.string().min(1).max(MAX_LYRIC_LENGTH).optional(),
 });
 
 export const chordEventSchema = z.object({
