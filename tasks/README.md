@@ -3,7 +3,7 @@
 | 번호 | 제목 | 웨이브 | 선행 | 위험도 | 담당 | 상태 |
 |---|---|---|---|---|---|---|
 | task-000 | NOMAD 적용 (팀 통합 · AGENTS.md · 영역 규칙) | W0 | — | 낮음 | 팀장 | 완료 |
-| task-001 | 앱(Capacitor)에서 PDF 내보내기 — WebView `window.print()` 미동작 시 공유 시트 대체 | W1 | — | 보통 | builder → reviewer(code) | 대기 |
+| task-001 | 앱(Capacitor)에서 PDF 내보내기 — 의존성 없는 이미지 PDF → 공유 시트 (실기기 확인은 task-005) | W1 | — | 보통 | builder → reviewer(code) | 완료 |
 | task-002 | 공연 모드 보강 (범위는 착수 전 사용자 확정) | W1 | — | 보통 | builder → reviewer(design) | 대기 |
 | task-003 | 클라우드 동기화 회귀 테스트 강화 (merge 단위 테스트 · 로그인 e2e 실행 조건) | W2 | — | 높음 | challenger → tester → reviewer(security) | 대기 |
 | task-004 | 음원 파일 업로드 → 음표 변환 (Basic Pitch) | W3 | task-003 | 높음 | planner → challenger → builder | 대기 |
@@ -12,6 +12,8 @@
 | task-007 | 피아노 교육 앱 벤치마킹 (`docs/06_BENCHMARK.md`) | W1 | — | 낮음 | 조사 | 완료 |
 | task-008 | 빠른 패시지 인식 개선 (고정 hop 측정 · 세기 기반 온셋 · 최소 음 길이 0.06초) — 착수 여부 사용자 확인 | W2 | — | 보통 | music-logic-coder → tester → reviewer(code) | 대기 |
 | task-009 | 기획 문서 (PRD · 화면 · 데이터 모델 · 경쟁 분석 · DESIGN.md · ADR 0001 유튜브 탭 캡처) | W1 | — | 낮음 | 팀장 | 완료 |
+| task-010 | 따라 치기 연습 — 악보를 보며 피아노를 치면 마이크·MIDI로 다음 음 일치 판정·표시(단음부터, 학습 앱 구조 제외) | W2 | task-001 | 보통 | planner → music-logic-coder → builder → reviewer(code) | 대기 |
+| task-011 | 외부 소리 실시간 받아 적기 (스피커 재생 음원 → 음표, 모바일 유튜브 대체 경로) | W3 | task-004 | 높음 | planner → challenger → builder | 대기 |
 
 상태: 대기 / 진행 / 완료 / 보류
 

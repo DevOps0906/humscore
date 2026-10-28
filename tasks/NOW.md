@@ -1,8 +1,9 @@
 # NOW — 재진입 스냅샷 (30줄 이내, 매 작업 끝에 덮어쓴다)
 
 - 갱신: 2026-10-28
-- 현재 작업: task-001 앱(Capacitor)에서 PDF 내보내기 — 상태: 대기
-- 마지막으로 한 일: task-000 NOMAD 적용 커밋(로컬만, 푸시 안 함 — origin/main보다 11커밋 앞섬)
-- 다음 한 걸음: `src/app/(app)/scores/[id]/score-client.tsx:294`의 `window.print()`가 Capacitor WebView(Android·iOS)에서 동작하는지 확인 → 안 되면 `src/lib/platform/`의 웹/앱 분기로 대체 경로(공유 시트 등) 설계
-- 열린 결정(사용자 확인 필요): 앱 PDF 대체 방식(공유 시트 vs 서버 생성 vs 인쇄 플러그인 — 새 의존성이면 라이선스 확인)
-- 주의: 팀원 쓰기 영역은 `CLAUDE.md` ①표 + `npm run agents:check -- <팀원>`으로 확인. 패키지 관리자는 npm. 푸시는 사용자 지시가 있을 때만.
+- 현재 작업: 없음 (task-001 완료)
+- 마지막으로 한 일: task-001 앱 PDF — `src/lib/platform/{pdf,pdf-slices,sheet-pdf}.ts`, ScoreView `onHandle`로 OSMD 시스템 경계 노출, 줄 경계 분할
+- 다음 한 걸음: task-005 실기기 확인(공유 시트 .pdf, 한글 폰트, 줄 경계 컷 위치, 공유 취소 시 토스트 없음, 긴 악보 메모리)
+- 미확인: OSMD `MusicSystems[].PositionAndShape` 단위(×10×zoom)를 타입 정의로 확인 못 함(node_modules 읽기 금지) — 실기기에서 컷이 어긋나면 이 부분부터
+- 열린 결정: task-002 범위, task-008 착수 여부, task-010 착수 여부
+- 주의: 영역은 `CLAUDE.md` ①표 + `npm run agents:check -- <팀원>`. 푸시는 사용자 지시가 있을 때만. `.serena/`는 커밋하지 않음.

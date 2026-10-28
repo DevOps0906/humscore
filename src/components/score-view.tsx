@@ -65,6 +65,38 @@ function computeMarks(osmd: OpenSheetMusicDisplay, sheet: HTMLElement, notes: No
   return marks;
 }
 
+/** PDF 내보내기용: OSMD 가 그린 컨테이너와 시스템(줄)별 세로 범위 */
+export interface ScoreViewHandle {
+  /** OSMD 가 SVG 를 그린 컨테이너 */
+  container: HTMLElement;
+  /** OSMD 가 제목·작곡자를 SVG 안에 그렸는지 (true 면 별도 머리글 불필요) */
+  drawsTitle: boolean;
+  /** SVG(페이지)별 시스템의 세로 범위(px, SVG 위쪽 기준). 못 구하면 [] */
+  systemSpans: () => { top: number; bottom: number }[][];
+}
+
+interface BoxLike {
+  AbsolutePosition: { y: number };
+  BorderTop: number;
+  BorderBottom: number;
+}
+interface SheetLike {
+  MusicPages?: { MusicSystems?: { PositionAndShape?: BoxLike }[] }[];
+}
+
+/** OSMD 단위 → px: 단위 × 10 × zoom */
+function computeSystemSpans(osmd: OpenSheetMusicDisplay): { top: number; bottom: number }[][] {
+  const pages = (osmd.GraphicSheet as unknown as SheetLike | undefined)?.MusicPages ?? [];
+  const k = 10 * osmd.zoom;
+  return pages.map((p) =>
+    (p.MusicSystems ?? []).flatMap((s) => {
+      const b = s.PositionAndShape;
+      if (!b) return [];
+      return [{ top: (b.AbsolutePosition.y + b.BorderTop) * k, bottom: (b.AbsolutePosition.y + b.BorderBottom) * k }];
+    }),
+  );
+}
+
 /**
  * MusicXML 렌더러 (OpenSheetMusicDisplay, BSD-3)
  * 모든 악보 유형은 MusicXML로 만들어 이 컴포넌트 하나로 그립니다.
@@ -77,6 +109,7 @@ export function ScoreView({
   cursor,
   showHeader = false,
   header,
+  onHandle,
 }: {
   xml: string;
   zoom?: number;
@@ -86,8 +119,30 @@ export function ScoreView({
   showHeader?: boolean;
   /** 악보(종이) 맨 위, OSMD 그림 앞에 놓는 HTML 머리글 (인쇄에 포함됨) */
   header?: ReactNode;
+  /** PDF 내보내기용 핸들을 받는다 (언마운트 때 null) */
+  onHandle?: (h: ScoreViewHandle | null) => void;
 }) {
   const ref = useRef<HTMLDivElement>(null);
+  const onHandleRef = useRef(onHandle);
+  useLayoutEffect(() => {
+    onHandleRef.current = onHandle;
+  });
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    onHandleRef.current?.({
+      container: el,
+      drawsTitle: showHeader,
+      systemSpans: () => {
+        try {
+          return osmdRef.current ? computeSystemSpans(osmdRef.current) : [];
+        } catch {
+          return [];
+        }
+      },
+    });
+    return () => onHandleRef.current?.(null);
+  }, [showHeader]);
   const sheetRef = useRef<HTMLDivElement>(null);
   const markerRef = useRef<HTMLSpanElement>(null);
   const cursorRef = useRef(cursor);

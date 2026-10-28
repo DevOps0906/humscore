@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ChordEditor } from "@/components/chord-editor";
 import { NoteEditor } from "@/components/note-editor";
-import { ScoreView } from "@/components/score-view";
+import { ScoreView, type ScoreViewHandle } from "@/components/score-view";
 import { TransposeBar } from "@/components/transpose-bar";
 import { InlineField } from "@/components/inline-field";
 import { ScoreEditToolbar } from "@/components/score-edit-toolbar";
@@ -28,7 +28,8 @@ import { scoreToMusicXML, type ScoreLayout } from "@/lib/music/musicxml";
 import { measureOf, removeDynamic, setDynamic, toggleMeasureMark, updateNote } from "@/lib/music/edit";
 import { midiToName } from "@/lib/music/frequency";
 import { keyName, transposeKey } from "@/lib/music/theory";
-import { exportFile, safeFileName } from "@/lib/platform/export-file";
+import { exportFile, isNativeApp, safeFileName } from "@/lib/platform/export-file";
+import { sheetToPdf } from "@/lib/platform/sheet-pdf";
 import { deleteScore } from "@/lib/storage/scores";
 
 export function ScoreClient({ id }: { id: string }) {
@@ -42,6 +43,8 @@ export function ScoreClient({ id }: { id: string }) {
   const sound = usePianoSound(instrument);
   const [playing, setPlaying] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [pdfBusy, setPdfBusy] = useState(false);
+  const viewHandle = useRef<ScoreViewHandle | null>(null);
   const playback = useRef<Playback | null>(null);
   const stopTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -162,6 +165,33 @@ export function ScoreClient({ id }: { id: string }) {
   const header = <ScoreHeader score={score} />;
   const base = `${safeFileName(score.title)}_${keyName(shownKey)}`;
 
+  // 웹은 브라우저 인쇄, 앱은 이미지 PDF를 만들어 공유 시트로
+  const printOrPdf = async () => {
+    if (!isNativeApp()) return window.print();
+    const view = viewHandle.current;
+    if (!view || pdfBusy) return;
+    setPdfBusy(true);
+    const credits = [
+      score.lyricist && `작사 ${score.lyricist}`,
+      score.composer && `작곡 ${score.composer}`,
+      score.arranger && `편곡 ${score.arranger}`,
+    ]
+      .filter(Boolean)
+      .join(" · ");
+    const t = toast.loading("PDF를 만드는 중…");
+    try {
+      // 음표 선택 표시는 SVG 밖(HTML)이라 PDF에 들어가지 않는다. OSMD가 제목을 이미 그렸다면 직접 머리글은 생략
+      const bytes = await sheetToPdf(view.container, view.drawsTitle ? [] : [score.title, credits], view.systemSpans());
+      await exportFile(`${base}.pdf`, bytes, "application/pdf");
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "";
+      if (!/cancel/i.test(msg)) toast.error(msg || "PDF를 만들지 못했어요"); // 공유 시트 취소는 오류가 아님
+    } finally {
+      toast.dismiss(t);
+      setPdfBusy(false);
+    }
+  };
+
   return (
     <div className="flex flex-col gap-4">
       <div className="no-print flex items-start justify-between gap-3">
@@ -224,6 +254,9 @@ export function ScoreClient({ id }: { id: string }) {
       <HeaderSettings score={score} onChange={(p) => update(p)} />
 
       <ScoreView
+        onHandle={(h) => {
+          viewHandle.current = h;
+        }}
         showHeader={false}
         header={header}
         xml={xml}
@@ -291,7 +324,7 @@ export function ScoreClient({ id }: { id: string }) {
       <Card className="no-print gap-3 p-4">
         <p className="text-sm font-semibold">내보내기 · {keyName(shownKey)}키 기준</p>
         <div className="flex flex-wrap gap-2 text-sm">
-          <Button type="button" variant="outline" onClick={() => window.print()} className="h-11 rounded-full px-4 lg:h-9">
+          <Button type="button" variant="outline" onClick={printOrPdf} disabled={pdfBusy} className="h-11 rounded-full px-4 lg:h-9">
             <Printer aria-hidden /> PDF / 인쇄
           </Button>
           <Button
