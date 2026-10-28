@@ -3,7 +3,27 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>HumScore 랜딩 재디자인 시안</title>
+<title>HumScore 랜딩 재디자인 시안 (현행 구조 + 보강)</title>
+<!--
+원칙: 현행 구조·진입점을 모두 남기고 보강만 한다. 근거: src/app/(marketing)/page.tsx · src/components/landing/data.ts
+[현행 요소 -> 시안 위치]
+ 헤더 nav 기능·사용 방법·에디터·FAQ + 무료로 시작  -> header (모바일은 nav 행 내부 가로 스크롤)
+ 히어로 문구·"가입 없이 바로 시작 · 목소리는 저장하지 않아요" -> .hero 좌측
+ 히어로 진입 카드 흥얼거려 보기(/record) · 건반으로 입력하기(/keys) · 내 악보 보기(/library) -> .hero 우측 .start 카드
+ 건반·MIDI 입력: 현행 유지(녹음 3방식 목소리·악기 소리(마이크)·MIDI 건반 [/record 화면] · /keys 88건반 · "MIDI 건반 연결" 버튼) -> 이 시안에서 변경·재현하지 않음(진입 링크 /record·/keys만 유지)
+ 히어로 우측 시각물(heroGlow 카드) -> .hero .start (태블릿은 세로 배치로 보강)
+ 특징 띠 STATS 4개(무료·88건반·3가지·0) -> .stats
+ #products 6개(허밍 채보·건반 입력·코드 추천·원클릭 전조·공연 모드·내보내기) + 자세히 -> #products
+ #how 3단계(흥얼거리기·다듬기·연주하고 내보내기) 기존 문구 -> #how
+ #editor 에디터 소개 + CHECKS 3개 + 에디터 예시 SVG -> #editor
+ 내보내기 형식 PDF·MIDI·MusicXML -> .formats
+ 개인정보 섹션 -> .privacy
+ FAQ 5문항(data.ts, 첫 항목 열림) -> #faq
+ 마지막 CTA 바로 시작하기(/library) · 흥얼거려 보기(/record) -> .close
+[보강(신규) 표시: 시안에서 "신규" 라벨]
+ 허밍 <-> 악보 비교 데모(#how 뒤) · 요금 한 줄(/pricing) · 태블릿 히어로 세로 · 모바일 고정 CTA
+[추가 안 함] 통계 수치 신규·후기·사용자 수
+-->
 <style>
 /* 제안 토큰 (미확정 · globals.css에 없음) */
 :root{
@@ -11,7 +31,7 @@
   --space-section:56px;
   --content-max:1120px;
   /* 간격·크기 스케일(제안) */
-  --px-1:1px;--px-2:2px;--px-3:3px;--px-4:4px;--px-6:6px;--px-8:8px;--px-10:10px;--px-12:12px;--px-14:14px;--px-16:16px;--px-18:18px;--px-20:20px;--px-24:24px;--px-28:28px;--px-32:32px;--px-36:36px;--px-40:40px;--px-44:44px;--px-48:48px;--px-52:52px;--px-56:56px;--px-64:64px;--px-80:80px;--px-84:84px;--px-200:200px;--px-560:560px;
+  --px-1:1px;--px-2:2px;--px-3:3px;--px-4:4px;--px-8:8px;--px-10:10px;--px-12:12px;--px-14:14px;--px-16:16px;--px-18:18px;--px-20:20px;--px-22:22px;--px-24:24px;--px-28:28px;--px-32:32px;--px-36:36px;--px-40:40px;--px-44:44px;--px-48:48px;--px-56:56px;--px-64:64px;--px-80:80px;--px-84:84px;--px-180:180px;--px-200:200px;--px-460:460px;--px-560:560px;--px-640:640px;--px-820:820px;
 }
 /* 토큰: src/app/globals.css 값 그대로 */
 :root{
@@ -23,10 +43,10 @@
   --paper:var(--tono-bg);--ink:var(--tono-text);--ink-soft:var(--tono-gray-400);--line:var(--tono-gray-700);
   --divider:color-mix(in srgb,var(--tono-text) 16%,transparent);
   --surface:var(--tono-surface);--accent:var(--tono-accent);--accent-ink:var(--tono-bg);
-  --tune-good:#4fc08d;--score-paper:#f7f7fb;
+  --score-paper:#f7f7fb;
   --shadow-sm:0 0 0 1px var(--tono-gray-700);
   --shadow-md:0 0 0 1px var(--tono-gray-600),0 6px 18px rgba(0,0,0,.55);
-  --ring:var(--tono-lavender-300);--destructive:var(--tono-error);
+  --ring:var(--tono-lavender-300);
   --radius-lg:8px;--radius-2xl:14px;
   --font-sans:"Pretendard Variable",Pretendard,-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Noto Sans KR",system-ui,sans-serif;
   --font-mono:ui-monospace,Menlo,monospace;
@@ -42,105 +62,154 @@
 
 *{box-sizing:border-box}
 html,body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--font-sans);font-size:var(--text-base);line-height:1.6;word-break:keep-all;overflow-x:hidden}
-h1,h2,h3,p,ul{margin:0}
+h1,h2,h3,p,ul,ol{margin:0}
+ul,ol{padding:0;list-style:none}
 h1,h2,h3{font-weight:500;letter-spacing:-.015em}
 :focus-visible{outline:var(--px-2) solid var(--ring);outline-offset:var(--px-2)}
 a{color:inherit}
 .wrap{max-width:var(--content-max);margin:0 auto;padding:0 var(--px-20)}
 section{padding-top:var(--space-section)}
-h2{font-size:var(--text-4xl);line-height:1.25;margin-bottom:var(--px-24)}
+h2{font-size:var(--text-4xl);line-height:1.25;margin-bottom:var(--px-12)}
+.kick{display:block;margin-bottom:var(--px-12);font-size:var(--text-xs);letter-spacing:.08em;text-transform:uppercase;color:var(--accent)}
+.sub{color:var(--ink-soft);font-size:var(--text-base);max-width:var(--px-640);margin-bottom:var(--px-32)}
 .soft{color:var(--ink-soft)}
-.hr{height:var(--px-1);border:0;margin:0;background:linear-gradient(to right,transparent,var(--divider) var(--px-48),var(--divider) calc(100% - var(--px-48)),transparent)}
+.rule{height:var(--px-1);border:0;margin:var(--space-section) 0 0;background:linear-gradient(to right,transparent,var(--divider) var(--px-48),var(--divider) calc(100% - var(--px-48)),transparent)}
+.new{display:inline-block;margin-left:var(--px-8);padding:0 var(--px-8);border-radius:var(--radius-lg);background:var(--tono-section);color:var(--tono-lavender-100);font-size:var(--text-xs);font-weight:400;letter-spacing:0;text-transform:none;vertical-align:middle}
+
+/* 버튼 */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:var(--px-8);min-height:var(--px-48);min-width:var(--tap-min);padding:0 var(--px-24);border:0;border-radius:var(--radius-lg);background:var(--accent);color:var(--accent-ink);font:inherit;font-size:var(--text-base);font-weight:700;text-decoration:none;cursor:pointer}
+.btn:hover{background:var(--tono-lavender-300)}
+.btn-line{background:var(--surface);color:var(--ink);box-shadow:inset 0 0 0 var(--px-1) var(--tono-gray-600);font-weight:500}
+.btn-line:hover{background:var(--tono-section)}
+.btn-sm{min-height:var(--tap-min);padding:0 var(--px-16);font-size:var(--text-sm)}
 
 /* 헤더 */
 header{border-bottom:var(--px-1) solid var(--line)}
-header .wrap{display:flex;align-items:center;justify-content:space-between;min-height:var(--px-56);gap:var(--px-12)}
+header .wrap{display:flex;align-items:center;justify-content:space-between;gap:var(--px-12);min-height:var(--px-56);flex-wrap:wrap}
 .logo{display:inline-flex;align-items:center;min-height:var(--px-44);font-weight:700;font-size:var(--text-xl);text-decoration:none}
-nav{display:flex;align-items:center;gap:var(--px-4)}
-nav a{display:none;min-height:var(--tap-min);align-items:center;padding:0 var(--px-12);color:var(--ink-soft);text-decoration:none;font-size:var(--text-sm)}
-nav a.keep{display:inline-flex}
+nav{order:3;width:100%;display:flex;gap:var(--px-4);overflow-x:auto;padding-bottom:var(--px-4)}
+nav a{display:inline-flex;align-items:center;flex:none;min-height:var(--tap-min);padding:0 var(--px-12);color:var(--ink-soft);text-decoration:none;font-size:var(--text-sm)}
 nav a:hover{color:var(--ink)}
-@media (min-width:768px){nav a{display:inline-flex}}
-
-/* 버튼 */
-.btn{display:inline-flex;align-items:center;justify-content:center;gap:var(--px-8);min-height:var(--px-52);min-width:var(--tap-min);padding:0 var(--px-28);border:0;border-radius:var(--radius-lg);background:var(--accent);color:var(--accent-ink);font:inherit;font-size:var(--text-lg);font-weight:700;text-decoration:none;cursor:pointer}
-.btn:hover{background:var(--tono-lavender-300)}
-.btn-line{background:transparent;color:var(--ink);box-shadow:inset 0 0 0 var(--px-1) var(--tono-gray-600);font-weight:500}
-.btn-line:hover{background:var(--surface)}
+@media (min-width:768px){nav{order:0;width:auto;overflow:visible;padding:0;margin-left:auto}}
 
 /* 히어로: 모바일·태블릿 세로, 데스크톱 좌우 */
 .hero{padding-top:var(--px-40);display:grid;gap:var(--px-32);text-align:center;justify-items:center}
-.hero h1{font-size:var(--text-5xl);line-height:1.2}
-.hero .lead{font-size:var(--text-xl);color:var(--ink-soft);margin:var(--px-16) auto var(--px-28);max-width:34em}
-.hero .note{font-size:var(--text-sm);color:var(--ink-soft);margin-top:var(--px-14)}
-.hero .res{width:100%;max-width:var(--px-560)}
+.hero h1{font-size:var(--text-5xl);line-height:1.15;font-weight:600;letter-spacing:-.025em}
+.hero .lead{font-size:var(--text-lg);color:var(--ink-soft);margin:var(--px-16) auto var(--px-20);max-width:46ch}
+.hero .note{font-size:var(--text-sm);color:var(--ink-soft)}
+.start{width:100%;max-width:var(--px-560);display:flex;flex-direction:column;gap:var(--px-12);padding:var(--px-20);border-radius:var(--radius-2xl);background:var(--surface);box-shadow:var(--shadow-md);text-align:left;background-image:radial-gradient(circle at 80% 0,var(--tono-section) 0,transparent 60%)}
+.start>p{font-size:var(--text-xs);color:var(--ink-soft)}
+.entry{display:flex;align-items:center;gap:var(--px-16);min-height:var(--tap-min);padding:var(--px-16);border:var(--px-1) solid var(--line);border-radius:var(--radius-lg);text-decoration:none}
+.entry:hover{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 10%,transparent)}
+.entry .ic{flex:none;width:var(--px-32);height:var(--px-32);color:var(--accent)}
+.entry strong{display:block;font-weight:500}
+.entry small{font-size:var(--text-xs);color:var(--ink-soft)}
+.start .btn{margin-top:var(--px-4)}
 @media (min-width:768px){.hero{padding-top:var(--px-64)}}
 @media (min-width:1200px){
-  .hero{grid-template-columns:1fr 1fr;gap:var(--px-64);text-align:left;justify-items:stretch;align-items:center;padding-top:var(--px-80)}
+  .hero{grid-template-columns:minmax(0,1fr) var(--px-460);gap:var(--px-64);text-align:left;justify-items:stretch;align-items:center;padding-top:var(--px-80)}
   .hero .lead{margin-left:0}
-  .hero .res{max-width:none}
+  .start{max-width:none}
 }
 
-/* 악보 카드 */
-.score{background:var(--score-paper);color:var(--tono-bg);border-radius:var(--radius-2xl);box-shadow:var(--shadow-md);padding:var(--px-16) var(--px-18) var(--px-12);text-align:left}
+/* 특징 띠 */
+.stats{margin-top:var(--space-section);padding:var(--px-40) 0;background:var(--tono-section)}
+.stats ul{display:grid;grid-template-columns:repeat(2,1fr);gap:var(--px-24)}
+@media (min-width:768px){.stats ul{grid-template-columns:repeat(4,1fr)}}
+.stats b{display:block;margin-bottom:var(--px-8);font-size:var(--text-4xl);font-weight:500;line-height:1}
+.stats span{font-size:var(--text-sm);color:var(--tono-lavender-100)}
+
+/* 기능 */
+.cards{display:grid;gap:var(--px-12)}
+@media (min-width:768px){.cards{grid-template-columns:repeat(2,1fr)}}
+@media (min-width:1200px){.cards{grid-template-columns:repeat(3,1fr)}}
+.card{display:flex;flex-direction:column;gap:var(--px-10);background:var(--surface);border-radius:var(--radius-2xl);box-shadow:var(--shadow-sm);padding:var(--px-22)}
+.card:hover{box-shadow:var(--shadow-md)}
+.card .ic{width:var(--px-28);height:var(--px-28);color:var(--accent)}
+.card h3{font-size:var(--text-xl);font-weight:600}
+.card p{font-size:var(--text-sm);color:var(--ink-soft)}
+.card .more{align-self:flex-start;display:inline-flex;align-items:center;min-height:var(--tap-min);color:var(--tono-lavender-300);font-size:var(--text-sm);text-decoration:none}
+
+/* 사용 방법 */
+.steps{display:grid;gap:var(--px-32)}
+@media (min-width:768px){.steps{grid-template-columns:repeat(3,1fr);gap:var(--px-40)}}
+.step .n{display:flex;align-items:center;gap:var(--px-12);margin-bottom:var(--px-14);font-family:var(--font-mono);font-size:var(--text-sm);color:var(--accent)}
+.step .n::after{content:"";flex:1;height:var(--px-1);background:var(--line)}
+.step h3{font-size:var(--text-2xl);font-weight:600;margin-bottom:var(--px-8)}
+.step p{color:var(--ink-soft)}
+
+/* 비교 데모 (신규) */
+.demo{margin-top:var(--px-48);padding:var(--px-20);border-radius:var(--radius-2xl);background:var(--surface);box-shadow:var(--shadow-sm)}
+.demo h3{font-size:var(--text-xl);margin-bottom:var(--px-4)}
+.compare{display:grid;gap:var(--px-16);margin-top:var(--px-16)}
+@media (min-width:768px){.compare{grid-template-columns:1fr 1fr}}
+.lbl{font-size:var(--text-xs);color:var(--ink-soft);margin-bottom:var(--px-8);font-family:var(--font-mono)}
+.hum{display:flex;flex-direction:column;justify-content:space-between;gap:var(--px-16);min-height:var(--px-180);height:calc(100% - var(--px-28));background:linear-gradient(135deg,var(--tono-section),var(--tono-bg));border-radius:var(--radius-lg);padding:var(--px-20)}
+.hum .row{display:flex;align-items:center;gap:var(--px-14)}
+.play{flex:none;width:var(--tap-min);height:var(--tap-min);border-radius:50%;border:0;background:var(--accent);color:var(--accent-ink);font-size:var(--text-lg);cursor:pointer}
+.wave{flex:1;height:var(--px-36);background:repeating-linear-gradient(90deg,var(--tono-section-ghost) 0 var(--px-3),transparent var(--px-3) var(--px-8));-webkit-mask:linear-gradient(transparent 0,var(--ink) 30%,var(--ink) 70%,transparent 100%);mask:linear-gradient(transparent 0,var(--ink) 30%,var(--ink) 70%,transparent 100%)}
+.hum p{font-size:var(--text-xs);color:var(--tono-lavender-100)}
+.score{background:var(--score-paper);color:var(--tono-bg);border-radius:var(--radius-lg);padding:var(--px-16) var(--px-18) var(--px-12)}
 .score .meta{display:flex;justify-content:space-between;gap:var(--px-8);font-size:var(--text-sm)}
-.score .meta b{font-weight:700}
 .score .meta span{font-family:var(--font-mono);font-size:var(--text-xs);color:var(--tono-gray-600)}
 .score svg{display:block;width:100%;height:auto;margin-top:var(--px-8)}
 .score .chords{display:flex;justify-content:space-around;font-family:var(--font-mono);font-size:var(--text-xs);color:var(--tono-section)}
-.cap{font-size:var(--text-xs);color:var(--ink-soft);margin-top:var(--px-10);text-align:center}
 
-/* 단계 */
-.steps{display:grid;gap:var(--px-16);padding:0;list-style:none}
-.card{background:var(--surface);border-radius:var(--radius-2xl);box-shadow:var(--shadow-sm);padding:var(--px-20)}
-.step .n{display:inline-grid;place-items:center;width:var(--px-32);height:var(--px-32);border-radius:50%;background:var(--tono-section);color:var(--tono-lavender-100);font-family:var(--font-mono);font-size:var(--text-sm);margin-bottom:var(--px-12)}
-.step h3{font-size:var(--text-xl);margin-bottom:var(--px-6)}
-.step p{color:var(--ink-soft);font-size:var(--text-sm)}
-@media (min-width:768px){.steps{grid-template-columns:repeat(3,1fr)}}
+/* 에디터 */
+.ed{display:grid;gap:var(--px-32);align-items:center}
+@media (min-width:768px){.ed{grid-template-columns:5fr 7fr;gap:var(--px-48)}}
+.ed p{color:var(--ink-soft)}
+.checks{display:flex;flex-direction:column;gap:var(--px-12);margin-top:var(--px-24)}
+.checks li{display:flex;gap:var(--px-10);align-items:flex-start}
+.checks li::before{content:"✓";flex:none;width:var(--px-18);color:var(--accent)}
+.edmock{aspect-ratio:16/10;width:100%;overflow:hidden;border-radius:var(--radius-2xl);background:var(--surface);box-shadow:var(--shadow-sm);padding:var(--px-16)}
+.edmock .bar{height:var(--px-28);border-radius:var(--radius-lg);background:var(--tono-bg);margin-bottom:var(--px-12)}
+.edmock .paper{height:calc(100% - var(--px-40));border-radius:var(--radius-lg);background:var(--score-paper);color:var(--tono-bg);display:grid;align-content:space-around;padding:0 var(--px-12)}
+.edmock svg{width:100%;height:auto}
 
-/* 비교 데모 */
-.compare{display:grid;gap:var(--px-16)}
-@media (min-width:768px){.compare{grid-template-columns:1fr 1fr;align-items:stretch}}
-.hum{display:flex;flex-direction:column;justify-content:space-between;gap:var(--px-16);min-height:var(--px-200);background:linear-gradient(135deg,var(--tono-section),var(--tono-bg));border-radius:var(--radius-2xl);box-shadow:var(--shadow-sm);padding:var(--px-20)}
-.hum .row{display:flex;align-items:center;gap:var(--px-14)}
-.play{flex:none;width:var(--tap-min);height:var(--tap-min);border-radius:50%;border:0;background:var(--accent);color:var(--accent-ink);font-size:var(--text-lg);cursor:pointer}
-.wave{flex:1;height:var(--px-36);border-radius:var(--radius-lg);background:repeating-linear-gradient(90deg,var(--tono-section-ghost) 0 var(--px-3),transparent var(--px-3) var(--px-8));-webkit-mask:linear-gradient(transparent 0,var(--ink) 30%,var(--ink) 70%,transparent 100%);mask:linear-gradient(transparent 0,var(--ink) 30%,var(--ink) 70%,transparent 100%)}
-.hum .sub{font-size:var(--text-xs);color:var(--tono-lavender-100)}
-.hum .sub,.hum p{margin:0}
-.lbl{font-size:var(--text-xs);color:var(--ink-soft);margin-bottom:var(--px-8);font-family:var(--font-mono)}
+/* 내보내기 */
+.formats{display:flex;flex-wrap:wrap;gap:var(--px-10)}
+.fmt{flex:1;min-width:var(--px-200);display:flex;flex-direction:column;padding:var(--px-14) var(--px-18);border-radius:var(--radius-lg);background:var(--surface)}
+.fmt b{font-weight:500;font-size:var(--text-base)}
+.fmt small{font-size:var(--text-xs);color:var(--ink-soft)}
 
-/* 활용·신뢰 */
-.grid2{display:grid;gap:var(--px-16)}
-@media (min-width:768px){.grid2{grid-template-columns:1fr 1fr}}
-.card h3{font-size:var(--text-xl);margin-bottom:var(--px-6)}
-.card p{font-size:var(--text-sm);color:var(--ink-soft)}
-.trust{display:grid;gap:var(--px-12);background:var(--tono-section);border-radius:var(--radius-2xl);padding:var(--px-24);box-shadow:var(--shadow-sm)}
-.trust p{color:var(--tono-lavender-100)}
-.trust h2{margin-bottom:var(--px-4)}
-.price{display:flex;flex-direction:column;gap:var(--px-12);align-items:flex-start;padding:var(--px-24);border-radius:var(--radius-2xl);box-shadow:var(--shadow-sm);background:var(--surface)}
+/* 개인정보 */
+.privacy{display:flex;flex-direction:column;gap:var(--px-20);padding:var(--px-24);border-radius:var(--radius-2xl);background:var(--tono-section)}
+.privacy p{color:var(--tono-lavender-100);max-width:var(--px-640)}
+.privacy h2{margin-bottom:var(--px-12)}
+.privacy .shield{font-size:var(--text-4xl);line-height:1;color:var(--tono-lavender-300)}
+@media (min-width:768px){.privacy{flex-direction:row;gap:var(--px-28)}}
+
+/* 요금 한 줄 (신규) */
+.price{display:flex;flex-direction:column;gap:var(--px-8);align-items:flex-start;padding:var(--px-20) var(--px-24);border-radius:var(--radius-2xl);background:var(--surface);box-shadow:var(--shadow-sm)}
 .price b{font-size:var(--text-2xl);font-weight:500}
 .price a{color:var(--tono-lavender-300);font-size:var(--text-sm);min-height:var(--tap-min);display:inline-flex;align-items:center}
 @media (min-width:768px){.price{flex-direction:row;align-items:center;justify-content:space-between}}
 
 /* FAQ */
-details{background:var(--surface);border-radius:var(--radius-lg);box-shadow:var(--shadow-sm);margin-bottom:var(--px-8)}
-summary{min-height:var(--tap-min);padding:var(--px-10) var(--px-16);cursor:pointer;display:flex;align-items:center;font-size:var(--text-base)}
-details p{padding:0 var(--px-16) var(--px-14);color:var(--ink-soft);font-size:var(--text-sm)}
+.faq{max-width:var(--px-820)}
+details{border-bottom:var(--px-1) solid var(--line);padding:var(--px-4) 0}
+summary{display:flex;justify-content:space-between;align-items:center;gap:var(--px-16);min-height:var(--tap-min);padding:var(--px-12) 0;cursor:pointer;font-size:var(--text-lg);font-weight:500;list-style:none}
+summary::-webkit-details-marker{display:none}
+summary::after{content:"+";color:var(--accent);font-size:var(--text-2xl);transition:transform .2s}
+details[open] summary::after{transform:rotate(45deg)}
+details p{padding-bottom:var(--px-16);max-width:64ch;color:var(--ink-soft)}
 
-/* 하단 CTA·푸터 */
-.final{text-align:center;display:grid;gap:var(--px-20);justify-items:center}
-.final h2{margin-bottom:0}
+/* 마지막 CTA·푸터 */
+.close h2{font-size:var(--text-5xl);line-height:1.2;font-weight:600}
+.close p{color:var(--ink-soft)}
+.close .row{display:flex;flex-wrap:wrap;gap:var(--px-10);margin-top:var(--px-24)}
 footer{margin-top:var(--space-section);border-top:var(--px-1) solid var(--line)}
 footer .wrap{display:flex;flex-wrap:wrap;gap:var(--px-8) var(--px-20);justify-content:space-between;padding-top:var(--px-20);padding-bottom:var(--px-20);font-size:var(--text-xs);color:var(--ink-soft)}
-footer a{text-decoration:none;display:inline-flex;min-height:var(--tap-min);align-items:center}
 
-/* 모바일 고정 CTA */
+/* 모바일 고정 CTA (신규) */
 .sticky{position:fixed;left:0;right:0;bottom:0;padding:var(--px-10) var(--px-20) max(env(safe-area-inset-bottom),var(--px-10));background:color-mix(in srgb,var(--paper) 92%,transparent);border-top:var(--px-1) solid var(--line);z-index:5}
 .sticky .btn{width:100%}
 .sticky[hidden]{display:none}
 body{padding-bottom:var(--px-84)}
 @media (min-width:768px){.sticky{display:none}body{padding-bottom:0}}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+
 </style>
 </head>
 <body>
@@ -168,111 +237,179 @@ body{padding-bottom:var(--px-84)}
 
 <header>
   <div class="wrap">
-    <a class="logo" href="#top">HumScore</a>
+    <a class="logo" href="/">HumScore</a>
     <nav aria-label="주요 메뉴">
+      <a href="#products">기능</a>
       <a href="#how">사용 방법</a>
+      <a href="#editor">에디터</a>
       <a href="#faq">FAQ</a>
-      <a class="keep" href="#library">내 악보</a>
     </nav>
+    <a class="btn btn-sm" href="/library">무료로 시작</a>
   </div>
 </header>
 
-<main id="top">
+<main>
   <div class="wrap">
-    <!-- 히어로 -->
+    <!-- 히어로 (현행) -->
     <div class="hero">
       <div>
-        <h1>흥얼거리면<br>악보가 됩니다</h1>
-        <p class="lead">멜로디를 불러 보세요. 음표와 코드가 붙은 악보로 바꿔 드려요.</p>
-        <a class="btn" data-cta href="#record">지금 흥얼거려 보기</a>
-        <p class="note">가입 없이 시작 · 마이크 소리는 기기 밖으로 나가지 않아요</p>
+        <h1><span style="display:block">흥얼거리면</span><span style="display:block">악보가 됩니다.</span></h1>
+        <p class="lead">떠오른 멜로디를 마이크에 불러 보세요. 음정을 실시간으로 따라가 음표와 코드를 붙인 악보로 정리합니다.</p>
+        <p class="note">가입 없이 바로 시작 · 목소리는 저장하지 않아요</p>
       </div>
-      <figure class="res" style="margin:0">
-        <div class="score" role="img" aria-label="실제 출력 악보 예시: 작은 별, 다장조 4분의 4박자">
-          <div class="meta"><b>작은 별</b><span>C장조 · 4/4 · ♩=100</span></div>
-          <svg aria-hidden="true"><use href="#staff"/></svg>
-          <div class="chords"><span>C</span><span>F</span><span>G7</span></div>
-        </div>
-        <figcaption class="cap">실제 출력 예시 (캡처 교체 예정)</figcaption>
-      </figure>
+      <div class="start">
+        <p>지금 바로 시작하기</p>
+        
+        <a class="entry" data-cta href="/record">
+          <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>
+          <span><strong>흥얼거려서 악보 만들기</strong><small>마이크로 허밍하면 음표로 받아 적습니다</small></span>
+        </a>
+        <a class="entry" href="/keys">
+          <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M8 6v12M12 6v12M16 6v12"/></svg>
+          <span><strong>건반으로 입력하기</strong><small>화면 피아노로 직접 음을 찍어 보세요</small></span>
+        </a>
+        <a class="btn" href="/library">내 악보 보기</a>
+      </div>
     </div>
+  </div>
 
-    <!-- 사용 방법 -->
+  <!-- 특징 띠 (현행) -->
+  <section class="stats" aria-label="HumScore 특징" style="padding-top:var(--px-40)">
+    <div class="wrap">
+      <ul>
+        <li><b>무료</b><span>가입 없이 시작</span></li>
+        <li><b>88건반</b><span>화면 피아노 입력</span></li>
+        <li><b>3가지</b><span>MIDI · MusicXML · PDF</span></li>
+        <li><b>0</b><span>저장되는 음성 데이터</span></li>
+      </ul>
+    </div>
+  </section>
+
+  <div class="wrap">
+    <!-- 기능 6개 (현행) -->
+    <section id="products">
+      <span class="kick">기능</span>
+      <h2>멜로디를 악보로 만드는 도구</h2>
+      <p class="sub">녹음부터 연주까지, 악보 한 장을 완성하는 데 필요한 것만 담았습니다.</p>
+      <div class="cards">
+        <div class="card"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg><h3>허밍 채보</h3><p>흥얼거린 멜로디의 음정과 박자를 따라가 음표로 받아 적고 조성을 찾아 줍니다.</p><a class="more" href="/record">자세히 →</a></div>
+        <div class="card"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M8 6v12M12 6v12M16 6v12"/></svg><h3>건반 입력</h3><p>88건반 화면 피아노나 PC 키보드로 음을 직접 찍고 바로 들어 봅니다.</p><a class="more" href="/keys">자세히 →</a></div>
+        <div class="card"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M4 7h12M4 12h12M4 17h8M19 6v9"/><circle cx="17" cy="16" r="2"/></svg><h3>코드 추천</h3><p>멜로디에 어울리는 코드를 마디마다 제안하고, 원하는 코드로 바꿀 수 있습니다.</p><a class="more" href="/keys">자세히 →</a></div>
+        <div class="card"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M8 20V5M4 9l4-4 4 4M16 4v15M12 15l4 4 4-4"/></svg><h3>원클릭 전조</h3><p>버튼 하나로 키를 올리고 내립니다. 원본은 그대로라 언제든 원키로 돌아옵니다.</p><a class="more" href="/library">자세히 →</a></div>
+        <div class="card"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="3" y="4" width="18" height="13" rx="2"/><path d="M10 8.5v4l4-2zM8 21h8"/></svg><h3>공연 모드</h3><p>태블릿을 보면대로. 화면 탭이나 페이지 터너 페달로 악보를 넘깁니다.</p><a class="more" href="/library">자세히 →</a></div>
+        <div class="card"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M12 4v11M7 11l5 5 5-5M5 20h14"/></svg><h3>내보내기</h3><p>MIDI와 MusicXML로 내보내 MuseScore, Finale, DAW에서 이어서 작업합니다.</p><a class="more" href="/library">자세히 →</a></div>
+      </div>
+    </section>
+    <hr class="rule">
+
+    <!-- 사용 방법 (현행) + 비교 데모 (신규) -->
     <section id="how">
-      <h2>세 단계면 끝나요</h2>
-      <ol class="steps">
-        <li class="card step"><span class="n">1</span><h3>흥얼거리기</h3><p>마이크에 대고 멜로디를 불러요. 건반으로 눌러도 돼요.</p></li>
-        <li class="card step"><span class="n">2</span><h3>악보 확인</h3><p>음표와 코드가 붙은 악보가 바로 나와요. 틀린 음은 고칠 수 있어요.</p></li>
-        <li class="card step"><span class="n">3</span><h3>재생·저장</h3><p>들어 보고, 전조하고, 내 악보에 저장해요.</p></li>
+      <span class="kick">사용 방법</span>
+      <h2>세 단계면 충분합니다</h2>
+      <ol class="steps" style="margin-top:var(--px-32)">
+        <li class="step"><div class="n">01</div><h3>흥얼거리기</h3><p>녹음 버튼을 누르고 메트로놈에 맞춰 멜로디를 불러 보세요.</p></li>
+        <li class="step"><div class="n">02</div><h3>다듬기</h3><p>틀린 음과 코드를 고치고, 피아노로 들어 보며 키를 맞춥니다.</p></li>
+        <li class="step"><div class="n">03</div><h3>연주하고 내보내기</h3><p>공연 모드로 연주하거나 MIDI·MusicXML·PDF로 저장합니다.</p></li>
       </ol>
-    </section>
 
-    <!-- 비교 데모 -->
-    <section>
-      <h2>내가 부른 멜로디, 이렇게 바뀌어요</h2>
-      <div class="compare">
-        <div>
-          <p class="lbl">샘플 허밍</p>
-          <div class="hum">
-            <div class="row">
-              <button class="play" type="button" aria-label="샘플 허밍 재생">▶</button>
-              <div class="wave" aria-hidden="true"></div>
+      <div class="demo">
+        <h3>내가 부른 멜로디, 이렇게 바뀌어요<span class="new">신규</span></h3>
+        <p class="soft" style="font-size:var(--text-sm)">샘플 허밍을 듣고, 같은 멜로디의 악보와 비교해 보세요.</p>
+        <div class="compare">
+          <div>
+            <p class="lbl">샘플 허밍</p>
+            <div class="hum">
+              <div class="row"><button class="play" type="button" aria-label="샘플 허밍 재생">▶</button><div class="wave" aria-hidden="true"></div></div>
+              <p>허락받은 샘플 음성이에요. 재생이 안 되면 오른쪽 악보를 확인하세요.</p>
             </div>
-            <p class="sub">허락받은 샘플 음성이에요. 재생이 안 되면 오른쪽 악보를 확인하세요.</p>
+          </div>
+          <div>
+            <p class="lbl">같은 멜로디의 악보</p>
+            <div class="score" role="img" aria-label="샘플 허밍의 실제 악보">
+              <div class="meta"><b>샘플 멜로디</b><span>C장조 · 4/4</span></div>
+              <svg aria-hidden="true"><use href="#staff"/></svg>
+              <div class="chords"><span>C</span><span>F</span><span>G7</span></div>
+            </div>
           </div>
         </div>
+      </div>
+    </section>
+    <hr class="rule">
+
+    <!-- 에디터 (현행) -->
+    <section id="editor">
+      <div class="ed">
         <div>
-          <p class="lbl">같은 멜로디의 악보</p>
-          <div class="score" role="img" aria-label="샘플 허밍의 실제 악보">
-            <div class="meta"><b>샘플 멜로디</b><span>C장조 · 4/4</span></div>
-            <svg aria-hidden="true"><use href="#staff"/></svg>
-            <div class="chords"><span>C</span><span>F</span><span>G7</span></div>
-          </div>
+          <span class="kick">에디터</span>
+          <h2>받아 적은 악보를 바로 다듬으세요</h2>
+          <p>리드시트와 피아노 대보표를 오가며 음표와 코드를 고치고, 피아노 소리로 바로 확인합니다.</p>
+          <ul class="checks"><li>음표·박자 편집</li><li>코드 수정과 추천</li><li>피아노 재생과 조옮김</li></ul>
+        </div>
+        <div class="edmock" role="img" aria-label="에디터 화면 예시">
+          <div class="bar"></div>
+          <div class="paper"><svg aria-hidden="true"><use href="#staff"/></svg><svg aria-hidden="true"><use href="#staff"/></svg></div>
+          
+        </div>
+      </div>
+    </section>
+    <hr class="rule">
+
+    <!-- 내보내기 (현행) -->
+    <section>
+      <span class="kick">내보내기</span>
+      <h2>쓰던 프로그램 그대로</h2>
+      <p class="sub">MuseScore, Finale, Sibelius와 DAW에서 열 수 있습니다.</p>
+      <div class="formats">
+        <div class="fmt"><b>PDF</b><small>인쇄용 악보</small></div>
+        <div class="fmt"><b>MIDI</b><small>DAW 편곡</small></div>
+        <div class="fmt"><b>MusicXML</b><small>악보 편집기</small></div>
+      </div>
+    </section>
+    <hr class="rule">
+
+    <!-- 개인정보 (현행) -->
+    <section>
+      <div class="privacy">
+        <span class="shield" aria-hidden="true">🛡</span>
+        <div>
+          <span class="kick" style="color:var(--tono-lavender-300)">개인정보</span>
+          <h2>목소리는 기기 밖으로 나가지 않아요</h2>
+          <p>마이크 소리는 기기 안에서 바로 음표 숫자로 바뀌고, 녹음 파일은 만들지도 저장하지도 않습니다. 로그인하면 악보 데이터만 내 계정에 동기화됩니다.</p>
         </div>
       </div>
     </section>
 
-    <!-- 활용 -->
-    <section>
-      <h2>악보가 된 다음에도</h2>
-      <div class="grid2">
-        <div class="card"><h3>고치기</h3><p>음표를 눌러 높낮이와 길이를 바로 바꿔요.</p></div>
-        <div class="card"><h3>전조</h3><p>내 목소리에 맞는 조로 옮겨요. 원본은 그대로 남아요.</p></div>
-        <div class="card"><h3>따라 치기</h3><p>다음 음을 짚어 주며 연습할 수 있어요.</p></div>
-        <div class="card"><h3>내보내기</h3><p>인쇄하거나 파일로 저장해 공유해요.</p></div>
-      </div>
-    </section>
-
-    <!-- 개인정보 -->
-    <section>
-      <div class="trust">
-        <h2>소리는 기기 안에서만</h2>
-        <p>마이크 소리는 저장하거나 전송하지 않아요. 음표 숫자만 남겨서 악보를 만들어요.</p>
-      </div>
-    </section>
-
-    <!-- 요금 -->
+    <!-- 요금 한 줄 (신규) -->
     <section>
       <div class="price">
-        <b>허밍은 무료</b>
+        <b>허밍은 무료<span class="new">신규</span></b>
         <a href="/pricing">요금 자세히 보기 →</a>
       </div>
     </section>
+    <hr class="rule">
 
-    <!-- FAQ -->
+    <!-- FAQ (현행 5문항) -->
     <section id="faq">
+      <span class="kick">FAQ</span>
       <h2>자주 묻는 질문</h2>
-      <details><summary>마이크 권한을 거부하면요?</summary><p>설정에서 다시 허용하거나, 건반으로 입력할 수 있어요.</p></details>
-      <details><summary>모든 음이 정확히 인식되나요?</summary><p>흥얼거림이라 틀릴 수 있어요. 악보에서 바로 고칠 수 있어요.</p></details>
-      <details><summary>악보는 어디에 저장되나요?</summary><p>가입 전에는 이 기기에, 로그인하면 계정에 동기화돼요.</p></details>
-      <details><summary>다른 기기에서도 열 수 있나요?</summary><p>같은 계정으로 로그인하면 어디서든 열려요.</p></details>
+      <div class="faq" style="margin-top:var(--px-24)">
+        <details open><summary>무료인가요?</summary><p>네. 지금은 모든 기능을 무료로 쓸 수 있고 가입하지 않아도 됩니다. 로그인하면 여러 기기에서 같은 악보를 볼 수 있어요.</p></details>
+        <details><summary>얼마나 정확한가요?</summary><p>한 음씩 또렷하게, 조용한 곳에서 부를수록 정확합니다. 한 번에 한 멜로디(단선율)만 인식하며, 틀린 음은 에디터에서 바로 고칠 수 있습니다.</p></details>
+        <details><summary>음악 파일이나 유튜브도 되나요?</summary><p>아직은 마이크로 직접 부르거나 건반으로 입력하는 방식만 지원합니다.</p></details>
+        <details><summary>모바일에서도 쓸 수 있나요?</summary><p>휴대폰과 태블릿 브라우저에서 바로 쓸 수 있습니다. iOS·Android 앱은 준비 중입니다.</p></details>
+        <details><summary>내 목소리가 저장되나요?</summary><p>아니요. 음성은 기기 안에서 음표로만 바뀌고 어디에도 저장되거나 전송되지 않습니다.</p></details>
+      </div>
     </section>
+    <hr class="rule">
 
-    <!-- 하단 CTA -->
-    <section class="final">
-      <h2>첫 멜로디를 흥얼거려 보세요</h2>
-      <a class="btn" data-cta data-cta href="#record">지금 흥얼거려 보기</a>
-      <p class="soft" style="font-size:var(--text-sm)">가입 없이 · 마이크 소리는 기기 밖으로 나가지 않아요</p>
+    <!-- 마지막 CTA (현행) -->
+    <section class="close">
+      <h2>오늘 떠오른 멜로디, 지금 악보로.</h2>
+      <p>가입 없이 바로 시작하세요.</p>
+      <div class="row">
+        <a class="btn" data-cta href="/library">→ 바로 시작하기</a>
+        <a class="btn btn-line" href="/record">흥얼거려 보기</a>
+      </div>
     </section>
   </div>
 </main>
@@ -280,11 +417,13 @@ body{padding-bottom:var(--px-84)}
 <footer>
   <div class="wrap">
     <span>© HumScore</span>
-    <span><a href="#privacy">개인정보 처리방침</a> · <a href="#terms">이용약관</a> · <a href="/pricing">요금</a></span>
+    <span>개인정보 처리방침 · 이용약관 · 요금</span>
   </div>
 </footer>
 
-<div class="sticky"><a class="btn" href="#record">지금 흥얼거려 보기</a></div>
+<!-- 신규: 모바일 고정 CTA -->
+<div class="sticky"><a class="btn" href="/record">흥얼거려 보기</a></div>
+
 <script>
 /* 시안용: 본문 주 CTA가 화면에 보이면 고정 CTA 숨김. 구현 시 키보드·시트 열림 때도 숨길 것 */
 (function(){var f=document.querySelector('.sticky');if(!f||!('IntersectionObserver' in window))return;
