@@ -42,6 +42,7 @@ const list = (userId: string, scores: Score[] = [], tombstones: unknown[] = []) 
 const flush = () => new Promise((r) => setTimeout(r, 0));
 
 beforeEach(() => {
+  vi.stubEnv("NEXT_PUBLIC_AUTH_MOCK", "0"); // 실제 로그인 동기화 경로를 검사
   vi.stubGlobal("localStorage", memoryStorage());
   vi.stubGlobal("window", { addEventListener() {}, removeEventListener() {} });
   remote.listScores.mockReset();
@@ -51,6 +52,7 @@ beforeEach(() => {
 });
 afterEach(() => {
   vi.unstubAllGlobals();
+  vi.unstubAllEnvs();
   vi.useRealTimers();
 });
 

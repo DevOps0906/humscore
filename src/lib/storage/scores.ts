@@ -1,5 +1,6 @@
 import type { Score } from "../music/types";
 import { deleteScore as deleteScoreRemote, listScores, saveScore as saveScoreRemote } from "@/app/actions/scores";
+import { isAuthMock } from "./auth-mock";
 import { mergeScores, type Tombstones } from "./merge";
 import { MAX_SCORE_BYTES, parseScore, scoreBytes } from "./score-schema";
 import { getSupabase } from "./supabase/client";
@@ -13,13 +14,23 @@ import { getSupabase } from "./supabase/client";
  */
 
 const KEY = "humscore.scores.v1";
+const MOCK_KEY = "humscore.scores.mock.v1";
 const listeners = new Set<() => void>();
 let cachedRaw: string | null | undefined;
 let cachedList: Score[] = [];
 
+/**
+ * 체험(mock) 로그인인데 이 기기에 실제 계정 데이터(소유자 기록)가 있으면 true.
+ * 이때 실제 계정 악보는 숨기고 건드리지 않으며(삭제도 안 함), 체험 악보는 별도 키에만 저장한다.
+ */
+function mockIsolated(): boolean {
+  return isAuthMock() && !!readOwner();
+}
+const scoresKey = () => (mockIsolated() ? MOCK_KEY : KEY);
+
 function readAll(): Score[] {
   try {
-    const raw = localStorage.getItem(KEY);
+    const raw = localStorage.getItem(scoresKey());
     if (raw === cachedRaw) return cachedList; // useSyncExternalStore는 같은 참조를 요구
     cachedRaw = raw;
     cachedList = raw ? (JSON.parse(raw) as Score[]) : [];
@@ -31,7 +42,7 @@ function readAll(): Score[] {
 
 function writeAll(scores: Score[]) {
   try {
-    localStorage.setItem(KEY, JSON.stringify(scores));
+    localStorage.setItem(scoresKey(), JSON.stringify(scores));
   } catch {
     /* 저장 공간 부족 등 — MVP에서는 무시 */
   }
@@ -41,7 +52,7 @@ function writeAll(scores: Score[]) {
 /** React 구독용 (useSyncExternalStore) */
 export function subscribeScores(listener: () => void): () => void {
   listeners.add(listener);
-  const onStorage = (e: StorageEvent) => e.key === KEY && listener();
+  const onStorage = (e: StorageEvent) => (e.key === KEY || e.key === MOCK_KEY) && listener();
   window.addEventListener("storage", onStorage); // 다른 탭에서 바뀐 경우
   return () => {
     listeners.delete(listener);
@@ -95,6 +106,7 @@ export async function saveScore(score: Score): Promise<Score> {
   const updated = { ...score, updatedAt: new Date(nowMs).toISOString() };
   const all = readAll().filter((s) => s.id !== score.id);
   writeAll([updated, ...all]);
+  if (mockIsolated()) return updated; // 체험 악보 — 실제 계정의 동기화 기록에 섞지 않음
   markDirty(updated.id, updated.updatedAt);
   void pushToCloud(updated);
   return updated;
@@ -103,6 +115,7 @@ export async function saveScore(score: Score): Promise<Score> {
 export function deleteScore(id: string) {
   adoptIfForeign();
   writeAll(readAll().filter((s) => s.id !== id));
+  if (mockIsolated()) return; // 체험 악보 — 실제 계정의 삭제·동기화 기록에 섞지 않음
   writeTombstones({ ...readTombstones(), [id]: new Date().toISOString() });
   markDirty(id, DELETED);
   void pushDelete(id);

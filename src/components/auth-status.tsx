@@ -5,9 +5,11 @@ import { useState, useSyncExternalStore } from "react";
 import { LogOut } from "lucide-react";
 import { signOut } from "@/app/actions/auth";
 import { ConfirmDialog } from "@/components/confirm-dialog";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
 import { clearAccountData, flushPendingChanges, getSyncStatus, subscribeSyncStatus } from "@/lib/storage/scores";
+import { isAuthMock, setMockSignedIn } from "@/lib/storage/auth-mock";
 import { getSupabase } from "@/lib/storage/supabase/client";
 
 /** 로그인/로그아웃 표시. Supabase 미설정이면 아무것도 그리지 않습니다. */
@@ -19,11 +21,33 @@ export function AuthStatus() {
 
   if (auth.status === "loading" || auth.status === "disabled") return null;
 
+  if (auth.status === "signed-out" && isAuthMock()) {
+    // 체험 로그인: 로그인 버튼이 곧바로 mock 세션을 다시 켠다 (서버 호출 없음)
+    return (
+      <Button type="button" variant="outline" onClick={() => setMockSignedIn(true)} className="h-11 shrink-0 px-4 text-accent lg:h-9">
+        로그인
+      </Button>
+    );
+  }
+
   if (auth.status === "signed-out") {
     return (
       <Button asChild variant="outline" className="h-11 shrink-0 px-4 text-accent lg:h-9">
         <Link href="/login">로그인</Link>
       </Button>
+    );
+  }
+
+  if (auth.mock) {
+    // 체험 로그인: mock 세션만 끈다 — 로컬 악보는 그대로, 서버 호출 없음
+    return (
+      <div className="flex shrink-0 items-center gap-2 text-xs text-ink-soft">
+        <Badge variant="secondary" title="실제 계정이 아닌 체험 로그인이에요. 악보는 이 기기에만 저장돼요.">체험 로그인</Badge>
+        <span className="max-w-28 truncate">{auth.mock.name}</span>
+        <Button type="button" variant="outline" onClick={() => setMockSignedIn(false)} aria-label="로그아웃" className="size-11 sm:size-9">
+          <LogOut aria-hidden />
+        </Button>
+      </div>
     );
   }
 

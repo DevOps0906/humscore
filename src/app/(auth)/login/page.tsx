@@ -2,19 +2,54 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, useSyncExternalStore, type FormEvent } from "react";
+import { useEffect, useState, useSyncExternalStore, type FormEvent } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/hooks/use-auth";
+import { isAuthMock, setMockSignedIn } from "@/lib/storage/auth-mock";
 import { getSupabase } from "@/lib/storage/supabase/client";
+import { safeNextPath } from "./next-path";
 
 const noop = () => () => {};
 const OTP_LENGTH = 6;
 
 export default function LoginPage() {
+  return isAuthMock() ? <MockLogin /> : <SupabaseLogin />;
+}
+
+/** 로그인 후 갈 곳: 같은 origin 경로(?next)만 허용, 아니면 /library */
+function nextPath(): string {
+  return safeNextPath(new URLSearchParams(window.location.search).get("next"), window.location.origin);
+}
+
+/** 체험(mock) 로그인 — 서버 호출 없이 이 기기에서만 로그인 상태를 켠다 */
+function MockLogin() {
+  const router = useRouter();
+  const auth = useAuth();
+
+  useEffect(() => {
+    if (auth.status === "signed-in") router.replace(nextPath());
+  }, [auth.status, router]);
+
+  return (
+    <div className="mx-auto flex w-full max-w-sm flex-col gap-5 pt-6 md:max-w-md md:pt-14 lg:pt-20">
+      <header>
+        <h1 className="text-3xl font-medium tracking-tight">로그인</h1>
+        <p className="mt-1 text-sm text-ink-soft">지금은 체험 로그인만 제공해요. 악보는 이 기기에만 저장돼요.</p>
+      </header>
+      <Card className="gap-3 p-4">
+        <Button type="button" onClick={() => setMockSignedIn(true)} className="h-11 w-full text-sm">
+          체험 로그인으로 시작
+        </Button>
+      </Card>
+    </div>
+  );
+}
+
+function SupabaseLogin() {
   const router = useRouter();
   const auth = useAuth();
   const failedCallback = useSyncExternalStore(

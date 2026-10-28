@@ -5,7 +5,7 @@ import { createScoreViaKeys } from "./fixtures";
  * 실제 로컬 Supabase 로그인 + 동기화 e2e. E2E_SUPABASE=1 일 때만 실행.
  * 앱 빌드에 로컬 env 가 들어가야 한다(playwright 가 `npm run build` 를 상속 환경변수로 실행):
  *   npm run db:start
- *   E2E_SUPABASE=1 NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:55321 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=<anon> \
+ *   E2E_SUPABASE=1 NEXT_PUBLIC_AUTH_MOCK=0 NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:55321 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=<anon> \
  *     npx playwright test e2e/cloud-sync.spec.ts --project=desktop
  * 주의: 로컬 Auth 는 메일 발송 2회/시간(config.toml) — 한 번 실행에 2회 사용하므로 한 시간에 1회만 가능.
  */
@@ -19,6 +19,7 @@ if (enabled && !/^http:\/\/(127\.0\.0\.1|localhost):55321\/?$/.test(supaUrl)) {
 
 test.describe.configure({ mode: "serial" });
 test.skip(!enabled, "E2E_SUPABASE=1 일 때만 실행");
+test.skip(process.env.NEXT_PUBLIC_AUTH_MOCK !== "0", "체험(mock) 로그인 빌드 — NEXT_PUBLIC_AUTH_MOCK=0 으로 빌드한 서버에서만 실행");
 test.skip(({ isMobile }) => isMobile, "desktop 프로젝트만");
 
 async function readMagicLink(email: string, notBefore: number): Promise<string> {
