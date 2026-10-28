@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>HumScore 랜딩 개편 미리보기</title>
+<style>
+/* 토큰: src/app/globals.css 에서 그대로 옮김 (초안 미리보기용) */
+:root{
+  --tono-bg:#161826;--tono-surface:#232532;--tono-text:#e9e9ed;--tono-accent:#9184d9;
+  --tono-section:#262a60;--tono-section-glow:#353b80;--tono-section-ghost:#4c5397;
+  --tono-lavender-100:#e7e5fe;--tono-lavender-300:#b5abfc;
+  --tono-gray-400:#9397ab;--tono-gray-600:#595d6c;--tono-gray-700:#3f424d;--tono-error:#ff8a80;
+  --paper:var(--tono-bg);--ink:var(--tono-text);--ink-soft:var(--tono-gray-400);--line:var(--tono-gray-700);
+  --surface:var(--tono-surface);--accent:var(--tono-accent);--accent-ink:var(--tono-bg);
+  --tune-good:#4fc08d;--score-paper:#f7f7fb;
+  --shadow-sm:0 0 0 1px var(--tono-gray-700);
+  --shadow-md:0 0 0 1px var(--tono-gray-600),0 6px 18px rgba(0,0,0,.55);
+  --ring:var(--tono-lavender-300);--destructive:var(--tono-error);
+  --radius-lg:8px;--radius-2xl:14px;--radius-4xl:20px;
+  --font-sans:"Pretendard Variable",Pretendard,-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Noto Sans KR",system-ui,sans-serif;
+  --font-mono:ui-monospace,Menlo,monospace;
+  --text-xs:.75rem;--text-sm:.875rem;--text-base:1rem;--text-lg:1.125rem;--text-xl:1.25rem;
+  --text-2xl:1.5rem;--text-3xl:1.75rem;--text-4xl:2rem;--text-5xl:2.5rem;
+  /* 제안 토큰(미확정, 이 파일 안에서만 사용) */
+  --tap-min:44px;--space-section:48px;
+}
+@media (min-width:768px){:root{
+  --text-xs:.75rem;--text-sm:.84375rem;--text-base:.95rem;--text-lg:1.0625rem;--text-xl:1.1875rem;
+  --text-2xl:1.425rem;--text-3xl:1.78125rem;--text-4xl:2.1375rem;--text-5xl:2.85rem;--space-section:64px}}
+@media (min-width:1200px){:root{
+  --text-xs:.6875rem;--text-sm:.8125rem;--text-base:.9rem;--text-lg:1.0125rem;--text-xl:1.125rem;
+  --text-2xl:1.35rem;--text-3xl:1.6875rem;--text-4xl:2.025rem;--text-5xl:2.7rem;--space-section:96px}}
+
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--font-sans);font-size:var(--text-base);line-height:1.6;word-break:keep-all}
+:focus-visible{outline:2px solid var(--ring);outline-offset:2px}
+.wrap{max-width:1120px;margin:0 auto;padding:var(--space-section) 20px 0}
+section{margin-bottom:0}
+h1,h2,h3,p{margin:0}
+h1{font-size:var(--text-5xl);line-height:1.2}
+h2{font-size:var(--text-4xl);line-height:1.25;margin-bottom:24px}
+h3{font-size:var(--text-2xl)}
+.soft{color:var(--ink-soft)}
+.btn{display:inline-flex;align-items:center;justify-content:center;min-height:48px;min-width:var(--tap-min);padding:0 24px;border:0;border-radius:var(--radius-lg);background:var(--accent);color:var(--accent-ink);font:inherit;font-size:var(--text-lg);font-weight:700;cursor:pointer;text-decoration:none}
+.btn:hover{background:var(--tono-lavender-300)}
+.btn[disabled]{background:var(--surface);color:var(--ink-soft);cursor:not-allowed}
+.hero{display:grid;gap:32px}
+.hero .lead{font-size:var(--text-xl);color:var(--ink-soft);margin:16px 0 28px}
+.hero .note{font-size:var(--text-sm);color:var(--ink-soft);margin-top:12px}
+.demo{background:var(--surface);border-radius:var(--radius-2xl);box-shadow:var(--shadow-md);overflow:hidden}
+.frame{aspect-ratio:16/9;display:grid;place-items:center;background:linear-gradient(135deg,var(--tono-section),var(--tono-bg));position:relative}
+.play{width:56px;height:56px;border-radius:50%;border:0;background:var(--accent);color:var(--accent-ink);font-size:var(--text-xl);cursor:pointer}
+.cap{font-size:var(--text-xs);color:var(--ink-soft);padding:10px 16px}
+.score{background:var(--score-paper);color:#161826;border-radius:var(--radius-lg);margin:12px;padding:12px 16px}
+.score b{font-size:var(--text-sm)}.score small{display:block;font-size:var(--text-xs);color:#595d6c}
+.staff{height:48px;margin-top:8px;background:repeating-linear-gradient(#161826 0 1px,transparent 1px 10px);background-size:100% 41px;background-repeat:no-repeat;border-radius:2px}
+.grid{display:grid;gap:16px}
+.card{background:var(--surface);border-radius:var(--radius-2xl);box-shadow:var(--shadow-sm);padding:20px}
+.card:hover{box-shadow:var(--shadow-md)}
+.badge{display:inline-flex;align-items:center;min-height:28px;padding:0 12px;border-radius:var(--radius-4xl);background:var(--tono-section);color:var(--tono-lavender-100);font-size:var(--text-xs)}
+.mono{font-family:var(--font-mono)}
+.price{font-size:var(--text-3xl);font-weight:700;margin:8px 0 12px}
+.card.rec{box-shadow:0 0 0 2px var(--accent)}
+ul.plain{padding-left:18px;margin:0 0 16px;font-size:var(--text-base)}
+.field{display:flex;gap:8px;flex-wrap:wrap}
+label{display:block;font-size:var(--text-sm);margin-bottom:6px}
+input[type=text]{flex:1 1 220px;min-height:48px;padding:0 14px;border-radius:var(--radius-lg);border:1px solid var(--tono-gray-600);background:var(--paper);color:var(--ink);font:inherit}
+input.err{border-color:var(--destructive)}
+.errmsg{color:var(--destructive);font-size:var(--text-sm);margin-top:6px}
+ol.steps{list-style:none;padding:0;margin:16px 0 0;display:grid;gap:8px;font-size:var(--text-sm)}
+ol.steps li{display:flex;gap:10px;align-items:center;min-height:var(--tap-min);color:var(--ink-soft)}
+ol.steps i{font-style:normal;width:28px;height:28px;border-radius:50%;display:grid;place-items:center;border:1px solid var(--tono-gray-600)}
+ol.steps .done{color:var(--ink)}ol.steps .done i{background:var(--tune-good);color:var(--accent-ink);border-color:var(--tune-good)}
+ol.steps .now{color:var(--ink)}ol.steps .now i{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.practice{display:flex;flex-wrap:wrap;gap:16px;align-items:center}
+.track{flex:1 1 240px;height:8px;border-radius:4px;background:var(--tono-gray-700);position:relative;margin:18px 0}
+.track .loop{position:absolute;left:25%;width:35%;top:0;bottom:0;background:var(--accent);border-radius:4px}
+.chips{display:flex;gap:8px;flex-wrap:wrap;overflow-x:auto}
+.chip{min-height:var(--tap-min);padding:0 16px;border-radius:var(--radius-4xl);border:1px solid var(--line);background:transparent;color:var(--ink);font:inherit;font-size:var(--text-sm);cursor:pointer}
+.chip:hover{background:var(--surface)}
+.chip[aria-pressed=true]{background:var(--tono-section);color:var(--tono-lavender-100);border-color:var(--tono-section-ghost)}
+.spec{font-size:var(--text-xs);color:var(--ink-soft);margin-bottom:8px}
+footer{padding:var(--space-section) 20px;text-align:center;font-size:var(--text-xs);color:var(--ink-soft)}
+.sec{margin-top:var(--space-section)}
+@media (min-width:768px){
+  .hero{grid-template-columns:1fr;text-align:center}
+  .hero .demo{max-width:640px;margin:0 auto}
+  .g2{grid-template-columns:repeat(2,1fr)}
+  .g3{grid-template-columns:repeat(2,1fr)}
+}
+@media (min-width:1200px){
+  .hero{grid-template-columns:1fr 1fr;text-align:left;align-items:center}
+  .hero .demo{max-width:none;margin:0}
+  .g3{grid-template-columns:repeat(3,1fr)}
+  .g2{max-width:760px}
+}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<section class="hero" aria-labelledby="h">
+  <div>
+    <h1 id="h">흥얼거리면<br>악보가 돼요</h1>
+    <p class="lead">가입 없이, 목소리는 기기 밖으로 나가지 않아요.</p>
+    <a class="btn" href="#">지금 흥얼거려 보기</a>
+    <p class="note">마이크 권한만 허용하면 바로 시작해요.</p>
+  </div>
+  <div class="demo">
+    <div class="frame" role="img" aria-label="흥얼거림이 악보로 바뀌는 데모 영상 자리">
+      <button class="play" aria-label="데모 재생">▶</button>
+    </div>
+    <div class="cap">데모 자리 · 실제 출력 캡처로 교체 · 자막 필수</div>
+    <div class="score">
+      <b>샘플 악보 · 다장조 4/4</b>
+      <small>앱에서 만든 실제 악보 이미지로 교체</small>
+      <div class="staff" aria-hidden="true"></div>
+    </div>
+  </div>
+</section>
+
+<section class="sec" aria-labelledby="h-proof">
+  <h2 id="h-proof">이미 쓰고 있어요</h2>
+  <p style="margin-bottom:16px"><span class="badge">누적 악보 <span class="mono">0,000</span>개 (실제 집계값으로 교체)</span></p>
+  <div class="grid g3">
+    <div class="card"><p>“후기 문구 자리. 실제 사용자 후기로 교체.”</p><p class="soft" style="font-size:var(--text-sm);margin-top:8px">사용자 · 5점 만점에 5점</p></div>
+    <div class="card"><p>“후기 문구 자리.”</p><p class="soft" style="font-size:var(--text-sm);margin-top:8px">사용자 · 5점 만점에 5점</p></div>
+    <div class="card"><p>“후기 문구 자리.”</p><p class="soft" style="font-size:var(--text-sm);margin-top:8px">사용자 · 5점 만점에 4점</p></div>
+  </div>
+</section>
+
+<section class="sec" aria-labelledby="h-price">
+  <h2 id="h-price">요금</h2>
+  <div class="grid g2">
+    <div class="card"><h3>무료</h3><p class="price mono">0원</p>
+      <ul class="plain"><li>허밍으로 악보 만들기</li><li>기기 안 처리</li></ul>
+      <a class="btn" href="#">무료로 시작</a></div>
+    <div class="card rec"><h3>Pro <span class="badge">추천</span></h3><p class="price mono">0,000원/월</p>
+      <ul class="plain"><li>범위·기능은 사람이 확정</li></ul>
+      <button class="btn" disabled>곧 만나요</button></div>
+  </div>
+</section>
+
+<section class="sec" aria-labelledby="h-yt">
+  <h2 id="h-yt">유튜브 링크로 가져오기</h2>
+  <div class="card">
+    <label for="yt">유튜브 링크</label>
+    <div class="field"><input id="yt" type="text" placeholder="https://"><button class="btn">가져오기</button></div>
+    <div class="field" style="margin-top:16px"><input class="err" type="text" value="abc" aria-label="오류 상태 예시" aria-invalid="true"></div>
+    <p class="errmsg" role="alert">올바른 유튜브 링크가 아니에요</p>
+    <ol class="steps">
+      <li class="done"><i>✓</i>링크 붙여넣기</li>
+      <li class="now" aria-current="step"><i>2</i>탭 캡처 허용</li>
+      <li><i>3</i>변환 중</li>
+      <li><i>4</i>완료</li>
+    </ol>
+  </div>
+</section>
+
+<section class="sec" aria-labelledby="h-pr">
+  <h2 id="h-pr">연습 바 · 공유</h2>
+  <div class="card">
+    <div class="practice">
+      <button class="btn" aria-label="재생">▶</button>
+      <div class="track" role="group" aria-label="구간 루프"><div class="loop"></div></div>
+      <label for="sp" style="margin:0">속도 <span class="mono">80%</span></label>
+      <input id="sp" type="range" min="50" max="120" value="80" style="min-height:var(--tap-min)" aria-valuetext="속도 80퍼센트">
+      <button class="chip" aria-pressed="true">루프</button>
+      <button class="badge" style="border:0;min-height:var(--tap-min);cursor:pointer">링크 공개</button>
+    </div>
+  </div>
+</section>
+
+<section class="sec" aria-labelledby="h-lib">
+  <h2 id="h-lib">내 악보</h2>
+  <div class="card">
+    <label for="q">악보 검색</label>
+    <div class="field" style="margin-bottom:16px"><input id="q" type="text" placeholder="제목 검색"></div>
+    <div class="chips" role="group" aria-label="폴더와 태그">
+      <button class="chip" aria-pressed="true">전체</button>
+      <button class="chip" aria-pressed="false">폴더 · 연습곡</button>
+      <button class="chip" aria-pressed="false">#동요</button>
+      <button class="chip" aria-pressed="false">#작곡</button>
+    </div>
+  </div>
+</section>
+
+</div>
+<footer>미리보기 초안 · 토큰 정답은 src/app/globals.css · 확정은 사람</footer>
+</body>
+</html>
