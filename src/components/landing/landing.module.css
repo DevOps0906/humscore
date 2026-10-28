@@ -497,12 +497,12 @@ a.ffCard:hover .ffIco::after { animation: pulse 1.2s ease-out infinite; }
 .ffChips { display: flex; flex-wrap: wrap; gap: 6px; }
 .ffChips span { padding: 4px 10px; border-radius: 999px; font-size: var(--text-xs); border: 1px solid var(--line); color: var(--tono-lavender-100); }
 .ffChips .on { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: 600; }
-/* 악보는 1/2 크기, 종이 영역(높이 = 원래 악보 비율)은 그대로 */
+/* 히어로와 같은 12마디 악보(public/landing/hero-score.svg) */
 .ffStaff {
   position: relative; margin-top: 12px; overflow: hidden; border-radius: var(--radius-lg);
-  display: grid; place-items: center; aspect-ratio: 360 / 92; background: var(--score-paper);
+  display: grid; place-items: center; aspect-ratio: 1240 / 904; padding: 6px; background: var(--score-paper);
 }
-.ffStaff svg { display: block; width: 50%; height: auto; }
+.ffStaff img { display: block; width: 100%; height: auto; }
 .ffScan {
   position: absolute; top: 0; bottom: 0; left: 0; width: 18%;
   background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--accent) 40%, transparent), transparent);

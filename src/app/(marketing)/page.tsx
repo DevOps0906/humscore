@@ -11,7 +11,6 @@ import {
   FORMATS,
   NEW_FEATURES,
   PRODUCTS,
-  SAMPLE_CHORDS,
   SAMPLE_NOTES,
   STEPS,
   TOOLS,
@@ -624,16 +623,16 @@ function AnalyzeMock() {
       </div>
       <div className={styles.ffScreen}>
         <div className={styles.ffChips}>
-          <span>C장조</span>
+          <span>G장조</span>
           <span>4/4</span>
-          {SAMPLE_CHORDS.map((c) => (
+          {["G", "C", "Em", "D7"].map((c) => (
             <span key={c} className={styles.on}>
               {c}
             </span>
           ))}
         </div>
         <div className={styles.ffStaff}>
-          <MiniStaff />
+          <Image src="/landing/hero-score.svg" alt="" width={1240} height={904} unoptimized />
           <span className={styles.ffScan} />
         </div>
       </div>
