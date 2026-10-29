@@ -57,6 +57,8 @@ export function useFollowAlong(score: Score | null | undefined) {
   const phaseRef = useRef<FollowPhase>("idle");
   const trackerRef = useRef<TrackerSession | null>(null);
   const token = useRef(0);
+  /** 마이크 시작 대기(권한·워클릿 로드) 취소용 */
+  const startAbort = useRef<AbortController | null>(null);
   const rmsRef = useRef(0);
   const inputKindRef = useRef<FollowInputKind>("mic");
 
@@ -67,6 +69,7 @@ export function useFollowAlong(score: Score | null | undefined) {
 
   const stopMic = useCallback(() => {
     token.current++; // 진행 중인 시작 요청 무효화
+    startAbort.current?.abort();
     trackerRef.current?.stop();
     trackerRef.current = null;
   }, []);
@@ -99,8 +102,12 @@ export function useFollowAlong(score: Score | null | undefined) {
 
   const startMic = useCallback(async (): Promise<boolean> => {
     const my = ++token.current;
+    startAbort.current?.abort();
+    const ac = new AbortController();
+    startAbort.current = ac;
     try {
       const s = await startPitchTracking({
+        signal: ac.signal,
         bpm: 60,
         beatsPerMeasure: 4,
         countInMeasures: 0,
@@ -108,7 +115,7 @@ export function useFollowAlong(score: Score | null | undefined) {
         onLevel: (rms) => {
           rmsRef.current = rms;
         },
-        onFrame: (f) => feed({ kind: "frame", freq: f.freq, clarity: f.clarity, rms: rmsRef.current }),
+        onFrame: (f) => feed({ kind: "frame", freq: f.freq, clarity: f.clarity, rms: rmsRef.current, time: f.time }),
         onEnded: () => {
           if (phaseRef.current === "running") {
             stopMic();
@@ -124,7 +131,7 @@ export function useFollowAlong(score: Score | null | undefined) {
       trackerRef.current = s;
       return true;
     } catch (e) {
-      if (my === token.current) setError(micErrorMessage(e));
+      if (my === token.current && !ac.signal.aborted) setError(micErrorMessage(e));
       return false;
     }
   }, [feed, setPhaseBoth, stopMic]);
@@ -210,6 +217,7 @@ export function useFollowAlong(score: Score | null | undefined) {
   useEffect(
     () => () => {
       token.current++;
+      startAbort.current?.abort();
       trackerRef.current?.stop();
       trackerRef.current = null;
     },

@@ -1,16 +1,15 @@
-import { PitchDetector } from "pitchy";
-import { MIN_RMS } from "./pitch-tracker";
+import { analyzeWindow, createDetector, TRACK_HOP_SEC } from "./pitch-tracker";
 import type { PitchFrame } from "../music/types";
 
 /**
  * 오디오 파일 → 피치 프레임 (오프라인, 기기 안에서만).
- * 실시간 추적(pitch-tracker)과 같은 창 크기·RMS 게이트·pitchy 검출기를 쓰고, 프레임 간격도 약 60fps로 맞춘다.
+ * 실시간 추적(pitch-tracker)과 같은 창 크기·RMS 게이트·pitchy 검출기를 쓰고, 프레임 간격도 같은 고정 hop(TRACK_HOP_SEC)으로 맞춘다.
  * 디코딩한 샘플은 메모리에서만 쓰고 저장·전송하지 않는다.
  */
 
 const WINDOW = 2048;
-/** 프레임 간격(초) — 실시간 추적의 requestAnimationFrame(약 60Hz)과 맞춤 */
-export const OFFLINE_HOP_SEC = 1 / 60;
+/** 프레임 간격(초) — 실시간 추적(워클릿 고정 hop)과 같은 값 */
+export const OFFLINE_HOP_SEC = TRACK_HOP_SEC;
 /** 이만큼 프레임을 처리할 때마다 한 번 양보해 화면이 멈추지 않게 함 */
 const YIELD_EVERY = 400;
 /** 읽기 전 파일 크기 상한(바이트) — 큰 파일을 통째로 메모리에 올리지 않게 */
@@ -43,19 +42,14 @@ export async function framesFromSamples(
   signal?: AbortSignal,
 ): Promise<PitchFrame[]> {
   signal?.throwIfAborted();
-  const detector = PitchDetector.forFloat32Array(WINDOW);
-  detector.minVolumeAbsolute = MIN_RMS;
+  const detector = createDetector(WINDOW);
   const hop = Math.max(1, Math.round(sampleRate * OFFLINE_HOP_SEC));
   const frames: PitchFrame[] = [];
   const buf = new Float32Array(WINDOW);
   const last = samples.length - WINDOW;
   for (let start = 0, k = 0; start <= last; start += hop, k++) {
     buf.set(samples.subarray(start, start + WINDOW));
-    let sum = 0;
-    for (let i = 0; i < WINDOW; i++) sum += buf[i] * buf[i];
-    const rms = Math.sqrt(sum / WINDOW);
-    const [pitch, clarity] = rms > MIN_RMS ? detector.findPitch(buf, sampleRate) : [0, 0];
-    frames.push({ time: (start + WINDOW / 2) / sampleRate, freq: pitch > 0 && clarity > 0 ? pitch : null, clarity });
+    frames.push({ time: (start + WINDOW / 2) / sampleRate, ...analyzeWindow(buf, sampleRate, detector) });
     if (k % YIELD_EVERY === YIELD_EVERY - 1) {
       onProgress?.(start / last);
       await new Promise((r) => setTimeout(r, 0));

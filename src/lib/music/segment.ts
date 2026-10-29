@@ -22,7 +22,10 @@ export interface SegmentOptions {
   minRestSec: number;
   /** 이 이상 끊기면 같은 음이라도 새로 친 음으로 봄 (예: "솔 솔"의 자음 사이) (초) */
   articulationGapSec: number;
-  /** 또는 무성 프레임이 이 개수 이상 연속이면 새 음 (1프레임 끊김은 검출 잡음으로 무시) */
+  /**
+   * 또는 무성 프레임이 이 개수 이상 연속이면 새 음 (1프레임 끊김은 검출 잡음으로 무시).
+   * 60fps 기준 프레임 수 — 실제 프레임 간격과 무관하게 같은 시간 폭(개수 × 1/60초)으로 환산
+   */
   articulationFrames: number;
   /**
    * 히스테리시스: 무성 구간이라도 그 동안 주파수가 계속 같은 음 근처로 검출되고(신뢰도만 낮음)
@@ -38,14 +41,17 @@ export interface SegmentOptions {
   softClarity: number;
   /** 같은 음으로 간주하는 허용 폭(반음). 0.6 = ±60센트 */
   hysteresis: number;
-  /** 중앙값 필터 창 크기(프레임 수, 홀수) — 옥타브 튐/떨림 제거 */
+  /**
+   * 중앙값 필터 창 크기(60fps 기준 프레임 수, 홀수) — 옥타브 튐/떨림 제거.
+   * 실제 프레임 간격으로 환산해 같은 시간 폭으로 동작
+   */
   medianWindow: number;
 }
 
 export const DEFAULT_SEGMENT_OPTIONS: SegmentOptions = {
   range: "voice",
   minClarity: 0.88,
-  minNoteSec: 0.09,
+  minNoteSec: 0.06,
   minRestSec: 0.12,
   articulationGapSec: 0.03,
   articulationFrames: 2,
@@ -56,6 +62,33 @@ export const DEFAULT_SEGMENT_OPTIONS: SegmentOptions = {
   medianWindow: 5,
 };
 
+/** 프레임 개수 옵션의 기준 간격(60fps). 개수 × 이 값 = 시간 폭 */
+export const REFERENCE_FRAME_SEC = 1 / 60;
+
+/** 세기 온셋: 같은 음이 이어지는 중 직전 창(초) 안의 최저 세기 대비 이 비율 이상 커지면 새 음 */
+export const ONSET_RATIO = 2;
+/** 세기 온셋: 이 RMS 미만이면 온셋으로 보지 않음 (작은 잡음 요동 무시) */
+export const ONSET_MIN_RMS = 0.01;
+/** 세기 온셋: 골(최저 세기)을 찾는 직전 창 길이(초) */
+export const ONSET_WINDOW_SEC = 0.08;
+
+/** 시간 길이 비교 허용 오차(초) — 프레임 시각 부동소수 오차(예: 0.60-0.54=0.0599…)로 경계값이 뒤집히지 않게 */
+const TIME_EPS = 1e-6;
+
+/** 프레임 간격(초): 시간 차의 중앙값. 프레임이 1개 이하면 기준 간격 */
+export function frameInterval(frames: PitchFrame[]): number {
+  if (frames.length < 2) return REFERENCE_FRAME_SEC;
+  const d: number[] = [];
+  for (let i = 1; i < frames.length; i++) d.push(frames[i].time - frames[i - 1].time);
+  const m = median(d);
+  return m > 0 ? m : REFERENCE_FRAME_SEC;
+}
+
+/** 60fps 기준 프레임 개수 → 실제 간격에서의 개수 (최소 1) */
+function scaledCount(count: number, frameSec: number): number {
+  return Math.max(1, Math.round((count * REFERENCE_FRAME_SEC) / frameSec));
+}
+
 function median(values: number[]): number {
   const s = [...values].sort((a, b) => a - b);
   const mid = s.length >> 1;
@@ -63,14 +96,18 @@ function median(values: number[]): number {
 }
 
 /** 프레임별 실수 MIDI 값 (무성은 null) + 중앙값 필터 */
-export function framesToPitchTrack(frames: PitchFrame[], opts: SegmentOptions): (number | null)[] {
+export function framesToPitchTrack(
+  frames: PitchFrame[],
+  opts: SegmentOptions,
+  frameSec = frameInterval(frames),
+): (number | null)[] {
   const [fMin, fMax] = rangeLimits(opts.range ?? "voice");
   const raw = frames.map((f) =>
     f.freq !== null && f.clarity >= opts.minClarity && f.freq >= fMin && f.freq <= fMax
       ? freqToMidiFloat(f.freq)
       : null,
   );
-  const half = Math.floor(opts.medianWindow / 2);
+  const half = Math.round((Math.floor(opts.medianWindow / 2) * REFERENCE_FRAME_SEC) / frameSec);
   return raw.map((v, i) => {
     if (v === null) return null;
     const win: number[] = [];
@@ -104,8 +141,14 @@ export function segmentFrames(frames: PitchFrame[], options: Partial<SegmentOpti
   if (options.range === "instrument" && options.minClarity === undefined) opts.minClarity = INSTRUMENT_MIN_CLARITY;
   const [fMin, fMax] = rangeLimits(opts.range);
   if (frames.length === 0) return [];
-  const track = framesToPitchTrack(frames, opts);
-  const frameDur = frames.length > 1 ? (frames[frames.length - 1].time - frames[0].time) / (frames.length - 1) : 0.01;
+  const frameDur = frameInterval(frames);
+  const track = framesToPitchTrack(frames, opts, frameDur);
+  /** 현재 음의 기준 음높이를 잡는 최근 프레임 수 (60fps 8프레임 ≈ 0.13초) */
+  const refCount = scaledCount(8, frameDur);
+  const articulationSec = opts.articulationFrames * REFERENCE_FRAME_SEC;
+  /** 세기 온셋으로 시작된 음 — 끊김 없이 이어져도 병합하지 않음 */
+  const onsetNotes = new Set<RawNote>();
+  let curStartIdx = 0;
 
   const notes: RawNote[] = [];
   let cur: Building | null = null;
@@ -113,11 +156,42 @@ export function segmentFrames(frames: PitchFrame[], options: Partial<SegmentOpti
   let silentFrames = 0;
   let silentSoftOk = true; // 무성 구간 동안 주파수는 계속 현재 음 근처였는가
 
+  let curByOnset = false;
   const close = (endTime: number) => {
     if (!cur) return;
     cur.end = endTime;
-    notes.push(finish(cur));
+    const n = finish(cur);
+    if (curByOnset) onsetNotes.add(n);
+    notes.push(n);
     cur = null;
+    curByOnset = false;
+  };
+
+  /**
+   * 세기 온셋: 현재 음 안에서 직전 창의 골(최저 RMS) 대비 i 프레임 세기가 ONSET_RATIO 배 이상이고,
+   * 골 이전에 이미 그만큼 컸던 적이 있으면(=소리가 줄었다 다시 커짐) 새로 친 음. 발성 시작의 상승 구간은 제외됨
+   */
+  const isOnset = (i: number): boolean => {
+    const r = frames[i].rms;
+    if (r === undefined || r < ONSET_MIN_RMS) return false;
+    let minR = Infinity;
+    let k = -1;
+    for (let j = i - 1; j >= curStartIdx && frames[i].time - frames[j].time <= ONSET_WINDOW_SEC + 1e-9; j--) {
+      // 창 안에 무성 프레임이 있으면 그 끊김은 드롭아웃·반복음 규칙(무성 구간)이 판정 — 온셋은 유성이 이어지는 중의 세기 골만
+      if (track[j] === null) return false;
+      const rj = frames[j].rms;
+      if (rj === undefined) return false;
+      if (rj < minR) {
+        minR = rj;
+        k = j;
+      }
+    }
+    if (k < 0 || r < ONSET_RATIO * minR) return false;
+    for (let j = curStartIdx; j < k; j++) {
+      const rj = frames[j].rms;
+      if (rj !== undefined && rj >= ONSET_RATIO * minR) return true;
+    }
+    return false;
   };
 
   /** 새 음의 시작 시각: 바로 앞의 '약한 발성' 프레임(주파수는 이 음 근처, 신뢰도만 낮음)까지 되돌림 */
@@ -144,7 +218,7 @@ export function segmentFrames(frames: PitchFrame[], options: Partial<SegmentOpti
       }
       silentFrames++;
       const f = frames[i];
-      const refv = cur ? median((cur as Building).values.slice(-8)) : null;
+      const refv = cur ? median((cur as Building).values.slice(-refCount)) : null;
       if (
         refv === null || f.freq === null || f.freq < fMin || f.freq > fMax ||
         Math.abs(freqToMidiFloat(f.freq) - refv) > opts.hysteresis
@@ -152,15 +226,22 @@ export function segmentFrames(frames: PitchFrame[], options: Partial<SegmentOpti
       continue;
     }
     // 무성 구간이 끝난 시점에 길이를 판정: 충분히 끊겼으면 같은 음이라도 새 음
-    const isDropout = silentSoftOk && t - (silenceStart ?? t) <= opts.dropoutMaxSec;
-    if (silenceStart !== null && cur && !isDropout && (t - silenceStart >= opts.articulationGapSec || silentFrames >= opts.articulationFrames)) {
+    const isDropout = silentSoftOk && t - (silenceStart ?? t) <= opts.dropoutMaxSec + TIME_EPS;
+    if (silenceStart !== null && cur && !isDropout && (t - silenceStart >= opts.articulationGapSec - TIME_EPS || silentFrames * frameDur >= articulationSec - TIME_EPS)) {
       close(silenceStart);
     }
     silenceStart = null;
     silentFrames = 0;
     if (cur) {
-      const ref = median(cur.values.slice(-8));
+      const ref = median(cur.values.slice(-refCount));
       if (Math.abs(v - ref) <= opts.hysteresis) {
+        if (isOnset(i)) {
+          close(t);
+          cur = { values: [v], start: t, end: t + frameDur };
+          curStartIdx = i;
+          curByOnset = true;
+          continue;
+        }
         cur.values.push(v);
         cur.end = t + frameDur;
         continue;
@@ -168,18 +249,22 @@ export function segmentFrames(frames: PitchFrame[], options: Partial<SegmentOpti
       close(t);
     }
     cur = { values: [v], start: backfillStart(i, v), end: t + frameDur };
+    curStartIdx = i;
   }
   if (cur) close((cur as Building).end);
 
   // 너무 짧은 음 → 앞 음(없으면 뒤 음)에 흡수
   const cleaned: RawNote[] = [];
+  const keepSplit = new Set<RawNote>();
   for (const n of notes) {
-    if (n.endSec - n.startSec >= opts.minNoteSec) {
-      cleaned.push({ ...n });
+    if (n.endSec - n.startSec >= opts.minNoteSec - TIME_EPS) {
+      const c = { ...n };
+      if (onsetNotes.has(n)) keepSplit.add(c);
+      cleaned.push(c);
       continue;
     }
     const prev = cleaned[cleaned.length - 1];
-    if (prev && n.startSec - prev.endSec < opts.minRestSec) prev.endSec = n.endSec;
+    if (prev && n.startSec - prev.endSec < opts.minRestSec - TIME_EPS) prev.endSec = n.endSec;
   }
 
   // 같은 음이 끊김 없이 둘로 나뉜 경우만 병합 (짧은 흡수 결과 등).
@@ -187,7 +272,7 @@ export function segmentFrames(frames: PitchFrame[], options: Partial<SegmentOpti
   const merged: RawNote[] = [];
   for (const n of cleaned) {
     const prev = merged[merged.length - 1];
-    if (prev && prev.midi === n.midi && n.startSec - prev.endSec <= 1e-3) {
+    if (prev && prev.midi === n.midi && n.startSec - prev.endSec <= 1e-3 && !keepSplit.has(n)) {
       prev.endSec = n.endSec;
     } else merged.push(n);
   }

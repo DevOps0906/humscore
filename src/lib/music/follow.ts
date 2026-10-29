@@ -7,17 +7,30 @@ import type { Score } from "./types";
 /** 판정 상수 — 실기기 실측(task-010-d) 후 조정할 수 있도록 export */
 export const FOLLOW_CENTS_TOLERANCE = 50;
 export const FOLLOW_MIN_CLARITY = 0.92;
-/** 같은 음이 연속으로 이만큼 유지돼야 확정 */
-export const FOLLOW_STABLE_FRAMES = 3;
-/** 같은 음 재판정을 위한 무음 프레임 수 */
-export const FOLLOW_RELEASE_SILENT_FRAMES = 5;
+/** 같은 음이 연속으로 이 시간(초)만큼 유지돼야 확정 (60fps 3프레임) */
+export const FOLLOW_STABLE_SEC = 3 / 60;
+/** 같은 음 재판정을 위한 무음 시간(초) (60fps 5프레임) */
+export const FOLLOW_RELEASE_SILENT_SEC = 5 / 60;
+/** 프레임 한 개가 차지하는 최대 시간(ms). 간격 0 이하(시각 정보 없음)일 때도 이 값. 늦게 온 프레임이 확정을 앞당기지 않도록 상한 */
+const FOLLOW_FRAME_MAX_MS = 1000 / 60;
+/** 세션 첫 프레임의 시간(ms): 간격을 모르므로 가장 촘촘한 지원 간격(100fps) */
+const FOLLOW_FIRST_FRAME_MS = 10;
+/** 누적 시간 비교 허용 오차(ms) = 60fps 반 프레임 — 가장 가까운 프레임 수로 반올림하는 효과, 간격 흔들림 흡수 */
+const FOLLOW_TIME_TOLERANCE_MS = FOLLOW_FRAME_MAX_MS / 2;
 /** 확정 뒤 최저 rms 대비 이 배수 이상으로 오르면 재타건으로 본다 */
 export const FOLLOW_RMS_RISE_RATIO = 1.5;
 /** 재상승으로 인정할 최소 rms */
 export const FOLLOW_RMS_RISE_MIN = 0.01;
 
 export type FollowInput =
-  | { kind: "frame"; freq: number | null; clarity: number; rms?: number }
+  | {
+      kind: "frame";
+      freq: number | null;
+      clarity: number;
+      rms?: number;
+      /** 프레임 시각(초, PitchFrame.time). 있으면 nowMs 대신 이 값으로 경과 시간을 잰다 */
+      time?: number;
+    }
   | { kind: "midi"; midi: number };
 
 export interface FollowState {
@@ -29,11 +42,15 @@ export interface FollowState {
   /** 끝까지 맞춘 시각. 아직이면 null */
   readonly finishedAtMs: number | null;
   readonly candidate: number | null;
-  readonly candidateFrames: number;
+  /** 후보 음이 연속으로 유지된 시간(ms) */
+  readonly candidateMs: number;
   /** 직전 확정 음. 놓기(무음/재상승) 전엔 같은 음을 다시 판정하지 않는다 */
   readonly lockedMidi: number | null;
-  readonly silentFrames: number;
+  /** 연속 무음 시간(ms) */
+  readonly silentMs: number;
   readonly lockMinRms: number;
+  /** 직전 프레임 시각(ms). 프레임 간격 측정용 */
+  readonly lastFrameMs: number | null;
 }
 
 export type FollowResultKind = "none" | "correct" | "wrong" | "octave" | "done";
@@ -120,10 +137,11 @@ export function createFollowState(targets: readonly number[], nowMs: number): Fo
     startedAtMs: nowMs,
     finishedAtMs: null,
     candidate: null,
-    candidateFrames: 0,
+    candidateMs: 0,
     lockedMidi: null,
-    silentFrames: 0,
+    silentMs: 0,
     lockMinRms: Infinity,
+    lastFrameMs: null,
   };
 }
 
@@ -178,6 +196,11 @@ export function judge(
   if (input.kind === "midi") return decide(state, input.midi, nowMs);
 
   const rms = input.rms;
+  const tMs = input.time !== undefined ? input.time * 1000 : nowMs;
+  const dt = state.lastFrameMs === null ? null : tMs - state.lastFrameMs;
+  /** 이번 프레임이 차지하는 시간(ms): 직전 프레임과의 간격, 단 (0, 1/60초] 밖이면 1/60초 */
+  const frameMs = dt === null ? FOLLOW_FIRST_FRAME_MS : dt > 0 ? Math.min(dt, FOLLOW_FRAME_MAX_MS) : FOLLOW_FRAME_MAX_MS;
+  state = { ...state, lastFrameMs: tMs };
   const pitched =
     input.freq !== null &&
     input.freq > 0 &&
@@ -185,13 +208,14 @@ export function judge(
     Math.abs(centsOff(input.freq)) <= FOLLOW_CENTS_TOLERANCE;
 
   if (!pitched) {
-    const silentFrames = state.silentFrames + 1;
-    const released = state.lockedMidi !== null && silentFrames >= FOLLOW_RELEASE_SILENT_FRAMES;
+    const silentMs = state.silentMs + frameMs;
+    const released =
+      state.lockedMidi !== null && silentMs >= FOLLOW_RELEASE_SILENT_SEC * 1000 - FOLLOW_TIME_TOLERANCE_MS;
     const next: FollowState = {
       ...state,
       candidate: null,
-      candidateFrames: 0,
-      silentFrames,
+      candidateMs: 0,
+      silentMs,
       lockedMidi: released ? null : state.lockedMidi,
       lockMinRms: released ? Infinity : state.lockMinRms,
     };
@@ -204,7 +228,7 @@ export function judge(
     const diff = Math.abs(midi - lockedMidi);
     if (midi !== lockedMidi && HARMONIC_DIFFS.includes(diff)) {
       // 피아노 감쇠 중 배음(옥타브·12도·2옥타브) — 잠금 유지, 무시
-      const next = { ...state, candidate: null, candidateFrames: 0, silentFrames: 0 };
+      const next = { ...state, candidate: null, candidateMs: 0, silentMs: 0 };
       return { state: next, result: result(next, "none", null, state.targets[state.index]) };
     }
     if (midi !== lockedMidi) {
@@ -223,8 +247,8 @@ export function judge(
         const next = {
           ...state,
           candidate: null,
-          candidateFrames: 0,
-          silentFrames: 0,
+          candidateMs: 0,
+          silentMs: 0,
           lockMinRms: rms !== undefined ? Math.min(lockMinRms, rms) : lockMinRms,
         };
         return { state: next, result: result(next, "none", null, state.targets[state.index]) };
@@ -232,14 +256,14 @@ export function judge(
     }
   }
 
-  const frames = state.candidate === midi ? state.candidateFrames + 1 : 1;
-  const base: FollowState = { ...state, lockedMidi, lockMinRms, silentFrames: 0 };
-  if (frames < FOLLOW_STABLE_FRAMES) {
-    const next = { ...base, candidate: midi, candidateFrames: frames };
+  const heldMs = (state.candidate === midi ? state.candidateMs : 0) + frameMs;
+  const base: FollowState = { ...state, lockedMidi, lockMinRms, silentMs: 0 };
+  if (heldMs < FOLLOW_STABLE_SEC * 1000 - FOLLOW_TIME_TOLERANCE_MS) {
+    const next = { ...base, candidate: midi, candidateMs: heldMs };
     return { state: next, result: result(next, "none", null, state.targets[state.index]) };
   }
   const decided = decide(
-    { ...base, candidate: null, candidateFrames: 0, lockedMidi: midi, lockMinRms: rms ?? Infinity },
+    { ...base, candidate: null, candidateMs: 0, lockedMidi: midi, lockMinRms: rms ?? Infinity },
     midi,
     nowMs,
   );

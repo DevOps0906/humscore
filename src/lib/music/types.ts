@@ -107,6 +107,8 @@ export interface PitchFrame {
   freq: number | null;
   /** 0~1, 검출 신뢰도 */
   clarity: number;
+  /** 분석 창의 입력 세기(RMS, 0~1). 세기 기반 온셋용 — 없으면 온셋 분리를 건너뜀 */
+  rms?: number;
 }
 
 /** 프레임을 묶은 '연주된 음' (아직 박자 정렬 전, 초 단위) */

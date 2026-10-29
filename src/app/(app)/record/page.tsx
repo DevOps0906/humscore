@@ -41,6 +41,8 @@ function loadMeter(): Meter {
 }
 
 const LIVE_INTERVAL_MS = 280;
+/** 실시간 음정 궤적 버퍼 길이(초) — 그리기는 최근 6초 */
+const TRACE_SEC = 10;
 const nowMs = () => performance.now();
 const EMPTY_LIVE: LiveSummary = { measures: [], active: null, totalMeasures: 0, noteCount: 0 };
 
@@ -60,7 +62,11 @@ function RecordPageInner() {
   const session = useRef<TrackerSession | null>(null);
   /** 진행 중인 start() 식별자. 마이크 권한 대기 중 정지를 누르면 null 이 되어 늦게 열린 세션을 바로 닫음 */
   const starting = useRef<object | null>(null);
+  /** 시작 대기(권한·워클릿 로드) 취소용 */
+  const startAbort = useRef<AbortController | null>(null);
   const trace = useRef<PitchFrame[]>([]);
+  /** 다음 화면 프레임에 반영할 최신 피치 프레임 (100fps 프레임을 rAF로 묶어 렌더 횟수 제한) */
+  const pendingLive = useRef<PitchFrame | null>(null);
   /** 라이브 음가 미리보기용 전체 프레임 (피치 숫자만, 녹음 종료 시 폐기) */
   const allFrames = useRef<PitchFrame[]>([]);
   /** 세션 시작 시점의 설정. 녹음 중 UI 값이 바뀌어도(방어) 메트로놈·미리보기·악보 생성은 이 값을 쓴다 */
@@ -102,6 +108,10 @@ function RecordPageInner() {
   useEffect(() => {
     let raf = 0;
     const draw = () => {
+      if (pendingLive.current) {
+        setLive(pendingLive.current);
+        pendingLive.current = null;
+      }
       const m = meter.current;
       if (m) {
         // RMS → dBFS(-60~0) → 0~100%
@@ -143,6 +153,7 @@ function RecordPageInner() {
   useEffect(
     () => () => {
       starting.current = null; // 권한 대기 중 화면을 떠나면 늦게 열린 세션을 start()가 닫음
+      startAbort.current?.abort();
       if (halfTimer.current) clearTimeout(halfTimer.current);
       session.current?.stop();
       session.current = null;
@@ -312,6 +323,8 @@ function RecordPageInner() {
     peakLevel.current = 0;
     const token = {};
     starting.current = token;
+    const ac = new AbortController();
+    startAbort.current = ac;
     try {
       getAudioContext(); // iOS: 터치 핸들러 동기 흐름 안에서 resume() 시작 (await 금지)
       setStatus("countin");
@@ -320,6 +333,7 @@ function RecordPageInner() {
         beatsPerMeasure: beats,
         meter: meterId,
         countInMeasures: 1,
+        signal: ac.signal,
         metronome,
         manualLatencyMs: latencyMs,
         onEnded: () => {
@@ -339,8 +353,9 @@ function RecordPageInner() {
         onFrame: (f) => {
           if (f.time >= 0) allFrames.current.push(f);
           trace.current.push(f);
-          if (trace.current.length > 600) trace.current.shift();
-          setLive(f);
+          // 최근 TRACE_SEC 초만 유지 (프레임 간격과 무관하게 시간 기준)
+          while (trace.current.length > 0 && trace.current[0].time < f.time - TRACE_SEC) trace.current.shift();
+          pendingLive.current = f;
         },
       });
       if (starting.current !== token) {
@@ -351,6 +366,7 @@ function RecordPageInner() {
       starting.current = null;
       session.current = s;
     } catch (e) {
+      if (ac.signal.aborted) return; // 대기 중 정지·화면 이탈 — 안내 없이 종료 (상태는 finish가 정리)
       if (starting.current === token) starting.current = null;
       setStatus("idle");
       const name = e instanceof DOMException ? e.name : "";
@@ -378,6 +394,7 @@ function RecordPageInner() {
     if (!session.current) {
       // 아직 마이크 권한 대기 중(세션 없음)에 정지 → 시작 취소만 하고 조용히 대기 상태로
       starting.current = null;
+      startAbort.current?.abort();
       setBeat(null);
       setStatus("idle");
       return;
@@ -390,6 +407,7 @@ function RecordPageInner() {
     setLiveSummary(EMPTY_LIVE);
     setBeat(null);
     setHalfLit(false);
+    pendingLive.current = null;
     setLive(null);
     level.current = 0;
     if (interrupted && frames.length === 0) {

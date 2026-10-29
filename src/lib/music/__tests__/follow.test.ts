@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
-  FOLLOW_RELEASE_SILENT_FRAMES,
-  FOLLOW_STABLE_FRAMES,
+  FOLLOW_RELEASE_SILENT_SEC,
+  FOLLOW_STABLE_SEC,
   buildFollowPlan,
   buildTargets,
   createFollowState,
@@ -51,6 +51,24 @@ function feed(s: FollowState, inputs: FollowInput[], t = 0) {
   return { state, last };
 }
 const rep = (i: FollowInput, k: number) => Array.from({ length: k }, () => i);
+/** 60fps 기준 프레임 수 (시각 정보 없이 같은 now 로 넣으면 프레임당 1/60초로 셈) */
+const STABLE_60 = Math.round(FOLLOW_STABLE_SEC * 60);
+const RELEASE_60 = Math.round(FOLLOW_RELEASE_SILENT_SEC * 60);
+
+/** fps 간격으로 프레임 시각(time)을 붙여 차례로 판정. 각 입력 직후 index 기록 */
+function feedTimed(s: FollowState, inputs: FollowInput[], fps: number, t0 = 0) {
+  let state = s;
+  const indexAt: number[] = [];
+  inputs.forEach((inp, k) => {
+    const time = t0 + k / fps;
+    const timed = inp.kind === "frame" ? { ...inp, time } : inp;
+    state = judge(state, timed, 99999).state; // nowMs 는 무시되어야 함(time 우선)
+    indexAt.push(state.index);
+  });
+  return { state, indexAt, end: t0 + inputs.length / fps };
+}
+/** sec 동안 같은 입력을 fps 로 반복 */
+const during = (i: FollowInput, sec: number, fps: number) => rep(i, Math.round(sec * fps));
 
 describe("buildTargets", () => {
   it("쉼표 제외", () => {
@@ -77,12 +95,12 @@ describe("judge (마이크)", () => {
   const s0 = () => createFollowState([60, 62], 1000);
 
   it("안정 프레임 미달이면 진행 안 함", () => {
-    const { state, last } = feed(s0(), rep(frame(60), FOLLOW_STABLE_FRAMES - 1));
+    const { state, last } = feed(s0(), rep(frame(60), STABLE_60 - 1));
     expect(last.kind).toBe("none");
     expect(state.index).toBe(0);
   });
   it("안정 프레임 충족 시 정답", () => {
-    const { state, last } = feed(s0(), rep(frame(60), FOLLOW_STABLE_FRAMES), 1500);
+    const { state, last } = feed(s0(), rep(frame(60), STABLE_60), 1500);
     expect(last.kind).toBe("correct");
     expect(state.index).toBe(1);
   });
@@ -122,7 +140,7 @@ describe("judge (마이크)", () => {
     const a = feed(s, rep(frame(60), 3));
     const b = feed(a.state, rep(frame(60), 10));
     expect(b.state.index).toBe(1);
-    const c = feed(b.state, [...rep(silence, FOLLOW_RELEASE_SILENT_FRAMES), ...rep(frame(60), 3)]);
+    const c = feed(b.state, [...rep(silence, RELEASE_60), ...rep(frame(60), 3)]);
     expect(c.state.index).toBe(2);
     expect(c.last.finished).toBe(true);
   });
@@ -187,5 +205,42 @@ describe("buildFollowPlan", () => {
     expect(plan.targets).toEqual([69, 64, 69, 64, 66]);
     expect(plan.noteIndexes).toEqual([1, 3, 1, 3, 4]);
     expect(plan.hasChord).toBe(true);
+  });
+});
+
+describe("judge: 프레임 간격 무관(시간 기준)", () => {
+  /** 처음으로 index 가 오른 시각(초) */
+  const firstHit = (indexAt: number[], fps: number) => (indexAt.findIndex((x) => x > 0) + 1) / fps;
+
+  it("확정까지 걸리는 시간이 60fps·100fps 에서 같음(약 0.05초)", () => {
+    const a = feedTimed(createFollowState([60], 0), during(frame(60), 0.2, 60), 60);
+    const b = feedTimed(createFollowState([60], 0), during(frame(60), 0.2, 100), 100);
+    expect(firstHit(a.indexAt, 60)).toBeCloseTo(0.05, 2);
+    expect(firstHit(b.indexAt, 100)).toBeCloseTo(0.05, 2);
+  });
+  it("100fps 3프레임(0.03초)만으로는 확정하지 않음", () => {
+    const r = feedTimed(createFollowState([60], 0), rep(frame(60), 3), 100);
+    expect(r.state.index).toBe(0);
+  });
+  it.each([60, 100])("%i fps: 0.05초 무음은 같은 음 재판정 안 함, 0.1초 무음 뒤엔 판정", (fps) => {
+    const short = feedTimed(createFollowState([60, 60], 0), [
+      ...during(frame(60), 0.2, fps),
+      ...during(silence, 0.05, fps),
+      ...during(frame(60), 0.2, fps),
+    ], fps);
+    expect(short.state.index).toBe(1);
+    const long = feedTimed(createFollowState([60, 60], 0), [
+      ...during(frame(60), 0.2, fps),
+      ...during(silence, 0.1, fps),
+      ...during(frame(60), 0.2, fps),
+    ], fps);
+    expect(long.state.index).toBe(2);
+  });
+  it("time 이 없으면 nowMs 로 간격을 잼 (100fps)", () => {
+    let st = createFollowState([60], 0);
+    for (let k = 0; k < 4; k++) st = judge(st, frame(60), k * 10).state;
+    expect(st.index).toBe(0);
+    st = judge(st, frame(60), 40).state;
+    expect(st.index).toBe(1);
   });
 });
