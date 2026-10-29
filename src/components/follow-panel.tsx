@@ -26,7 +26,7 @@ function feedbackText(f: NonNullable<Follow["feedback"]>): { icon: "ok" | "warn"
   return { icon: "bad", text: `다른 음이에요 — 친 음: ${solfegeName(f.heard)}` };
 }
 
-/** 공연 모드 하단 "따라 치기" 패널: 시작·일시정지·처음부터·끝내기, 판정 표시, 끝 화면, 힌트 건반 */
+/** 공연 모드 "따라 치기" 패널(모바일·태블릿 하단, 데스크톱 1200~ 악보 우측): 시작·일시정지·처음부터·끝내기, 판정 표시, 끝 화면, 힌트 건반 */
 export function FollowPanel({ follow }: { follow: Follow }) {
   const { phase, inputKind, total, index, currentTarget, feedback, error } = follow;
   const [hint, setHint] = useState(true);

@@ -61,8 +61,8 @@ export function PerformClient({ id }: { id: string }) {
   if (!score) return <p className="text-ink-soft">{score === undefined ? "불러오는 중…" : "악보를 찾을 수 없어요."}</p>;
 
   return (
-    <div className="fixed inset-0 z-30 flex flex-col bg-paper">
-      <div className="safe-top flex items-center gap-3 border-b border-line px-4 py-2">
+    <div className="fixed inset-0 z-30 flex flex-col bg-paper lg:grid lg:grid-cols-[minmax(0,1fr)_auto] lg:grid-rows-[auto_minmax(0,1fr)_auto]">
+      <div className="safe-top flex items-center gap-3 border-b border-line px-4 py-2 lg:col-span-2 lg:row-start-1">
         <Button asChild variant="outline" className="h-11 rounded-full px-4 text-sm">
           <Link href={`/scores/${score.id}`} aria-label="닫기"><X aria-hidden /><span className="max-md:hidden">닫기</span></Link>
         </Button>
@@ -75,17 +75,28 @@ export function PerformClient({ id }: { id: string }) {
       </div>
       <div
         ref={scroller}
-        className="relative flex-1 overflow-y-auto p-3"
+        className="relative flex-1 overflow-y-auto p-3 lg:col-start-1 lg:row-start-2 lg:min-h-0 lg:border-b lg:border-line"
         onClick={(e) => {
-          const right = e.clientX > window.innerWidth / 2;
+          const r = e.currentTarget.getBoundingClientRect(); // 데스크톱 우측 패널이 있으면 창 중앙 ≠ 악보 중앙
+          const right = e.clientX > r.left + r.width / 2;
           scroller.current?.scrollBy({ top: (right ? 1 : -1) * window.innerHeight * 0.8, behavior: "smooth" });
         }}
       >
         <ScoreView showHeader={false} header={<ScoreHeader score={score} />} xml={xml} zoom={zoom} cursor={cursor} />
       </div>
-      <div className="safe-bottom border-t border-line px-4 pt-2">
-        {following && <FollowPanel follow={follow} />}
-        <div className={`mx-auto max-w-md ${following ? "[@media(max-height:480px)]:hidden" : ""}`}>
+      {/* 모바일·태블릿: 하단 패널(따라 치기 + 전조) / 데스크톱 1200~: 따라 치기는 악보 우측 패널, 전조는 악보 아래 */}
+      <div className="safe-bottom border-t border-line px-4 pt-2 lg:contents">
+        {following && (
+          <aside
+            aria-label="따라 치기"
+            className="lg:col-start-2 lg:row-span-2 lg:row-start-2 lg:w-96 lg:overflow-y-auto lg:border-l lg:border-line lg:px-5 lg:py-4"
+          >
+            <FollowPanel follow={follow} />
+          </aside>
+        )}
+        <div
+          className={`mx-auto max-w-md lg:col-start-1 lg:row-start-3 lg:w-full lg:px-4 lg:pt-2 lg:pb-2 ${following ? "[@media(max-height:480px)]:hidden" : ""}`}
+        >
           <TransposeBar large originalKey={score.key} transpose={score.transpose} onChange={(t) => update({ transpose: t })} />
         </div>
       </div>
