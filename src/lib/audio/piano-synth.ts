@@ -3,6 +3,7 @@ import { DYNAMIC_VELOCITY, velocityAt } from "../music/dynamics";
 import { unrollScore } from "../music/form";
 import { chordToMidi, transposeChordSymbol, transposeKey } from "../music/theory";
 import type { InstrumentId } from "../music/midi";
+import { secondsPerBeat, type PlaybackPlan } from "../music/playback-plan";
 import type { Score } from "../music/types";
 import { playInstrumentNote } from "./instruments";
 
@@ -137,6 +138,69 @@ export function playScore(
   return {
     startedAt: start,
     durationSec: lastBeat * spb,
+    stop: () => {
+      bus.gain.setValueAtTime(bus.gain.value, ctx.currentTime);
+      bus.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.05);
+      setTimeout(() => bus.disconnect(), 100);
+    },
+  };
+}
+
+export interface PlanPlayback extends Playback {
+  /** startedAt 시각에 소리 나는 계획 박 */
+  fromBeat: number;
+  /** 실제 박 길이(초) — 현재 박 = fromBeat + (ctx.currentTime − startedAt) / secondsPerBeat */
+  secondsPerBeat: number;
+}
+
+/**
+ * 재생 계획(buildPlaybackPlan) 예약 — 공연 모드 연습 재생용. playScore 와 같은 음색·셈여림·전조.
+ * rate: 원래 bpm 대비 배율(50~100%, 합성음 일정만 바뀌어 음높이 불변).
+ * fromBeat: 이 박 이후에 시작하는 음만 예약(그 박에 걸친 코드는 fromBeat 부터 남은 길이만).
+ * at: fromBeat 를 울릴 시각(기본 지금 + 0.1초) — 반복 이음 미리 예약용.
+ * 음·코드는 계획 끝(totalBeats)에서 자른다(마지막 코드는 길이가 없으므로).
+ */
+export function playPlan(
+  ctx: AudioContext,
+  plan: PlaybackPlan,
+  opts: { rate?: number; fromBeat?: number; at?: number; withChords?: boolean; instrument?: InstrumentId } = {},
+): PlanPlayback {
+  const instrument = opts.instrument ?? "piano";
+  const spb = secondsPerBeat(plan.bpm, opts.rate ?? 1);
+  const total = plan.totalBeats;
+  const from = Math.min(Math.max(0, opts.fromBeat ?? 0), total);
+  const start = opts.at ?? ctx.currentTime + 0.1;
+  const timeOf = (beat: number) => start + (beat - from) * spb;
+  const EPS = 1e-6;
+  const bus = ctx.createGain();
+  bus.connect(ctx.destination);
+  const tp = plan.transpose;
+  const preferFlats = transposeKey(plan.key, tp).fifths < 0;
+
+  for (const n of plan.notes) {
+    if (n.midi === null || n.startBeat < from - EPS || n.startBeat >= total - EPS) continue;
+    const end = Math.min(total, n.startBeat + n.durationBeats);
+    playInstrumentNote(ctx, instrument, n.midi + tp, timeOf(n.startBeat), {
+      duration: (end - n.startBeat) * spb,
+      velocity: Math.min(1, (MELODY_BASE * velocityAt(plan.dynamics, n.startBeat)) / MF),
+      destination: bus,
+    });
+  }
+  if (opts.withChords ?? true) {
+    plan.chords.forEach((c, i) => {
+      const end = Math.min(total, plan.chords[i + 1]?.startBeat ?? total);
+      const on = Math.max(from, c.startBeat);
+      if (end <= on + EPS) return;
+      for (const m of chordToMidi(transposeChordSymbol(c.symbol, tp, preferFlats), 3)) {
+        playPianoNote(ctx, m, timeOf(on), { velocity: Math.min(1, (CHORD_BASE * velocityAt(plan.dynamics, c.startBeat)) / MF), duration: (end - on) * spb, destination: bus });
+      }
+    });
+  }
+  return {
+    startedAt: start,
+    durationSec: (total - from) * spb,
+    fromBeat: from,
+    secondsPerBeat: spb,
     stop: () => {
       bus.gain.setValueAtTime(bus.gain.value, ctx.currentTime);
       bus.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.05);

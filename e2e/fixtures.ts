@@ -50,3 +50,18 @@ export async function createScoreViaKeys(page: Page): Promise<string> {
   await page.waitForURL(/\/scores\/[^/]+$/);
   return page.url().split("/scores/")[1];
 }
+
+/**
+ * /keys 에서 PC 키보드로 음 count 개(A,S,D,F 반복)를 입력하고 저장 → /scores/<id>. id 반환.
+ * 4/4 기본 길이 기준 count=12 → 3마디.
+ */
+export async function createScoreWithNotes(page: Page, count: number): Promise<string> {
+  await openKeysInput(page);
+  const keys = ["a", "s", "d", "f"];
+  for (let i = 0; i < count; i++) await page.keyboard.press(keys[i % keys.length]);
+  await expect(page.getByText(`${count}개 음표`)).toBeVisible();
+  await page.getByRole("button", { name: "악보로 저장" }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "저장", exact: true }).click();
+  await page.waitForURL(/\/scores\/[^/]+$/);
+  return page.url().split("/scores/")[1];
+}

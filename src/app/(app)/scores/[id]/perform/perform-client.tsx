@@ -5,9 +5,12 @@ import { Button } from "@/components/ui/button";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ScoreHeader } from "@/components/score-header";
 import { FollowPanel } from "@/components/follow-panel";
+import { PracticeBar } from "@/components/practice-bar";
 import { ScoreView, type ScoreCursorProps } from "@/components/score-view";
 import { TransposeBar } from "@/components/transpose-bar";
 import { useFollowAlong } from "@/hooks/use-follow-along";
+import { useInstrument } from "@/hooks/use-instrument";
+import { useScorePlayback } from "@/hooks/use-score-playback";
 import { useScore } from "@/hooks/use-score-param";
 import { scoreToMusicXML } from "@/lib/music/musicxml";
 
@@ -15,6 +18,7 @@ import { scoreToMusicXML } from "@/lib/music/musicxml";
  * 공연 모드 (태블릿 보면대)
  * - 큰 악보, 화면 좌/우 탭 또는 블루투스 페이지 넘김 페달(←/→, PageUp/PageDown, Space)로 스크롤
  * - 즉석 전조
+ * - 연습 재생(속도·구간 반복·현재 음 커서) — 따라 치기와 상호 배타
  */
 export function PerformClient({ id }: { id: string }) {
   const { score, update } = useScore(id);
@@ -22,6 +26,8 @@ export function PerformClient({ id }: { id: string }) {
   const [following, setFollowing] = useState(false);
   const follow = useFollowAlong(score);
   const { end: endFollow } = follow;
+  const [instrument] = useInstrument();
+  const playback = useScorePlayback(score, { instrument, disabled: following });
   const scroller = useRef<HTMLDivElement>(null);
   const xml = useMemo(() => (score ? scoreToMusicXML(score, "lead", { externalHeader: true }) : ""), [score]);
 
@@ -41,13 +47,18 @@ export function PerformClient({ id }: { id: string }) {
     setFollowing(!following);
   };
 
-  // 다음에 칠 음을 악보에 강조 (편집 커서 재사용, 선택·편집은 막음)
+  // 따라 치기: 다음에 칠 음 / 연습 재생: 지금 나는 음을 악보에 강조 (편집 커서 재사용, 선택·편집은 막음)
+  const highlighted = following
+    ? follow.currentNoteIndex
+    : playback.status === "playing" || playback.status === "paused"
+      ? playback.cursor
+      : null;
   const cursor: ScoreCursorProps | undefined =
-    following && score && follow.currentNoteIndex !== null
+    score && highlighted !== null
       ? {
           notes: score.notes,
           beatsPerMeasure: score.beatsPerMeasure,
-          selected: follow.currentNoteIndex,
+          selected: highlighted,
           onSelect: () => {},
           announce: "",
           toolbarOpen: false,
@@ -84,7 +95,7 @@ export function PerformClient({ id }: { id: string }) {
       >
         <ScoreView showHeader={false} header={<ScoreHeader score={score} />} xml={xml} zoom={zoom} cursor={cursor} />
       </div>
-      {/* 모바일·태블릿: 하단 패널(따라 치기 + 전조) / 데스크톱 1200~: 따라 치기는 악보 우측 패널, 전조는 악보 아래 */}
+      {/* 모바일·태블릿: 하단 패널(연습 바 또는 따라 치기 + 전조) / 데스크톱 1200~: 따라 치기는 악보 우측 패널, 연습 바·전조는 악보 아래 행 */}
       <div className="safe-bottom border-t border-line px-4 pt-2 lg:contents">
         {following && (
           <aside
@@ -95,9 +106,15 @@ export function PerformClient({ id }: { id: string }) {
           </aside>
         )}
         <div
-          className={`mx-auto max-w-md lg:col-start-1 lg:row-start-3 lg:w-full lg:px-4 lg:pt-2 lg:pb-2 ${following ? "[@media(max-height:480px)]:hidden" : ""}`}
+          className={`mx-auto flex max-w-md flex-col gap-2 md:max-w-xl lg:col-start-1 lg:row-start-3 lg:w-full lg:max-w-none lg:flex-row lg:items-start lg:px-4 lg:pt-2 lg:pb-2 ${following ? "[@media(max-height:480px)]:hidden" : ""}`}
         >
-          <TransposeBar large originalKey={score.key} transpose={score.transpose} onChange={(t) => update({ transpose: t })} />
+          {/* 모바일·태블릿(~1199)은 따라 치기가 켜지면 연습 바 자리를 FollowPanel 이 쓴다 */}
+          <div className={`lg:min-w-0 lg:flex-1 ${following ? "max-lg:hidden" : ""}`}>
+            <PracticeBar playback={playback} bpm={score.bpm} disabled={following} />
+          </div>
+          <div className="lg:w-96 lg:shrink-0">
+            <TransposeBar large originalKey={score.key} transpose={score.transpose} onChange={(t) => update({ transpose: t })} />
+          </div>
         </div>
       </div>
     </div>

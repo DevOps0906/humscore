@@ -4,9 +4,9 @@
 |---|---|---|---|---|---|---|
 | task-000 | NOMAD 적용 (팀 통합 · AGENTS.md · 영역 규칙) | W0 | — | 낮음 | 팀장 | 완료 |
 | task-001 | 앱(Capacitor)에서 PDF 내보내기 — 의존성 없는 이미지 PDF → 공유 시트 (실기기 확인은 task-005) | W1 | — | 보통 | builder → reviewer(code) | 완료 |
-| task-002 | 공연 모드 보강 (범위는 착수 전 사용자 확정) | W1 | — | 보통 | builder → reviewer(design) | 대기 |
+| task-002 | 공연 모드 보강 (범위는 착수 전 사용자 확정) | W1 | — | 보통 | builder → reviewer(design) | 완료 |
 | task-003 | 클라우드 동기화 버그 수정 + 회귀 테스트 (계정 전환 유출 · 시계 지연 유실 · 로그아웃 경고 · 자동 재시도) | W2 | — | 높음 | challenger → builder → reviewer(code+security) | 완료 |
-| task-004 | 음원 파일 업로드 → 음표 변환 (Basic Pitch) | W3 | task-003 | 높음 | planner → challenger → builder | 대기(스파이크 승인 대기) |
+| task-004 | 음원 파일 업로드 → 음표 변환 (Basic Pitch) | W3 | task-003 | 높음 | planner → challenger → builder | 보류(스파이크 결과 사용자 결정 대기) |
 | task-005 | 실기기 체크리스트 수행 · 기록 (README 하단) | W1 | task-001 | 낮음 | 사용자 | 대기 |
 | task-006 | 건반 가로 고정(모바일·태블릿) · C4 중심 흰건반 15개 · 하단 탭바 높이 축소 | W1 | — | 높음(새 의존성) | builder → reviewer(code) | 완료 |
 | task-007 | 피아노 교육 앱 벤치마킹 (`docs/06_BENCHMARK.md`) | W1 | — | 낮음 | 조사 | 완료 |
@@ -30,3 +30,5 @@
 ## 교훈 (다음 작업에 그대로 적용할 것만, 20줄 이내 유지)
 - 
 | 2026-10-29 | `src/components/landing/landing.module.css` | 히어로 장식 음표(.f1~.f5)·휴대폰 목업(.pscr·.prow) 글자 크기 px 리터럴 잔존, 섹션 패딩 px | 글자 크기·섹션 패딩 해결(6db6e4a). 아이콘·그림자·애니메이션 px 약 200곳은 미정 |
+| 2026-10-29 | `src/lib/music/form.ts` 131-134 | unrollScore가 도돌이표·D.C.로 cresc/dim 중간 마디에 들어갈 때 levelAt만 써서 헤어핀 진행값을 잃을 수 있음(코드로만 확인, 미재현) | playback-plan.ts의 음수 박 이어받기 방식으로 재현 테스트 후 수정(music-logic-coder) |
+| 2026-10-29 | `src/lib/storage/scores-mock.test.ts` | 전체 vitest 병렬 실행에서 "소유자가 있는 실제 계정 악보 숨김" 1회 실패, 단독·재실행 3회는 통과(플레이크) | 공유 상태(localStorage·env) 격리 확인(tester) |
