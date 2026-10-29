@@ -2,7 +2,7 @@
 
 - 갱신: 2026-10-29
 - 현재 작업: task-008 빠른 패시지 인식 완료(코드) — 실기기 확인 대기
-- 마지막으로 한 일: task-008 — AudioWorklet 고정 hop 0.01s(public/worklets/hop-capture.js, 1.5초 시간 초과·미지원 시 rAF 폴백, AbortSignal 시작 취소)·PitchFrame.rms?·segment 시간 기준·세기 온셋(ONSET_*)·minNoteSec 0.06·follow 판정 *_SEC·record trace 10초
+- 마지막으로 한 일: task-008 커밋 후 e2e 모바일 fixture 수정(53 통과·0 실패), task-004 명세 축소(스파이크만), 랜딩 --lp-* 정리, 따라 치기 데스크톱 우측 패널
 - 다음 한 걸음: 실기기 실측(task-005 + 010-d + 008) — iOS·앱 워클릿 로드 여부, 카운트인 지연, 박자·음표 위치, ONSET_RATIO·ONSET_MIN_RMS·FOLLOW_* 조정
 - 미확인: rAF 누수 수정은 코드로만(브라우저 실측 필요). OSMD 시스템 경계 단위(task-001)
 - 열린 결정: task-002 범위. task-004 스파이크 승인·보컬 정책(가/나)·실녹음 5~10곡·보류 여부(challenger 축소 권고, docs/specs/task-004-audio-transcription.md)
