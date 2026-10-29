@@ -62,3 +62,6 @@ node_modules/
 *.pfx
 id_rsa*
 id_ed25519*
+
+# 에이전트 격리 작업 트리
+.claude/worktrees/

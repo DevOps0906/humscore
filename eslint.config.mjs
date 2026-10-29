@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // 에이전트 격리 작업 트리(isolation: worktree)
+    ".claude/worktrees/**",
   ]),
 ]);
 
