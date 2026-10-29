@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Score } from "../music/types";
 
 const mk = (id: string, title = id): Score => ({
@@ -21,6 +21,12 @@ async function load() {
   vi.resetModules();
   return await import("./scores");
 }
+
+// 첫 테스트 안에서 scores·@supabase/ssr 를 처음 변환·로드하면(~1s, 병렬 부하 때 5s 초과) 시간 초과로 실패 → 미리 데워 둔다.
+// resetModules 는 모듈 레지스트리만 비우고 변환 캐시는 남으므로 이후 load() 는 빠르다.
+beforeAll(async () => {
+  await import("./scores");
+}, 60_000);
 
 beforeEach(() => {
   store = new Map();
