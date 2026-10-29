@@ -10,7 +10,8 @@ test("건반 입력 → 저장 → 라이브러리 → 악보 보기 → 전조 
   // 라이브러리에 표시
   await page.getByRole("link", { name: "내 악보" }).click();
   await expect(page).toHaveURL(/\/library$/);
-  const card = page.locator(`a[href="/scores/${id}"]`);
+  // "최근 수정한 악보"에도 같은 카드가 있으므로(의도된 중복) "전체 악보" 목록 안으로 한정
+  const card = page.getByRole("region", { name: "전체 악보" }).locator(`a[href="/scores/${id}"]`);
   await expect(card).toBeVisible();
   await card.click();
   await expect(page).toHaveURL(new RegExp(`/scores/${id}$`));
@@ -68,7 +69,7 @@ test("영속성: 새로고침 후에도 악보 유지 (localStorage)", async ({ 
   await expect(page.getByLabel("악보 제목")).toHaveValue(/건반 입력/);
 
   await page.goto("/library");
-  await expect(page.locator(`a[href="/scores/${id}"]`)).toBeVisible();
+  await expect(page.getByRole("region", { name: "전체 악보" }).locator(`a[href="/scores/${id}"]`)).toBeVisible();
 });
 
 test("레거시 리다이렉트: /score?id=abc, /perform?id=abc", async ({ page }) => {

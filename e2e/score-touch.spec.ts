@@ -1,4 +1,4 @@
-import { createScoreViaKeys, expect, test } from "./fixtures";
+import { createScoreViaKeys, expect, openKeysInput, test } from "./fixtures";
 import type { Page } from "@playwright/test";
 
 async function enterEditMode(page: Page) {
@@ -123,12 +123,7 @@ test("제목·작곡자: 악보에 그려지고 Enter/Esc 로 편집", async ({ 
 });
 
 test("TitleDialog: 작곡자 입력이 악보에 저장되고 대화상자가 남지 않음", async ({ page }) => {
-  await page.goto("/keys");
-  const toggle = page.getByRole("button", { name: "악보 입력" });
-  await expect(async () => {
-    if ((await toggle.getAttribute("aria-pressed")) !== "true") await toggle.click();
-    await expect(toggle).toHaveAttribute("aria-pressed", "true", { timeout: 500 });
-  }).toPass();
+  await openKeysInput(page);
   for (const k of ["a", "s"]) await page.keyboard.press(k);
   await expect(page.getByText("2개 음표")).toBeVisible();
   await page.getByRole("button", { name: "악보로 저장" }).click();
