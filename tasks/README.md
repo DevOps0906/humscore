@@ -6,7 +6,7 @@
 | task-001 | 앱(Capacitor)에서 PDF 내보내기 — 의존성 없는 이미지 PDF → 공유 시트 (실기기 확인은 task-005) | W1 | — | 보통 | builder → reviewer(code) | 완료 |
 | task-002 | 공연 모드 보강 (범위는 착수 전 사용자 확정) | W1 | — | 보통 | builder → reviewer(design) | 대기 |
 | task-003 | 클라우드 동기화 버그 수정 + 회귀 테스트 (계정 전환 유출 · 시계 지연 유실 · 로그아웃 경고 · 자동 재시도) | W2 | — | 높음 | challenger → builder → reviewer(code+security) | 완료 |
-| task-004 | 음원 파일 업로드 → 음표 변환 (Basic Pitch) | W3 | task-003 | 높음 | planner → challenger → builder | 대기 |
+| task-004 | 음원 파일 업로드 → 음표 변환 (Basic Pitch) | W3 | task-003 | 높음 | planner → challenger → builder | 대기(스파이크 승인 대기) |
 | task-005 | 실기기 체크리스트 수행 · 기록 (README 하단) | W1 | task-001 | 낮음 | 사용자 | 대기 |
 | task-006 | 건반 가로 고정(모바일·태블릿) · C4 중심 흰건반 15개 · 하단 탭바 높이 축소 | W1 | — | 높음(새 의존성) | builder → reviewer(code) | 완료 |
 | task-007 | 피아노 교육 앱 벤치마킹 (`docs/06_BENCHMARK.md`) | W1 | — | 낮음 | 조사 | 완료 |
