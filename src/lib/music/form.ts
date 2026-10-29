@@ -1,5 +1,5 @@
 import { measureOf, scoreMeasureCount } from "./edit";
-import { hairpinTargets, levelAt } from "./dynamics";
+import { LEVELS, nearestLevelIndex, velocityAt } from "./dynamics";
 import type { DynamicEvent, MeasureMarkKind, Score } from "./types";
 
 /**
@@ -103,8 +103,23 @@ export function unrollScore(score: Score): Score {
   const chordsIn = (m: number) => score.chords.filter((c) => inMeasure(c.startBeat, m));
 
   const isLevelEv = (d: DynamicEvent) => d.kind !== "cresc" && d.kind !== "dim";
-  const origTargets = hairpinTargets(srcDyn);
-  const copyOf = new Map<DynamicEvent, DynamicEvent>(); // 펼친 헤어핀 -> 원본 헤어핀
+  // 셈여림은 "구간 단위 닫힘": 이어 연주되는 마디 묶음(구간)마다 헤어핀을 구간 끝에서 자르고, 들어갈 때·나올 때 그 자리 값을 단계 기호로 적는다.
+  // (velocityAt 의 헤어핀 목표는 미래의 단계 기호를 끝없이 찾으므로, 사후 보정 대신 구간 밖을 보지 않게 닫는다)
+  const lastBefore = (beat: number) => srcDyn.reduce<DynamicEvent | undefined>((p, d) => (d.startBeat < beat - 1e-6 && (!p || d.startBeat >= p.startBeat) ? d : p), undefined);
+  const nearestLevel = (v: number) => LEVELS[nearestLevelIndex(v)];
+  const pushDyn = (d: DynamicEvent) => {
+    // 같은 박·같은 종류 단계 기호가 이미 있으면 생략(이탈 목표와 진입 기호가 같을 때)
+    if (isLevelEv(d) && dynamics.some((x) => x.kind === d.kind && Math.abs(x.startBeat - d.startBeat) < 1e-6)) return;
+    dynamics.push(d);
+  };
+  // 각 k 가 속한 구간의 원본 끝 박. 원본 마지막 마디로 끝나는 마지막 구간만 닫지 않음(Infinity) — Fine 등 중간에서 끝나면 닫는다
+  const segEndOrig: number[] = new Array(order.length);
+  for (let k = order.length - 1; k >= 0; k--) {
+    if (k + 1 < order.length && order[k + 1] === order[k] + 1) segEndOrig[k] = segEndOrig[k + 1];
+    else segEndOrig[k] = k === order.length - 1 && order[k] === total - 1 ? Infinity : (order[k] + 1) * bpm;
+  }
+  const clip = (d: DynamicEvent, segEnd: number): DynamicEvent =>
+    isLevelEv(d) || d.durationBeats === undefined ? d : { ...d, durationBeats: Math.min(d.startBeat + d.durationBeats, segEnd) - d.startBeat };
 
   order.forEach((m, k) => {
     const shift = (k - m) * bpm;
@@ -128,31 +143,25 @@ export function unrollScore(score: Score): Score {
       if (prev) chords.push({ ...prev, startBeat: m * bpm + shift });
     }
     const here = srcDyn.filter((d) => inMeasure(d.startBeat, m));
-    if (srcDyn.length && entered && !here.some((d) => isLevelEv(d) && Math.abs(d.startBeat - m * bpm) < 1e-6)) {
-      // 건너뛰어 들어온 마디는 그 자리의 셈여림 단계를 이어받는다 (첫 박에 단계 기호가 있으면 그것이 대신함)
-      dynamics.push({ startBeat: m * bpm + shift, kind: levelAt(srcDyn, m * bpm) });
+    const segEnd = segEndOrig[k];
+    const start = m * bpm;
+    if (srcDyn.length && entered && !here.some((d) => isLevelEv(d) && Math.abs(d.startBeat - start) < 1e-6)) {
+      // 진입: 건너뛰어 들어온 마디 첫 박에 그 자리 값에 가장 가까운 단계를 적고 (첫 박에 단계 기호가 있으면 그것이 대신함),
+      // 직전 헤어핀이 아직 진행 중이면 남은 길이만큼 이어 붙인다
+      pushDyn({ startBeat: start + shift, kind: nearestLevel(velocityAt(srcDyn, start)) });
+      const prev = lastBefore(start);
+      if (prev && !isLevelEv(prev)) {
+        const end = prev.startBeat + (prev.durationBeats ?? 0);
+        if (end > start + 1e-6) pushDyn({ ...clip({ ...prev, startBeat: start, durationBeats: end - start }, segEnd), startBeat: start + shift });
+      }
     }
-    for (const d of here) {
-      const copy = { ...d, startBeat: d.startBeat + shift };
-      if (!isLevelEv(d)) copyOf.set(copy, d);
-      dynamics.push(copy);
+    for (const d of here) pushDyn({ ...clip(d, segEnd), startBeat: d.startBeat + shift });
+    if (!contiguous && Number.isFinite(segEnd) && srcDyn.length) {
+      // 이탈: 구간 끝 직전 기호가 헤어핀이면 그 자리 값(왼쪽 극한)을 구간 끝 박에 단계로 적어 잘린 헤어핀의 목표로 삼는다
+      const prev = lastBefore(segEnd);
+      if (prev && !isLevelEv(prev)) pushDyn({ startBeat: segEnd + shift, kind: nearestLevel(velocityAt(srcDyn, segEnd - 1e-3)) });
     }
   });
-
-  // 펼친 뒤 헤어핀 목표가 원본과 달라지면(점프 지점의 단계 기호가 목표로 잡힘) 헤어핀 끝에 원래 목표 단계를 명시
-  const outTargets = hairpinTargets(dynamics);
-  const fixes: DynamicEvent[] = [];
-  for (const [copy, orig] of copyOf) {
-    const want = origTargets.get(orig);
-    if (want && outTargets.get(copy) !== want) fixes.push({ startBeat: copy.startBeat + (copy.durationBeats ?? 0), kind: want });
-  }
-  if (fixes.length) {
-    // 같은 박의 다른 기호보다 먼저 오도록 앞에 두고 박 기준 안정 정렬
-    const merged = [...fixes, ...dynamics];
-    merged.sort((a, b) => a.startBeat - b.startBeat);
-    dynamics.length = 0;
-    dynamics.push(...merged);
-  }
 
   const { marks: _marks, ...rest } = score;
   void _marks;

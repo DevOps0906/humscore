@@ -121,6 +121,102 @@ describe("unrollScore", () => {
     expect(velocityAt(out.dynamics, 12)).toBeCloseTo(0.8, 6);
     expect(velocityAt(out.dynamics, 14)).toBeCloseTo(0.875, 6);
   });
+  it("cresc 진행 중인 마디로 되돌아가도 헤어핀 진행값을 이어받음", () => {
+    // p → cresc(0~8박) → f. 마디 1(4~8박)을 한 번 더: 순서 0,1,1,2
+    const dynamics: DynamicEvent[] = [{ startBeat: 0, kind: "p" }, { startBeat: 0, kind: "cresc", durationBeats: 8 }, { startBeat: 8, kind: "f" }];
+    const src = makeScore(whole(3), { dynamics, marks: [mk(1, "repeatStart"), mk(1, "repeatEnd")] });
+    const out = unrollScore(src);
+    // 첫 패스(0~8박)는 원본 그대로
+    for (const b of [0, 2, 4, 6, 7.9]) expect(velocityAt(out.dynamics, b)).toBeCloseTo(velocityAt(dynamics, b), 6);
+    // 두 번째 패스 마디 1(8~12박): 원본 4박 값(0.61)에 가장 가까운 단계(mf)에서 시작해 f 로 계속 올라감 — p 로 떨어지지 않음
+    expect(Math.abs(velocityAt(out.dynamics, 8) - velocityAt(dynamics, 4))).toBeLessThan(0.06);
+    expect(velocityAt(out.dynamics, 10)).toBeGreaterThan(velocityAt(out.dynamics, 8));
+    expect(velocityAt(out.dynamics, 11.9)).toBeCloseTo(velocityAt(dynamics, 7.9), 1);
+    expect(velocityAt(out.dynamics, 12)).toBeCloseTo(0.8, 6);
+  });
+  it("끝난 헤어핀 뒤 마디로 점프하면 헤어핀 목표 단계를 이어받음", () => {
+    // p → cresc(0~4박, 목표 f@12). 원본 8박 velocity = f. 마디 2 반복: 순서 0,1,2,2,3
+    const dynamics: DynamicEvent[] = [{ startBeat: 0, kind: "p" }, { startBeat: 0, kind: "cresc", durationBeats: 4 }, { startBeat: 12, kind: "f" }];
+    const out = unrollScore(makeScore(whole(4), { dynamics, marks: [mk(2, "repeatStart"), mk(2, "repeatEnd")] }));
+    expect(velocityAt(dynamics, 8)).toBeCloseTo(0.8, 6);
+    for (const b of [8, 12, 14, 16]) expect(velocityAt(out.dynamics, b)).toBeCloseTo(0.8, 6);
+  });
+  /** 펼친 k 번째 마디의 velocity 가 원본 마디 order[k] 의 같은 위치와 tol 이내인지 (단계 근사 오차 허용) */
+  const expectFollows = (src: ReturnType<typeof makeScore>, tol: number) => {
+    const out = unrollScore(src);
+    measureOrder(src).forEach((m, k) => {
+      for (const o of [0, 1, 2, 3, 3.9]) expect(Math.abs(velocityAt(out.dynamics, k * 4 + o) - velocityAt(src.dynamics, m * 4 + o))).toBeLessThan(tol);
+    });
+    return out;
+  };
+  it("긴 cresc 에 여러 번 점프해 들어가도 보정 기호가 진행 중인 사본을 끊지 않음", () => {
+    const dynamics: DynamicEvent[] = [{ startBeat: 0, kind: "p" }, { startBeat: 0, kind: "cresc", durationBeats: 12 }, { startBeat: 12, kind: "f" }];
+    const src = makeScore(whole(4), { dynamics, marks: [mk(1, "repeatEnd"), mk(2, "repeatEnd")] });
+    expect(measureOrder(src)).toEqual([0, 1, 0, 1, 2, 2, 3]);
+    expectFollows(src, 0.08);
+  });
+  it("긴 dim 에 여러 번 점프해 들어가도 보정 기호가 진행 중인 사본을 끊지 않음", () => {
+    const dynamics: DynamicEvent[] = [{ startBeat: 0, kind: "f" }, { startBeat: 0, kind: "dim", durationBeats: 12 }, { startBeat: 12, kind: "p" }];
+    const src = makeScore(whole(4), { dynamics, marks: [mk(1, "repeatStart"), mk(1, "repeatEnd"), mk(2, "repeatEnd")] });
+    expect(measureOrder(src)).toEqual([0, 1, 1, 2, 2, 3]);
+    expectFollows(src, 0.08);
+  });
+  it("D.S. al Coda 로 cresc 중간에 들어가면 헤어핀 사본은 한 번만 생김", () => {
+    const dynamics: DynamicEvent[] = [{ startBeat: 0, kind: "p" }, { startBeat: 0, kind: "cresc", durationBeats: 12 }, { startBeat: 12, kind: "f" }];
+    const src = makeScore(whole(5), { dynamics, marks: [mk(1, "segno"), mk(2, "toCoda"), mk(3, "dsAlCoda"), mk(4, "coda")] });
+    expect(measureOrder(src)).toEqual([0, 1, 2, 3, 1, 2, 4]);
+    const out = expectFollows(src, 0.08);
+    expect(out.dynamics!.filter((d) => d.kind === "cresc").map((d) => [d.startBeat, d.durationBeats])).toEqual([[0, 12], [16, 8]]);
+  });
+  // p → cresc(0~8) → f → dim(8~16) → pp, 5마디
+  const crescDim: DynamicEvent[] = [
+    { startBeat: 0, kind: "p" }, { startBeat: 0, kind: "cresc", durationBeats: 8 }, { startBeat: 8, kind: "f" }, { startBeat: 8, kind: "dim", durationBeats: 8 }, { startBeat: 16, kind: "pp" },
+  ];
+  it("구간 단위 닫힘: 이탈 목표가 다른 헤어핀 사본의 목표를 바꾸지 않음", () => {
+    const src = makeScore(whole(5), { dynamics: crescDim, marks: [mk(0, "repeatStart"), mk(0, "repeatEnd"), mk(2, "repeatEnd")] });
+    expect(measureOrder(src)).toEqual([0, 0, 1, 2, 1, 2, 3, 4]);
+    const out = expectFollows(src, 0.08);
+    expect(velocityAt(out.dynamics, 2)).toBeCloseTo(0.535, 6);
+    expect(velocityAt(out.dynamics, 16)).toBeCloseTo(0.65, 6);
+    expect(velocityAt(out.dynamics, 18)).toBeCloseTo(0.725, 6);
+    expect(velocityAt(out.dynamics, 24)).toBeCloseTo(0.55, 6);
+    // 경계 박 16: 이탈 목표(mp) 가 다음 진입 기호(mf) 보다 앞
+    const dyn = out.dynamics!;
+    const at16 = (kind: DynamicEvent["kind"]) => dyn.findIndex((d) => d.startBeat === 16 && d.kind === kind);
+    expect(at16("mp")).toBeGreaterThanOrEqual(0);
+    expect(at16("mp")).toBeLessThan(at16("mf"));
+  });
+  it.each([
+    ["도돌이표", [mk(1, "repeatStart"), mk(2, "repeatEnd")]],
+    ["D.C.", [mk(2, "dc")]],
+    ["D.S. al Coda", [mk(1, "segno"), mk(2, "toCoda"), mk(3, "dsAlCoda"), mk(4, "coda")]],
+  ] as [string, MeasureMark[]][])("%s: 펼친 셈여림이 원본을 따르고, 헤어핀 사본은 다음 점프 박을 넘지 않음", (_name, marks) => {
+    const src = makeScore(whole(5), { dynamics: crescDim, marks });
+    const out = expectFollows(src, 0.08);
+    const order = measureOrder(src);
+    const jumps = order.flatMap((m, k) => (k + 1 < order.length && order[k + 1] !== m + 1 ? [(k + 1) * 4] : []));
+    for (const d of out.dynamics!) {
+      if (d.kind !== "cresc" && d.kind !== "dim") continue;
+      const next = jumps.find((j) => j > d.startBeat + 1e-6);
+      if (next !== undefined) expect(d.startBeat + (d.durationBeats ?? 0)).toBeLessThanOrEqual(next + 1e-6);
+    }
+  });
+  it.each([
+    ["D.C. al Fine", 4, [mk(1, "fine"), mk(3, "dcAlFine")], [0, 1, 2, 3, 0, 1]],
+    ["D.S. al Fine", 5, [mk(1, "segno"), mk(2, "fine"), mk(4, "dsAlFine")], [0, 1, 2, 3, 4, 1, 2]],
+  ] as [string, number, MeasureMark[], number[]][])("%s: 원본 중간에서 끝나는 마지막 구간도 헤어핀을 닫음", (_name, count, marks, order) => {
+    const dynamics: DynamicEvent[] = [{ startBeat: 0, kind: "p" }, { startBeat: 0, kind: "cresc", durationBeats: 12 }, { startBeat: 12, kind: "f" }];
+    const src = makeScore(whole(count), { dynamics, marks });
+    expect(measureOrder(src)).toEqual(order);
+    const out = expectFollows(src, 0.08);
+    const total = order.length * 4;
+    for (const d of out.dynamics!) if (d.kind === "cresc") expect(d.startBeat + (d.durationBeats ?? 0)).toBeLessThanOrEqual(total + 1e-6);
+  });
+  it("원본 마지막 마디로 끝나는 마지막 구간은 헤어핀을 자르지 않음", () => {
+    const dynamics: DynamicEvent[] = [{ startBeat: 0, kind: "p" }, { startBeat: 8, kind: "cresc", durationBeats: 8 }];
+    const out = unrollScore(makeScore(whole(3), { dynamics, marks: [mk(0, "repeatEnd")] }));
+    expect(out.dynamics).toEqual([{ startBeat: 0, kind: "p" }, { startBeat: 4, kind: "p" }, { startBeat: 12, kind: "cresc", durationBeats: 8 }]);
+  });
   it("점프해 들어간 마디 첫 박에 단계 기호가 있으면 승계 이벤트를 넣지 않음", () => {
     const dynamics: DynamicEvent[] = [{ startBeat: 0, kind: "f" }, { startBeat: 4, kind: "p" }];
     const out = unrollScore(makeScore(whole(2), { dynamics, marks: [mk(1, "repeatEnd")] }));

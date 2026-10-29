@@ -10,7 +10,7 @@ export const DYNAMIC_VELOCITY: Record<DynamicLevel, number> = {
   ff: 0.95,
 };
 
-const LEVELS: DynamicLevel[] = ["pp", "p", "mp", "mf", "f", "ff"];
+export const LEVELS: DynamicLevel[] = ["pp", "p", "mp", "mf", "f", "ff"];
 const EPS = 1e-6;
 
 const isLevel = (k: DynamicEvent["kind"]): k is DynamicLevel => k !== "cresc" && k !== "dim";
@@ -29,7 +29,7 @@ export function levelAt(dynamics: DynamicEvent[] | undefined, beat: number): Dyn
   return cur;
 }
 
-function nearestLevelIndex(v: number): number {
+export function nearestLevelIndex(v: number): number {
   let best = 0;
   LEVELS.forEach((l, i) => {
     if (Math.abs(DYNAMIC_VELOCITY[l] - v) < Math.abs(DYNAMIC_VELOCITY[LEVELS[best]] - v)) best = i;

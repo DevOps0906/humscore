@@ -30,5 +30,6 @@
 ## 교훈 (다음 작업에 그대로 적용할 것만, 20줄 이내 유지)
 - 
 | 2026-10-29 | `src/components/landing/landing.module.css` | 히어로 장식 음표(.f1~.f5)·휴대폰 목업(.pscr·.prow) 글자 크기 px 리터럴 잔존, 섹션 패딩 px | 글자 크기·섹션 패딩 해결(6db6e4a). 아이콘·그림자·애니메이션 px 약 200곳은 미정 |
-| 2026-10-29 | `src/lib/music/form.ts` 131-134 | unrollScore가 도돌이표·D.C.로 cresc/dim 중간 마디에 들어갈 때 levelAt만 써서 헤어핀 진행값을 잃을 수 있음(코드로만 확인, 미재현) | playback-plan.ts의 음수 박 이어받기 방식으로 재현 테스트 후 수정(music-logic-coder) |
+| 2026-10-29 | `src/lib/music/form.ts` 131-134 | unrollScore가 도돌이표·D.C.로 cresc/dim 중간 마디에 들어갈 때 levelAt만 써서 헤어핀 진행값을 잃을 수 있음(코드로만 확인, 미재현) | 해결: 구간 단위 닫힘(advisor 권고)으로 재작성. 경계 오차 최대 반 단계 |
 | 2026-10-29 | `src/lib/storage/scores-mock.test.ts` | 전체 vitest 병렬 실행에서 "소유자가 있는 실제 계정 악보 숨김" 1회 실패, 단독·재실행 3회는 통과(플레이크) | 해결: 첫 동적 import 변환 시간이 5초 제한에 포함(beforeAll로 미리 로드) |
+| 2026-10-29 | `src/lib/music/form.ts`·`edit.ts` | 편집기가 헤어핀 위에 다른 기호·헤어핀을 겹쳐 놓을 수 있음 → 펼칠 때 구간 경계 기울기가 원본과 다를 수 있음(미테스트) | 겹침을 막을지(편집 규칙) 허용할지 결정 후 테스트 |
