@@ -6,6 +6,24 @@
   --lp-h3: 18px;
   --lp-num: 30px;
   --lp-header-h: 60px;
+  /* 히어로 장식 음표 글자 크기 (sm 20 · md 22 · lg 26 · xl 30 · hero 64) */
+  --lp-note-sm: 20px;
+  --lp-note-md: 22px;
+  --lp-note-lg: 26px;
+  --lp-note-xl: 30px;
+  --lp-note-hero: 64px;
+  /* 휴대폰 목업 글자 크기 (제목 13 · 항목 10 · 보조 9) — 축소 화면 재현용 고정값 */
+  --lp-phone-title: 13px;
+  --lp-phone-item: 10px;
+  --lp-phone-meta: 9px;
+  /* 섹션 패딩: 히어로 위·아래(900~ 에서 hero-*-wide) · 기능 블록 · 흐름 단계 아래(768~ 에서 96) */
+  --lp-hero-pt: 62px;
+  --lp-hero-pb: 44px;
+  --lp-hero-pt-wide: 79px;
+  --lp-hero-pb-wide: 62px;
+  --lp-block-py: 36px;
+  --lp-step-pb: 64px;
+  --lp-step-pb-wide: 96px;
   --lp-glow: color-mix(in srgb, var(--tono-accent) 55%, transparent);
   --lp-device: color-mix(in srgb, var(--tono-bg) 62%, var(--shadow-ink));
   --lp-chrome: color-mix(in srgb, var(--tono-bg) 60%, var(--tono-surface));
@@ -98,7 +116,7 @@
 .b3 { width: 180px; height: 180px; right: 30%; bottom: 18%; animation-delay: -6s; }
 @keyframes breathe { from { opacity: 0.45; transform: scale(0.92); } to { opacity: 0.9; transform: scale(1.08); } }
 
-.heroGrid { position: relative; display: grid; gap: 32px; padding: 62px 0 44px; text-align: center; justify-items: center; }
+.heroGrid { position: relative; display: grid; gap: 32px; padding: var(--lp-hero-pt) 0 var(--lp-hero-pb); text-align: center; justify-items: center; }
 /* 떠다니는 음표: 히어로 그리드의 위·아래 여백과 목업 뒤에만 둔다(글자 영역과 겹치지 않게) */
 .notes { position: absolute; inset: 0; z-index: -1; pointer-events: none; }
 .fl {
@@ -107,10 +125,10 @@
   animation: float 7s ease-in-out infinite alternate;
 }
 .f1 { left: 2%; top: 24px; font-size: var(--text-3xl); }
-.f2 { right: 4%; top: 28px; font-size: 22px; animation-delay: -2s; animation-duration: 8s; }
-.f3 { right: 2%; bottom: 30%; font-size: 64px; animation-delay: -4s; animation-duration: 9s; display: none; }
-.f4 { left: 3%; bottom: 0; font-size: 20px; animation-delay: -1s; }
-.f5 { right: 8%; bottom: 2px; font-size: 20px; animation-delay: -5s; }
+.f2 { right: 4%; top: 28px; font-size: var(--lp-note-md); animation-delay: -2s; animation-duration: 8s; }
+.f3 { right: 2%; bottom: 30%; font-size: var(--lp-note-hero); animation-delay: -4s; animation-duration: 9s; display: none; }
+.f4 { left: 3%; bottom: 0; font-size: var(--lp-note-sm); animation-delay: -1s; }
+.f5 { right: 8%; bottom: 2px; font-size: var(--lp-note-sm); animation-delay: -5s; }
 @keyframes float { from { transform: translateY(0) rotate(-4deg); } to { transform: translateY(-20px) rotate(5deg); } }
 
 .eyebrow { font-size: var(--text-base); font-weight: 500; color: var(--tono-lavender-300); letter-spacing: 0.02em; margin-bottom: 14px; }
@@ -133,14 +151,14 @@
 @media (min-width: 768px) {
   .mock { display: block; }
   .f3 { display: block; }
-  .f4 { left: 30%; bottom: 8px; font-size: 26px; }
-  .f5 { right: auto; left: 40%; top: 14px; bottom: auto; font-size: 22px; }
-  .f2 { right: 6%; top: 18px; font-size: 30px; }
+  .f4 { left: 30%; bottom: 8px; font-size: var(--lp-note-lg); }
+  .f5 { right: auto; left: 40%; top: 14px; bottom: auto; font-size: var(--lp-note-md); }
+  .f2 { right: 6%; top: 18px; font-size: var(--lp-note-xl); }
 }
 @media (min-width: 900px) {
   .heroGrid {
     grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); text-align: left; justify-items: stretch; align-items: center;
-    gap: clamp(24px, 4vw, 64px); padding: 79px 0 62px;
+    gap: clamp(24px, 4vw, 64px); padding: var(--lp-hero-pt-wide) 0 var(--lp-hero-pb-wide);
   }
   .sub { margin-left: 0; }
   .btnRow { align-items: flex-start; }
@@ -190,12 +208,12 @@
   animation: rise 1s 0.5s ease-out both;
 }
 .pscr { height: 100%; border-radius: 19px; background: var(--paper); overflow: hidden; padding: 14px 10px; font-size: calc(var(--text-xs) * 0.83); text-align: left; }
-.pscr h5 { font-size: 13px; margin: 6px 0 10px; }
+.pscr h5 { font-size: var(--lp-phone-title); margin: 6px 0 10px; }
 .prow { display: flex; gap: 8px; align-items: center; padding: 8px; margin-bottom: 6px; border-radius: 8px; background: var(--surface); }
 .th { width: 34px; height: 26px; border-radius: 4px; background: var(--score-paper); flex: none; position: relative; overflow: hidden; }
 .th::before { content: ""; position: absolute; inset: 6px 4px; background: repeating-linear-gradient(var(--surface) 0 1px, transparent 1px 4px); opacity: 0.55; }
-.prow b { display: block; font-size: 10px; font-weight: 600; }
-.prow small { color: var(--ink-soft); font-size: 9px; }
+.prow b { display: block; font-size: var(--lp-phone-item); font-weight: 600; }
+.prow small { color: var(--ink-soft); font-size: var(--lp-phone-meta); }
 @keyframes rise { from { opacity: 0; transform: translateY(28px); } to { opacity: 1; transform: none; } }
 
 /* 신뢰 띠 */
@@ -307,7 +325,7 @@ html:not(.js) .pitch polyline { stroke-dashoffset: 0; }
 .subhead { margin: 48px 0 16px; font-size: var(--lp-h3); font-weight: 600; display: flex; gap: 10px; align-items: center; }
 
 /* 주요 기능 블록 */
-.fblock { display: grid; gap: 28px; align-items: center; padding: 36px 0; scroll-margin-top: calc(var(--lp-header-h) + 12px); }
+.fblock { display: grid; gap: 28px; align-items: center; padding: var(--lp-block-py) 0; scroll-margin-top: calc(var(--lp-header-h) + 12px); }
 .fblock + .fblock { border-top: 1px solid color-mix(in srgb, var(--ink) 10%, transparent); }
 @media (min-width: 768px) {
   .fblock { grid-template-columns: 1fr 1fr; gap: clamp(32px, 5vw, 80px); }
@@ -419,7 +437,7 @@ html:not(.js) .pitch polyline { stroke-dashoffset: 0; }
   background: linear-gradient(var(--tono-lavender-300), var(--accent)); box-shadow: 0 0 10px var(--lp-glow);
   transform-origin: top; transform: scaleY(var(--p, 1)); transition: transform 0.15s linear;
 }
-.ffStep { position: relative; display: grid; grid-template-columns: var(--node) minmax(0, 1fr); gap: 0 16px; padding-bottom: 64px; }
+.ffStep { position: relative; display: grid; grid-template-columns: var(--node) minmax(0, 1fr); gap: 0 16px; padding-bottom: var(--lp-step-pb); }
 .ffStep:last-child { padding-bottom: 0; }
 .ffNode {
   position: relative; z-index: 1; width: var(--node); height: var(--node); border-radius: 50%; display: grid; place-items: center;
@@ -551,7 +569,7 @@ a.ffCard:hover .ffIco::after { animation: pulse 1.2s ease-out infinite; }
 }
 @media (min-width: 768px) {
   .ff { --node: 52px; }
-  .ffStep { gap: 0 32px; padding-bottom: 96px; }
+  .ffStep { gap: 0 32px; padding-bottom: var(--lp-step-pb-wide); }
   .ffNode { font-size: var(--text-lg); }
   .ffFmts { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .iso { height: 380px; }
