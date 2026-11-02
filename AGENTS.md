@@ -3,7 +3,7 @@
 > 모든 AI 코딩 도구가 읽는 **단일 정본**. 80줄 이내. 영역 규칙은 `.claude/rules/*.md`, Claude 전용 팀 규칙은 `CLAUDE.md`.
 
 ## 1. 무엇인가
-흥얼거리면 악보가 되는 앱 — 웹·iOS·Android를 한 코드베이스로. 상세 제약·오디오 패턴은 `CLAUDE.md`.
+흥얼거리면 악보가 되는 앱 — 웹·iOS·Android를 한 코드베이스로. 오디오 패턴은 `.claude/rules/audio.md`.
 
 ## 2. 스택
 | 영역 | 선택 | 위치 |
