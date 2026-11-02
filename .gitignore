@@ -67,3 +67,10 @@ id_ed25519*
 
 # 에이전트 격리 작업 트리
 .claude/worktrees/
+
+# task-004 스파이크 2단계 (오디오·결과·설치물은 커밋 금지)
+spike/audio/
+spike/out/
+spike/node_modules/
+spike/model/
+spike/browser/wasm/
