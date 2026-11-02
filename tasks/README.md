@@ -21,7 +21,7 @@
 | task-016 | 실기기 결과 반영 — task-005 체크리스트 결과로 카운트인 지연·따라 치기 임계값(FOLLOW_*·ONSET_*)·VOICE_* 상수 조정 + 회귀 테스트 | W2 | task-005 | 보통 | music-logic-coder → builder → reviewer(code) | 대기 |
 | task-017 | 화면 사양 🟡 정리 — 05_DATA_MODEL 표와 화면 표 데이터 칸 이름 맞추기(scores·share_links·youtube_sources·folders), 권장 구조는 반영 또는 비고에 사유 | W1 | — | 낮음 | planner → reviewer(doc) | 완료 |
 | task-018 | 랜딩 CSS 남은 px 정리 — `landing.module.css` 아이콘·그림자·애니메이션 px를 --spacing 배수·--lp-* 변수로, 화면 변화 없음 | W1 | — | 낮음 | builder → reviewer(design) | 완료 |
-| task-019 | 읽기 전용 공유 링크 (S01·S02) — 로그인 없이 보기·편집 불가·회수 가능, 찬양 콘티 선행 | W2 | task-003 | 높음 | planner → challenger → builder → reviewer(security) → tester | 진행(구현·리뷰 완료, DB 통합 검증 대기 — 브랜치 feat/task-019-share-link, main 병합 금지) |
+| task-019 | 읽기 전용 공유 링크 (S01·S02) — 로그인 없이 보기·편집 불가·회수 가능, 찬양 콘티 선행 | W2 | task-003 | 높음 | planner → challenger → builder → reviewer(security) → tester | 완료(PGlite 통합 32/32, 로컬 Supabase 통합 테스트는 Docker 환경에서 추가 확인) |
 
 상태: 대기 / 진행 / 완료 / 보류
 
