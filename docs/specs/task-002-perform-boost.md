@@ -48,7 +48,7 @@
 ## 4. 화면 배치 (`03_SCREENS_UX.md` 표 형식, 기존 perform 화면 보강)
 | ID | 화면 | 유형 | 경로 | 주된 일 | 구성 | 데이터 | API | 권한 | 다음 |
 |---|---|---|---|---|---|---|---|---|---|
-| E02 | 공연 모드 + 연습 바 | 상세 | /scores/[id]/perform | 느리게·구간 반복으로 듣고 연습 | header(닫기·제목·따라 치기·A−/A+), card:악보(재생 커서), toolbar:연습 바(button:재생·일시정지, button:처음으로, form:속도 50~100%, form:구간 시작·구간 끝, button:반복 켜기), 기존 TransposeBar, aside:따라 치기(켜졌을 때) | scores(읽기) | 없음(로컬) | 기존 perform과 같음 | E01 |
+| E02 | 공연 모드 + 연습 바 | 상세 | /scores/[id]/perform | 느리게·구간 반복으로 듣고 연습 | header(닫기·제목·따라 치기·A−/A+), card:악보(재생 커서), toolbar:연습 바(button:재생·일시정지, button:처음으로, form:속도 50~100%, form:구간 시작·구간 끝, button:반복 켜기), 기존 TransposeBar, aside:따라 치기(켜졌을 때) | scores | 없음(로컬) | 기존 perform과 같음 | E01 |
 
 | 상태 | 화면 |
 |---|---|

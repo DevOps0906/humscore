@@ -3,6 +3,19 @@
 > 기존: `scores`, `transcription_jobs`(마이그레이션 `20261019211413_scores.sql`). ERD는 `sql2erd`로 `diagrams/erd.mmd` 생성(손으로 그리지 않음).
 > 모두 새 마이그레이션 파일로 추가. 정책은 `(select auth.uid())` 형태, 정책 컬럼 인덱스 필수.
 
+## 테이블 목록 (화면 표 `데이터` 칸은 이 이름만 쓴다)
+| 테이블 | 상태 | 목적 | RLS 기준 | 비고 |
+|---|---|---|---|---|
+| scores | 구현 | 악보(`Score`) 저장·동기화 | 소유자 `user_id` | `deleted_at` 추가됨(`20261019212458`). 기기 저장분은 로컬이며 로그인 시 동기화 |
+| transcription_jobs | 구현 | 변환 작업 기록 | 소유자 `user_id`, insert는 `status='queued'`만 | `20261019211413` |
+| folders | 계획 | 악보 폴더 | 소유자 | 아래 `## folders` |
+| tags | 계획 | 악보 태그 | 소유자 | 아래 `## tags · score_tags` |
+| score_tags | 계획 | 악보-태그 연결 | 악보·태그 모두 소유자 | 〃 |
+| share_links | 계획 | 공유 링크(해시 토큰) | 소유자 `owner_id`, 익명은 함수로만 | 아래 `## share_links` |
+| youtube_sources | 계획 | 유튜브 출처 URL·제목 | 소유자 | 아래 `## youtube_sources` |
+| setlists | 계획 | 찬양 콘티 | 소유자 | 아래 `## setlists · setlist_items` |
+| setlist_items | 계획 | 콘티 곡 항목 | 부모 콘티 소유자 | 〃 |
+
 ## Score 타입 변경 여부
 `src/lib/music/types.ts`의 `Score`: **변경 없음**(폴더·태그·공유·출처는 별도 테이블/컬럼). 단, `scores.folder_id` 컬럼 추가는 DB 변경 — 클라이언트 동기화 코드 영향 여부는 **팀장 결정 필요**.
 

@@ -28,20 +28,16 @@ flowchart LR
   subgraph DB["데이터"]
     n_t_folders[("folders")]
     n_t_scores[("scores")]
-    n_t_scores_기기_저장_[("scores(기기 저장)")]
-    n_t_scores_읽기_[("scores(읽기)")]
     n_t_setlist_items[("setlist_items")]
     n_t_setlists[("setlists")]
     n_t_share_links[("share_links")]
     n_t_tags[("tags")]
     n_t_youtube_sources[("youtube_sources")]
-    n_t____오디오_저장_안_함_[("— (오디오 저장 안 함)")]
   end
   n_L01 --> n_api_미정
   n_Y01 --> n_api_미정
   n_Y01 -.-> n_t_youtube_sources
   n_Y02 --> n_api_미정
-  n_Y02 -.-> n_t____오디오_저장_안_함_
   n_Y03 --> n_api_미정
   n_Y03 -.-> n_t_scores
   n_Y03 -.-> n_t_youtube_sources
@@ -71,12 +67,12 @@ flowchart LR
   n_C04 -.-> n_t_setlist_items
   n_C04 -.-> n_t_scores
   n_R01 --> n_api_없음_로컬_
-  n_R01 -.-> n_t_scores_기기_저장_
+  n_R01 -.-> n_t_scores
   n_K01 --> n_api_없음_로컬_
-  n_K01 -.-> n_t_scores_기기_저장_
+  n_K01 -.-> n_t_scores
   n_E01 --> n_api_없음_로컬_
   n_E01 --> n_api_로그인_시_동기화
   n_E01 -.-> n_t_scores
   n_E02 --> n_api_없음_로컬_
-  n_E02 -.-> n_t_scores_읽기_
+  n_E02 -.-> n_t_scores
   n_A01 --> n_api_미정

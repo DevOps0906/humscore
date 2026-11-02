@@ -1,19 +1,17 @@
 {
  "version": "1",
- "generated": "2026-11-02T03:34:11+00:00",
+ "generated": "2026-11-02T04:58:59+00:00",
  "docs": "docs",
  "tokens": "기본 시작 토큰(프로젝트 토큰 없음)",
  "sources": {
-  "docs/03_SCREENS_UX.md": "a23cb2e226c0",
-  "docs/05_DATA_MODEL.md": "752fea842f84",
-  "docs/specs/task-002-perform-boost.md": "816281386a73"
+  "docs/03_SCREENS_UX.md": "ab933a3baa82",
+  "docs/05_DATA_MODEL.md": "3d063278aa54",
+  "docs/specs/task-002-perform-boost.md": "cd9d0f4028b3"
  },
  "changed": [
   "E02"
  ],
- "removed": [
-  "perform(보강)"
- ],
+ "removed": [],
  "screens": {
   "L01": {
    "id": "L01",
@@ -148,7 +146,7 @@
     "임시 저장(긴 폼)"
    ],
    "states_missing": [],
-   "hash": "b2e7cca0ad87",
+   "hash": "ad826af2c79c",
    "wireframe": "design/wireframes/Y01.html"
   },
   "Y02": {
@@ -202,9 +200,7 @@
      ]
     }
    ],
-   "data": [
-    "— (오디오 저장 안 함)"
-   ],
+   "data": [],
    "api": [
     "미정"
    ],
@@ -223,7 +219,7 @@
     "중간 저장·이어하기"
    ],
    "states_missing": [],
-   "hash": "14d3216dc2c3",
+   "hash": "de2d114f18f9",
    "wireframe": "design/wireframes/Y02.html"
   },
   "Y03": {
@@ -308,7 +304,7 @@
     "활동·변경 이력"
    ],
    "states_missing": [],
-   "hash": "bf30bab7d896",
+   "hash": "48c95567daaf",
    "wireframe": "design/wireframes/Y03.html"
   },
   "P01": {
@@ -386,7 +382,7 @@
     "활동·변경 이력"
    ],
    "states_missing": [],
-   "hash": "63b013f22b59",
+   "hash": "b948d4842dd3",
    "wireframe": "design/wireframes/P01.html"
   },
   "S01": {
@@ -456,7 +452,7 @@
     "활동·변경 이력"
    ],
    "states_missing": [],
-   "hash": "4cde4ca8caab",
+   "hash": "c302d71e536c",
    "wireframe": "design/wireframes/S01.html"
   },
   "S02": {
@@ -518,6 +514,13 @@
      "items": [
       "공유 끄기"
      ]
+    },
+    {
+     "type": "modal",
+     "label": "공유 끄기 확인",
+     "items": [
+      "공유 끄기 확인"
+     ]
     }
    ],
    "data": [
@@ -536,11 +539,9 @@
    "must_missing": [
     "구역(탭·사이드 메뉴)"
    ],
-   "should_missing": [
-    "위험 작업 구역(삭제·탈퇴) 분리·확인"
-   ],
+   "should_missing": [],
    "states_missing": [],
-   "hash": "0710de935092",
+   "hash": "47b92ee44244",
    "wireframe": "design/wireframes/S02.html"
   },
   "B01": {
@@ -626,7 +627,7 @@
     "저장된 보기·열 설정"
    ],
    "states_missing": [],
-   "hash": "dfcc34157d1d",
+   "hash": "89988a2ed4ee",
    "wireframe": "design/wireframes/B01.html"
   },
   "PR01": {
@@ -867,7 +868,7 @@
     "임시 저장(긴 폼)"
    ],
    "states_missing": [],
-   "hash": "5e7fd49b5d90",
+   "hash": "58bfbc987ee7",
    "wireframe": "design/wireframes/C02.html"
   },
   "C03": {
@@ -957,7 +958,7 @@
     "활동·변경 이력"
    ],
    "states_missing": [],
-   "hash": "38d759ee3340",
+   "hash": "a3b9916379d4",
    "wireframe": "design/wireframes/C03.html"
   },
   "C04": {
@@ -1036,7 +1037,7 @@
     "활동·변경 이력"
    ],
    "states_missing": [],
-   "hash": "e7e255fde35b",
+   "hash": "92868ac57805",
    "wireframe": "design/wireframes/C04.html"
   },
   "R01": {
@@ -1091,7 +1092,7 @@
     }
    ],
    "data": [
-    "scores(기기 저장)"
+    "scores"
    ],
    "api": [
     "없음(로컬)"
@@ -1108,7 +1109,7 @@
     "임시 저장(긴 폼)"
    ],
    "states_missing": [],
-   "hash": "14fba6e8e15d",
+   "hash": "bc333b4e235d",
    "wireframe": "design/wireframes/R01.html"
   },
   "K01": {
@@ -1162,7 +1163,7 @@
     }
    ],
    "data": [
-    "scores(기기 저장)"
+    "scores"
    ],
    "api": [
     "없음(로컬)"
@@ -1180,7 +1181,7 @@
     "임시 저장(긴 폼)"
    ],
    "states_missing": [],
-   "hash": "904c4466667c",
+   "hash": "c73ab076ac15",
    "wireframe": "design/wireframes/K01.html"
   },
   "E01": {
@@ -1290,7 +1291,7 @@
     "활동·변경 이력"
    ],
    "states_missing": [],
-   "hash": "cc4d7135a102",
+   "hash": "e216f231e7aa",
    "wireframe": "design/wireframes/E01.html"
   },
   "E02": {
@@ -1363,7 +1364,7 @@
     }
    ],
    "data": [
-    "scores(읽기)"
+    "scores"
    ],
    "api": [
     "없음(로컬)"
@@ -1384,7 +1385,7 @@
     "활동·변경 이력"
    ],
    "states_missing": [],
-   "hash": "d495f74fcb77",
+   "hash": "8dbf74ddcff3",
    "wireframe": "design/wireframes/E02.html"
   },
   "W01": {
@@ -1662,6 +1663,39 @@
  },
  "apis": {},
  "tables": {
+  "scores": {
+   "name": "scores",
+   "row": {
+    "테이블": "scores",
+    "상태": "구현",
+    "목적": "악보(`Score`) 저장·동기화",
+    "RLS 기준": "소유자 `user_id",
+    "비고": "deleted_at` 추가됨(`20261019212458`). 기기 저장분은 로컬이며 로그인 시 동기화"
+   },
+   "source": "docs/05_DATA_MODEL.md"
+  },
+  "transcription_jobs": {
+   "name": "transcription_jobs",
+   "row": {
+    "테이블": "transcription_jobs",
+    "상태": "구현",
+    "목적": "변환 작업 기록",
+    "RLS 기준": "소유자 `user_id`, insert는 `status='queued'`만",
+    "비고": "20261019211413"
+   },
+   "source": "docs/05_DATA_MODEL.md"
+  },
+  "folders": {
+   "name": "folders",
+   "row": {
+    "테이블": "folders",
+    "상태": "계획",
+    "목적": "악보 폴더",
+    "RLS 기준": "소유자",
+    "비고": "아래 `## folders"
+   },
+   "source": "docs/05_DATA_MODEL.md"
+  },
   "tags": {
    "name": "tags",
    "row": {
@@ -1677,6 +1711,28 @@
     "테이블": "score_tags",
     "컬럼": "score_id FK scores, tag_id FK tags, PK(score_id, tag_id)",
     "비고": "인덱스 tag_id"
+   },
+   "source": "docs/05_DATA_MODEL.md"
+  },
+  "share_links": {
+   "name": "share_links",
+   "row": {
+    "테이블": "share_links",
+    "상태": "계획",
+    "목적": "공유 링크(해시 토큰)",
+    "RLS 기준": "소유자 `owner_id`, 익명은 함수로만",
+    "비고": "아래 `## share_links"
+   },
+   "source": "docs/05_DATA_MODEL.md"
+  },
+  "youtube_sources": {
+   "name": "youtube_sources",
+   "row": {
+    "테이블": "youtube_sources",
+    "상태": "계획",
+    "목적": "유튜브 출처 URL·제목",
+    "RLS 기준": "소유자",
+    "비고": "아래 `## youtube_sources"
    },
    "source": "docs/05_DATA_MODEL.md"
   },
@@ -1706,11 +1762,6 @@
    "유튜브 링크 입력 권장: 임시 저장(긴 폼)"
   ],
   [
-   "🟡",
-   "Y01",
-   "데이터 'youtube_sources' — 05_DATA_MODEL 표에 없음"
-  ],
-  [
    "🔴",
    "Y02",
    "탭 캡처 안내·진행(단계 진행(온보딩·마법사)) 필수 빠짐: 단계별 입력"
@@ -1722,23 +1773,8 @@
   ],
   [
    "🟡",
-   "Y02",
-   "데이터 '— (오디오 저장 안 함)' — 05_DATA_MODEL 표에 없음"
-  ],
-  [
-   "🟡",
    "Y03",
    "결과 악보 권장: 관련 항목 탭, 활동·변경 이력"
-  ],
-  [
-   "🟡",
-   "Y03",
-   "데이터 'scores' — 05_DATA_MODEL 표에 없음"
-  ],
-  [
-   "🟡",
-   "Y03",
-   "데이터 'youtube_sources' — 05_DATA_MODEL 표에 없음"
   ],
   [
    "🟡",
@@ -1747,23 +1783,8 @@
   ],
   [
    "🟡",
-   "P01",
-   "데이터 'scores' — 05_DATA_MODEL 표에 없음"
-  ],
-  [
-   "🟡",
    "S01",
    "공유 악보 보기 권장: 관련 항목 탭, 활동·변경 이력"
-  ],
-  [
-   "🟡",
-   "S01",
-   "데이터 'share_links' — 05_DATA_MODEL 표에 없음"
-  ],
-  [
-   "🟡",
-   "S01",
-   "데이터 'scores' — 05_DATA_MODEL 표에 없음"
   ],
   [
    "🔴",
@@ -1772,28 +1793,8 @@
   ],
   [
    "🟡",
-   "S02",
-   "공유 설정 권장: 위험 작업 구역(삭제·탈퇴) 분리·확인"
-  ],
-  [
-   "🟡",
-   "S02",
-   "데이터 'share_links' — 05_DATA_MODEL 표에 없음"
-  ],
-  [
-   "🟡",
    "B01",
    "내 악보 권장: 일괄 작업(선택·삭제·내보내기), 저장된 보기·열 설정"
-  ],
-  [
-   "🟡",
-   "B01",
-   "데이터 'scores' — 05_DATA_MODEL 표에 없음"
-  ],
-  [
-   "🟡",
-   "B01",
-   "데이터 'folders' — 05_DATA_MODEL 표에 없음"
   ],
   [
    "🟡",
@@ -1812,18 +1813,8 @@
   ],
   [
    "🟡",
-   "C02",
-   "데이터 'scores' — 05_DATA_MODEL 표에 없음"
-  ],
-  [
-   "🟡",
    "C03",
    "콘티 보기·공유 권장: 관련 항목 탭, 활동·변경 이력"
-  ],
-  [
-   "🟡",
-   "C03",
-   "데이터 'share_links' — 05_DATA_MODEL 표에 없음"
   ],
   [
    "🟡",
@@ -1832,18 +1823,8 @@
   ],
   [
    "🟡",
-   "C04",
-   "데이터 'scores' — 05_DATA_MODEL 표에 없음"
-  ],
-  [
-   "🟡",
    "R01",
    "녹음 권장: 임시 저장(긴 폼)"
-  ],
-  [
-   "🟡",
-   "R01",
-   "데이터 'scores(기기 저장)' — 05_DATA_MODEL 표에 없음"
   ],
   [
    "🟡",
@@ -1852,18 +1833,8 @@
   ],
   [
    "🟡",
-   "K01",
-   "데이터 'scores(기기 저장)' — 05_DATA_MODEL 표에 없음"
-  ],
-  [
-   "🟡",
    "E01",
    "악보 상세·편집 권장: 관련 항목 탭, 활동·변경 이력"
-  ],
-  [
-   "🟡",
-   "E01",
-   "데이터 'scores' — 05_DATA_MODEL 표에 없음"
   ],
   [
    "🔴",
@@ -1874,11 +1845,6 @@
    "🟡",
    "E02",
    "공연 모드 + 연습 바 권장: 관련 항목 탭, 활동·변경 이력"
-  ],
-  [
-   "🟡",
-   "E02",
-   "데이터 'scores(읽기)' — 05_DATA_MODEL 표에 없음"
   ],
   [
    "ℹ️",
