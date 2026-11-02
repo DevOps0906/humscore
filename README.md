@@ -89,6 +89,67 @@ native-shell/                 # 앱 오프라인 안내 페이지
 | MusicXML · MIDI(9개 악기) · PDF 내보내기 | 음성 명령 ("G키로 바꿔줘") |
 | 공연 모드 (태블릿·페달) | 팀 공유, 결제·크레딧 |
 
+## 진행 현황 (2026-11-02 기준)
+
+웹 MVP(허밍 → 악보 → 편집·재생·내보내기·동기화)는 동작하고, 읽기 전용 공유 링크까지 main에 들어갔습니다. 앱 출시는 실기기 확인(task-005)이 남아 있습니다.
+
+| 영역 | 현재 상태 |
+|---|---|
+| 허밍·건반 입력 → 악보 | 구현 · 빠른 패시지 인식 개선(task-008)은 실기기 수치 조정 대기 |
+| 편집(셈여림·도돌이표·가사)·전조·내보내기(PDF·MIDI·MusicXML) | 구현 |
+| 재생·연습(속도·구간 반복)·따라 치기 | 구현 · 판정 임계값은 실기기 실측 후 조정(task-016) |
+| 클라우드 동기화(Supabase RLS·LWW) | 구현 · 통합 검증 완료(task-012) |
+| 읽기 전용 공유 링크(`/s/[token]`) | 구현(task-019) · **운영 DB 미적용** — 저장소 Secrets 등록 후 DB migrate 실행 필요 |
+| 음원 파일 → 음표(Basic Pitch) | 스파이크 2단계 완료 · 실녹음 판정 대기(task-015, 보류) |
+| 앱(iOS·Android) | Capacitor 원격 로드 · 실기기 체크리스트 미수행 |
+
+제한: 로그인은 체험용 자동 로그인(`NEXT_PUBLIC_AUTH_MOCK`)이 기본입니다. 운영 DB 마이그레이션 워크플로는 `SUPABASE_ACCESS_TOKEN`·`SUPABASE_DB_PASSWORD` Secrets가 없어 아직 한 번도 적용되지 않았습니다.
+
+### 작업 진행률
+
+근거: [`tasks/README.md`](tasks/README.md) 작업 20개의 상태(완료 개수 / 전체, 가중치 없음).
+
+| 웨이브 | 완료 / 전체 | 남은 작업 |
+|---|---|---|
+| W0 준비 | 1 / 1 | — |
+| W1 기본 기능·정리 | 7 / 8 | task-005 실기기 체크리스트(사용자) |
+| W2 핵심 기능 | 6 / 8 | task-014 실기기 상수 조정, task-016 실기기 결과 반영 |
+| W3 음원 변환 | 0 / 3 | task-004·015(실녹음 판정 대기), task-011(선행 대기) |
+| **합계** | **14 / 20 (70%)** | |
+
+### 구현된 주요 항목
+- [x] 허밍·건반 입력, 조성·코드 추정, 원클릭 전조
+- [x] 셈여림·헤어핀(겹침 방지)·도돌이표·가사(기기 안 음성 인식)
+- [x] PDF(앱 포함)·MIDI·MusicXML 내보내기
+- [x] 공연 모드 연습 재생(속도·구간 반복·현재 음 커서), 따라 치기
+- [x] 클라우드 동기화와 RLS 통합 검증
+- [x] 랜딩·내 악보 재디자인
+- [x] 읽기 전용 공유 링크(토큰 해시 저장, 삭제 시 자동 회수)
+
+### 다음 개발 단계
+- [ ] 운영 DB 마이그레이션 적용(Secrets 등록 → DB migrate 수동 실행)
+- [ ] 실기기 체크리스트(아래) → 판정·카운트인 상수 조정(task-016)
+- [ ] 찬양 콘티(세트리스트) — 공유 링크 재사용
+- [ ] 음원 파일 → 음표: 실녹음 5~10곡으로 판정(task-015)
+- [ ] 내 악보 폴더·태그, 가격 안내·Pro 결제, 앱 스토어 출시
+
+## 콘텐츠 바로가기
+
+| 콘텐츠 | 화면 경로 | 기획·명세 문서 | 구현 코드 |
+|---|---|---|---|
+| 랜딩 | `/` | [03_SCREENS_UX](docs/03_SCREENS_UX.md) L01 | [`src/app/(marketing)/page.tsx`](<src/app/(marketing)/page.tsx>) |
+| 녹음(허밍) | `/record` | [03_SCREENS_UX](docs/03_SCREENS_UX.md) R01 | [`src/app/(app)/record/`](<src/app/(app)/record/>) |
+| 건반 입력 | `/keys` | [03_SCREENS_UX](docs/03_SCREENS_UX.md) K01 | [`src/app/(app)/keys/`](<src/app/(app)/keys/>) |
+| 내 악보 | `/library` | [03_SCREENS_UX](docs/03_SCREENS_UX.md) B01 | [`src/app/(app)/library/`](<src/app/(app)/library/>) |
+| 악보 상세·편집 | `/scores/[id]` | [03_SCREENS_UX](docs/03_SCREENS_UX.md) E01 | [`src/app/(app)/scores/[id]/`](<src/app/(app)/scores/[id]/>) |
+| 공연 모드·연습 | `/scores/[id]/perform` | [task-002 명세](docs/specs/task-002-perform-boost.md) | [`src/app/(app)/scores/[id]/perform/`](<src/app/(app)/scores/[id]/perform/>) |
+| 따라 치기 | `/scores/[id]/perform` | [task-010 명세](docs/specs/task-010-follow-along.md) | [`src/lib/music/follow.ts`](src/lib/music/follow.ts) |
+| 공유 설정 | `/scores/[id]/share` | [task-019 명세](docs/specs/task-019-share-link.md) · [04_API](docs/04_API.md) | [`src/app/(app)/scores/[id]/share/`](<src/app/(app)/scores/[id]/share/>) |
+| 공유 악보 보기 | `/s/[token]` | [task-019 명세](docs/specs/task-019-share-link.md) | [`src/app/s/[token]/`](<src/app/s/[token]/>) |
+| 음원 → 음표(스파이크) | — | [task-004 명세](docs/specs/task-004-audio-transcription.md) · [2단계 보고](docs/specs/task-004-spike2-report.md) | 브랜치 `spike/task-004` |
+| 기획 문서 | — | [PRD](docs/01_PRD.md) · [데이터 모델](docs/05_DATA_MODEL.md) · [벤치마크](docs/06_BENCHMARK.md) · [경쟁 분석](docs/07_COMPETITORS.md) · [ADR 0001](docs/adr/0001-youtube-tab-capture.md) | — |
+| 작업 목록 | — | [tasks/README.md](tasks/README.md) · [tasks/NOW.md](tasks/NOW.md) | — |
+
 ## 실기기 테스트 체크리스트 (1주차 필수)
 
 - [ ] iPhone: 첫 녹음 시 마이크 권한 팝업 → 허용 후 음정 표시
