@@ -295,6 +295,10 @@ export function ScoreClient({ id }: { id: string }) {
                     dynamic={dynamicHere?.kind ?? null}
                     onDynamic={(k) => {
                       const next = k === null ? removeDynamic(score, curNote.startBeat) : setDynamic(score, curNote.startBeat, k);
+                      if (next === score) {
+                        toast.error("크레셴도·디미누엔도 구간 안에는 다른 셈여림을 넣을 수 없어요"); // setDynamic 이 겹침을 거부하면 원본 그대로 반환
+                        return;
+                      }
                       update({ dynamics: next.dynamics }); // 비면 undefined 로 덮어써서 키를 지움
                     }}
                     measureNumber={curMeasure + 1}
