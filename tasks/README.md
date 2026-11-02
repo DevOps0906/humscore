@@ -17,6 +17,10 @@
 | task-012 | 동기화 통합 검증 — 로컬 Supabase에서 RLS·LWW 트리거·2000개 제한·타인 id upsert + 실제 로그인 e2e(Mailpit OTP, 로컬 URL 가드, OTP 발송 한도 조정) | W2 | task-003 | 높음 | challenger → tester → reviewer(security) | 완료 |
 | task-013 | 랜딩·내 악보 재디자인 반영 (시안 `docs/design/redesign-{landing,library}.html`, 비회원 기기 저장 배너·최근 수정 3개·검색·정렬·상태 4종, 태블릿 히어로 세로; 폴더·태그·복구 제외) | W2 | — | 보통 | codex-designer → designer → builder → codex-reviewer(design·code) | 완료 |
 | task-014 | 악보 편집 '가사 등록'(기기 안 음성인식만, 음표별 lyric·MusicXML) · '음원 등록'(오디오 파일 업로드 + 악기 마이크 목소리 필터) | W2 | — | 보통 | music-logic-coder → builder → codex-reviewer(code) | 진행 |
+| task-015 | task-004 실녹음 벤치 판정 — 사용자 음원 5~10곡(+정답 .mid)을 `spike/task-004` 브랜치 `spike/audio/`에 넣고 audio-bench 실행 → go/no-go, go면 본 구현 계획(challenger) | W3 | 사용자 음원 | 높음 | 팀장 → challenger | 대기(음원) |
+| task-016 | 실기기 결과 반영 — task-005 체크리스트 결과로 카운트인 지연·따라 치기 임계값(FOLLOW_*·ONSET_*)·VOICE_* 상수 조정 + 회귀 테스트 | W2 | task-005 | 보통 | music-logic-coder → builder → reviewer(code) | 대기 |
+| task-017 | 화면 사양 🟡 정리 — 05_DATA_MODEL 표와 화면 표 데이터 칸 이름 맞추기(scores·share_links·youtube_sources·folders), 권장 구조는 반영 또는 비고에 사유 | W1 | — | 낮음 | planner → reviewer(doc) | 완료 |
+| task-018 | 랜딩 CSS 남은 px 정리 — `landing.module.css` 아이콘·그림자·애니메이션 px를 --spacing 배수·--lp-* 변수로, 화면 변화 없음 | W1 | — | 낮음 | builder → reviewer(design) | 완료 |
 
 상태: 대기 / 진행 / 완료 / 보류
 
