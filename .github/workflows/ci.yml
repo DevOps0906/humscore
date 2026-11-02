@@ -27,6 +27,7 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npx eslint .
+      - run: npx next typegen # PageProps·LayoutProps 전역 타입(.next/types) 생성 — 없으면 tsc 실패
       - run: npx tsc --noEmit
       - run: npm test
       # Supabase 값이 없으면 앱은 로컬 저장 모드로 빌드된다 (.env.example 참고)
