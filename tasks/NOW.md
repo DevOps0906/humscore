@@ -1,11 +1,11 @@
 # NOW — 재진입 스냅샷 (30줄 이내, 매 작업 끝에 덮어쓴다)
 
 - 갱신: 2026-11-02
-- 현재 작업: task-002 완료(연습 재생). 로컬 OTP e2e는 포트 충돌(Arch-Studio Supabase)로 미실행·미커밋(e2e/cloud-sync.spec.ts, supabase/config.toml·templates)
+- 현재 작업: task-004 스파이크 2단계 기기 없는 측정 완료(docs/specs/task-004-spike2-report.md). 스크립트는 worktree .claude/worktrees/agent-a6378065fcaea4295/spike
 - 마지막으로 한 일: 상시 로드 토큰 절감(70ead7c), plan2spec → design/spec.json·다이어그램 6개, 03_SCREENS_UX에 기존 화면 R01·K01·E01·E02·W01·A01 추가, 헤어핀 겹침 막기(edit.ts), 로컬 OTP 템플릿·email_sent 1000, .gitignore design/ 예외
-- 다음 한 걸음: 실기기 실측(task-005 + 010-d + 008 + 014) · task-004 스파이크 결정 · Docker 있는 환경에서 로컬 OTP e2e(supabase start → npm run test:e2e e2e/cloud-sync.spec.ts)
+- 다음 한 걸음: 사용자 실녹음 → spike/audio/ 에 넣고 audio-bench 실행(보고서 3장) · 결정 대기: wasm Fill 커널 우회 vs 버전 변경, COOP/COEP(wasm 스레드) · 실기기 실측(task-005·014)
 - 미확인: rAF 누수 수정은 코드로만(브라우저 실측 필요). OSMD 시스템 경계 단위(task-001)
-- 열린 결정: task-002 범위. task-004 스파이크 승인·보컬 정책(가/나)·실녹음 5~10곡·보류 여부(challenger 축소 권고, docs/specs/task-004-audio-transcription.md)
+- 열린 결정: 없음(2026-11-02 task-004 진행·보컬 (나)·ISC·BSD-2 허용 결정). 대기: 사용자 실녹음 5~10곡(+가능하면 정답 .mid), iOS·Android 실측
 - 주의: 영역은 `.claude/rules/delegation.md` ①표 + `npm run agents:check -- <팀원>`. 푸시는 사용자 지시가 있을 때만. `.serena/`는 커밋하지 않음.
 - SDLC 단계: 07 QA 완료 → 실기기 확인(가사 음성 인식·목소리 필터 상수)
 - 담당 모델/역할: builder·tester·music-logic-coder(Opus) → codex-reviewer(sol). 지시: 위임은 Opus 기본, astra 금지
