@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { AudioLines, Download, FileMusic, Play, Printer, Square, Trash2, Type } from "lucide-react";
+import { AudioLines, Download, FileMusic, Play, Printer, Share2, Square, Trash2, Type } from "lucide-react";
 import { toast } from "sonner";
 import { AudioImportDialog } from "@/components/audio-import-dialog";
 import { ConfirmDialog } from "@/components/confirm-dialog";
@@ -365,6 +365,9 @@ export function ScoreClient({ id }: { id: string }) {
           >
             <FileMusic aria-hidden /> MusicXML
           </Button>
+          <Link href={`/scores/${score.id}/share`} className="inline-flex h-11 items-center gap-1.5 rounded-full border border-border px-4 text-sm font-medium outline-none hover:bg-muted focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/60 lg:h-9">
+            <Share2 className="size-4" aria-hidden /> 공유
+          </Link>
           <div className="flex items-center gap-1 rounded-full border border-input pl-3">
             <select
               value={instrument}

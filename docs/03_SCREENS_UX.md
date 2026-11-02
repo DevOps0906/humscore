@@ -12,7 +12,7 @@
 | Y02 | 탭 캡처 안내·진행 | 마법사 | /import/youtube/capture | 새 탭 재생→탭 오디오 공유→변환 | header, steps:링크 확인·새 탭에서 재생·탭 공유 선택·변환 중, text:단계별 안내, button:이전, button:다음, button:취소 | — | 미정 | 로그인 | Y03, Y01 |
 | Y03 | 결과 악보 | 상세 | /import/youtube/result | 변환 결과 확인 후 편집 | header, breadcrumb, text:제목·출처 링크, card:악보 미리보기, text:정확도 한계 안내, button:편집하기, button:저장, button:다시 변환 | scores, youtube_sources | 미정 | 로그인 | E01, Y01 |
 | P01 | 악보 연습 바 | 상세 | /scores/[id] (하단 바) | 구간 반복·속도로 연습 | header, card:악보, tabs:재생·연습, form:구간 시작·구간 끝, form:속도 50~100%, button:재생, button:반복 켜기 | scores | 미정 | 로그인 | E02 |
-| S01 | 공유 악보 보기 | 상세 | /s/[token] | 읽기 전용 악보 보기·재생 | header, text:제목·만든이 표시 여부, card:악보, button:재생, link:HumScore로 만들어 보기, footer | share_links, scores | 미정 | 링크 소지자 | L01 |
+| S01 | 공유 악보 보기 | 상세 | /s/[token] | 읽기 전용 악보 보기·재생 | header, text:제목(만든이 비노출), card:악보, button:재생, link:HumScore로 만들어 보기, footer | share_links, scores | 미정 | 링크 소지자 | L01 |
 | S02 | 공유 설정 | 설정 | /scores/[id]/share | 링크 만들기·끄기 | header, breadcrumb, form:공유 켜기*·만료일, text:공유 링크, link:취소, button:저장, button:링크 복사, button:공유 끄기, modal:공유 끄기 확인 | share_links | 미정 | 로그인(소유자) | E01 |
 | B01 | 내 악보 | 목록 | /library | 악보 찾고 정리 | header, search, filter:폴더·태그, sort:최근·제목·수정일, list:악보 카드, pagination, button:새 폴더, button:악보 만들기 | scores, folders, tags | 미정 | 누구나(기기 저장) · 로그인 시 동기화 | E01, R01 |
 | PR01 | 요금 안내(Pro) | 랜딩 | /pricing | 무료·Pro 차이 확인 | header, hero:허밍은 무료, pricing:무료·Pro(가격 미확인), faq, button:사전 알림 받기, footer | — | 미정 | 누구나 | L01, R01 |
@@ -35,7 +35,7 @@
 | Y02 | 탭 공유 전 단계 안내 | 변환 중 진행 표시(기기 안) | 미지원 브라우저·공유 취소·탭 오디오 없음·무음 감지 안내 | 변환 완료 → Y03 |
 | Y03 | 인식된 음 없음 + 다시 변환 | 악보 그리는 중 | 저장 실패 다시 시도 | 저장됨 → 편집 |
 | P01 | 악보 음표 없음 시 비활성 | 오디오 준비 중 | 오디오 시작 실패 안내 | 구간 반복 중 표시 |
-| S01 | — | 악보 스켈레톤 | 링크 만료·해제·없음(동일 안내, 존재 여부 비노출) | — |
+| S01 | — | 악보 스켈레톤 | 링크 만료·해제·삭제·없음·형식 오류(단일 "열 수 없는 링크", 존재 여부 비노출) | 악보 표시·재생 중(편집 UI 없음) |
 | S02 | 공유 꺼짐 상태 안내 | 링크 생성 중 | 생성 실패 다시 시도 | 저장됨·링크 복사됨 |
 | B01 | 악보 없음 + 허밍 시작 버튼 / 검색 결과 없음 | 목록 스켈레톤 | 다시 시도 | 폴더·태그 저장됨 |
 | PR01 | — | — | — | 사전 알림 등록됨 |

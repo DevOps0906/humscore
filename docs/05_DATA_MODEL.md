@@ -11,7 +11,7 @@
 | folders | 계획 | 악보 폴더 | 소유자 | 아래 `## folders` |
 | tags | 계획 | 악보 태그 | 소유자 | 아래 `## tags · score_tags` |
 | score_tags | 계획 | 악보-태그 연결 | 악보·태그 모두 소유자 | 〃 |
-| share_links | 계획 | 공유 링크(해시 토큰) | 소유자 `owner_id`, 익명은 함수로만 | 아래 `## share_links` |
+| share_links | 구현 중 | 공유 링크(해시 토큰) | 소유자 `owner_id`, 익명은 `get_shared_score` RPC로만 | 아래 `## share_links` |
 | youtube_sources | 계획 | 유튜브 출처 URL·제목 | 소유자 | 아래 `## youtube_sources` |
 | setlists | 계획 | 찬양 콘티 | 소유자 | 아래 `## setlists · setlist_items` |
 | setlist_items | 계획 | 콘티 곡 항목 | 부모 콘티 소유자 | 〃 |
@@ -41,15 +41,17 @@
 | 컬럼 | 타입 | 비고 |
 |---|---|---|
 | id | uuid PK | |
-| score_id | uuid FK scores on delete cascade | 인덱스 |
-| owner_id | uuid FK auth.users | 인덱스 |
-| token_hash | text unique not null | 토큰 원문은 저장 안 함(추측 불가 길이 값, 해시만) |
-| expires_at | timestamptz null | 미설정=무기한 |
+| score_id | uuid not null FK scores on delete cascade | 인덱스. 콘티 때 nullable `setlist_id` 추가 |
+| owner_id | uuid not null FK auth.users | 인덱스 |
+| token_hash | text unique not null | sha256 hex 64자. 원문 미저장(생성·형식은 [명세](specs/task-019-share-link.md) 4장) |
+| expires_at | timestamptz null | 미설정=무기한, 설정 시 최대 1년 |
 | revoked_at | timestamptz null | 공유 끄기 |
 | created_at | timestamptz | |
-- RLS: 소유자(`owner_id = auth.uid()`)만 select·insert·update·delete. insert는 `score_id`가 본인 악보일 때만.
-- 익명 열람: 테이블 직접 select 정책을 열지 않는다. 토큰을 받아 해시 비교 후 악보 `title`·`data`만 반환하는 `security definer` 함수(또는 서버 전용 경로) 한 곳으로 제한 — 만료·해제는 같은 오류로 응답. **팀장 결정 필요**(함수 vs 서버 경로, 공유 토큰 길이, 악보 소유자 표시 여부).
-- 악보 수정은 공유본에 즉시 반영(링크 = 현재 악보 보기). 스냅샷 방식은 미결.
+- 부분 유니크: 악보당 활성 1개(`score_id` where `revoked_at is null`).
+- RLS: 소유자(`owner_id = (select auth.uid())`)만 select·delete. insert는 `score_id`가 본인 미삭제 악보일 때만(`with check`). update는 `revoked_at` 컬럼 권한만. **anon 정책 없음.**
+- 트리거(`security invoker`): 소유자당 활성 200개·만료 ≤ 1년(before insert) / `scores.deleted_at` null→값 시 `revoked_at = now()`(복구해도 꺼진 채).
+- 익명 열람: `get_shared_score` RPC 한 곳(`title`·`data`만, 무효는 모두 빈 결과). 인터페이스는 `04_API.md#공유 링크`. 소유자 표시명 비노출(결정).
+- 악보 수정은 공유본에 즉시 반영(실시간 결정).
 
 ## youtube_sources
 | 컬럼 | 타입 | 비고 |
@@ -62,7 +64,7 @@
 | created_at | timestamptz | |
 - 저장하지 않음: 오디오, 썸네일, 채널 정보, 영상 길이 외 메타([ADR 0001](adr/0001-youtube-tab-capture.md)).
 - RLS: 소유자만 select·insert·update·delete. insert 시 score_id가 본인 악보인지 `with check` 확인.
-- 공유 링크로 악보를 볼 때 출처 URL 노출 여부는 **팀장 결정 필요**(기본: 비노출).
+- 공유 링크로 악보를 볼 때 출처 URL은 비노출(task-019 명세 4장).
 
 ## setlists · setlist_items (찬양 콘티)
 | 테이블 | 컬럼 | 비고 |
@@ -73,7 +75,7 @@
 - RLS setlists: 소유자(`user_id = auth.uid()`)만 select·insert·update·delete.
 - RLS setlist_items: 부모 setlist가 본인 소유(`exists`)이고 `score_id`가 본인 악보일 때만 select·insert·update·delete(`with check` 포함).
 - `Score` 타입 변경 없음. 삭제된 악보는 `score_id` FK `on delete restrict` 또는 `set null`(표시용) — **팀장 결정 필요**.
-- 공유: `share_links` 재사용 권장 — `target_type text check in ('score','setlist')`, `target_id uuid` 추가(기존 `score_id`는 `target_id`로 대체 또는 병행). 소유자 RLS 동일, insert 시 대상이 본인 소유인지 `with check`. 익명 열람 함수는 대상 유형별로 곡 목록(제목·키·템포·진행·악보 data)만 반환. 별도 테이블은 FK 무결성은 쉬우나 정책·함수 중복 → **팀장 결정 필요**(재사용 vs 분리).
+- 공유: `share_links`에 nullable `setlist_id` FK 추가 + "`score_id`·`setlist_id` 중 정확히 하나" check(결정: task-019 명세 12장 #2, 새 마이그레이션). 익명 열람 RPC는 콘티 도입 때 대상별로 곡 목록(제목·키·템포·진행·악보 data)을 반환하도록 확장.
 
 ## 확인 필요
 - `미확인`: 폴더·태그 개수 상한(남용 방지), 공유 링크 조회 횟수 제한.
