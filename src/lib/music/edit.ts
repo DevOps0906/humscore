@@ -114,11 +114,26 @@ export function createBlankScore(opts: { title?: string; bpm?: number; beatsPerM
   };
 }
 
-/** 셈여림 설정: 같은 startBeat 의 기존 기호는 교체. cresc/dim 만 durationBeats(기본 한 마디) 보존. startBeat 오름차순 */
+/**
+ * 셈여림 설정: 같은 startBeat 의 기존 기호는 교체. cresc/dim 만 durationBeats(기본 한 마디) 보존. startBeat 오름차순.
+ * 헤어핀 구간 [시작, 시작+길이) 안쪽에 다른 기호가 겹치게 되면 편집을 거부하고 원본 score 를 그대로 반환한다
+ * (구간 경계에 맞닿는 것은 허용).
+ */
 export function setDynamic(score: Score, startBeat: number, kind: DynamicEvent["kind"], durationBeats?: number): Score {
   const rest = (score.dynamics ?? []).filter((d) => Math.abs(d.startBeat - startBeat) >= EPS).map((d) => ({ ...d }));
   const ev: DynamicEvent = { startBeat, kind };
   if (kind === "cresc" || kind === "dim") ev.durationBeats = durationBeats !== undefined && durationBeats > 0 ? durationBeats : score.beatsPerMeasure;
+  const evEnd = ev.durationBeats !== undefined ? startBeat + ev.durationBeats : startBeat;
+  for (const d of rest) {
+    const dEnd = d.durationBeats !== undefined ? d.startBeat + d.durationBeats : d.startBeat;
+    const dIsHairpin = d.kind === "cresc" || d.kind === "dim";
+    // 기존 헤어핀 안쪽에 새 기호 시작
+    if (dIsHairpin && startBeat > d.startBeat + EPS && startBeat < dEnd - EPS) return score;
+    if (ev.durationBeats !== undefined) {
+      // 새 헤어핀 안쪽에 기존 기호 시작
+      if (d.startBeat > startBeat + EPS && d.startBeat < evEnd - EPS) return score;
+    }
+  }
   rest.push(ev);
   rest.sort((a, b) => a.startBeat - b.startBeat);
   return { ...score, dynamics: rest };
