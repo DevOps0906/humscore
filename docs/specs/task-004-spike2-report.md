@@ -1,4 +1,4 @@
-> 원본: 스파이크 2단계 worktree(`.claude/worktrees/agent-a6378065fcaea4295`, 브랜치 `worktree-agent-a6378065fcaea4295`)의 `spike/`. 스크립트·의존성은 그 worktree에만 있다(앱 의존성 변경 없음).
+> 원본: 스파이크 2단계 worktree(`.claude/worktrees/agent-a6378065fcaea4295`, 브랜치 `spike/task-004`(원격 푸시됨, main 미병합))의 `spike/`. 스크립트·의존성은 그 worktree에만 있다(앱 의존성 변경 없음).
 
 # task-004 스파이크 2단계(기기 없이 가능한 측정) 보고
 
