@@ -1,0 +1,82 @@
+flowchart LR
+  subgraph SC["화면"]
+    n_L01["L01 랜딩 개편"]
+    n_Y01["Y01 유튜브 링크 입력"]
+    n_Y02["Y02 탭 캡처 안내·진행"]
+    n_Y03["Y03 결과 악보"]
+    n_P01["P01 악보 연습 바"]
+    n_S01["S01 공유 악보 보기"]
+    n_S02["S02 공유 설정"]
+    n_B01["B01 내 악보"]
+    n_PR01["PR01 요금 안내(Pro)"]
+    n_C01["C01 콘티 목록"]
+    n_C02["C02 콘티 편집"]
+    n_C03["C03 콘티 보기·공유"]
+    n_C04["C04 콘티 공연 모드"]
+    n_R01["R01 녹음"]
+    n_K01["K01 건반 입력"]
+    n_E01["E01 악보 상세·편집"]
+    n_E02["E02 공연 모드 + 연습 바"]
+    n_W01["W01 시작 안내"]
+    n_A01["A01 로그인"]
+  end
+  subgraph AP["API"]
+    n_api_로그인_시_동기화["로그인 시 동기화"]
+    n_api_미정["미정"]
+    n_api_없음_로컬_["없음(로컬)"]
+  end
+  subgraph DB["데이터"]
+    n_t_folders[("folders")]
+    n_t_scores[("scores")]
+    n_t_scores_기기_저장_[("scores(기기 저장)")]
+    n_t_scores_읽기_[("scores(읽기)")]
+    n_t_setlist_items[("setlist_items")]
+    n_t_setlists[("setlists")]
+    n_t_share_links[("share_links")]
+    n_t_tags[("tags")]
+    n_t_youtube_sources[("youtube_sources")]
+    n_t____오디오_저장_안_함_[("— (오디오 저장 안 함)")]
+  end
+  n_L01 --> n_api_미정
+  n_Y01 --> n_api_미정
+  n_Y01 -.-> n_t_youtube_sources
+  n_Y02 --> n_api_미정
+  n_Y02 -.-> n_t____오디오_저장_안_함_
+  n_Y03 --> n_api_미정
+  n_Y03 -.-> n_t_scores
+  n_Y03 -.-> n_t_youtube_sources
+  n_P01 --> n_api_미정
+  n_P01 -.-> n_t_scores
+  n_S01 --> n_api_미정
+  n_S01 -.-> n_t_share_links
+  n_S01 -.-> n_t_scores
+  n_S02 --> n_api_미정
+  n_S02 -.-> n_t_share_links
+  n_B01 --> n_api_미정
+  n_B01 -.-> n_t_scores
+  n_B01 -.-> n_t_folders
+  n_B01 -.-> n_t_tags
+  n_PR01 --> n_api_미정
+  n_C01 --> n_api_미정
+  n_C01 -.-> n_t_setlists
+  n_C02 --> n_api_미정
+  n_C02 -.-> n_t_setlists
+  n_C02 -.-> n_t_setlist_items
+  n_C02 -.-> n_t_scores
+  n_C03 --> n_api_미정
+  n_C03 -.-> n_t_setlists
+  n_C03 -.-> n_t_setlist_items
+  n_C03 -.-> n_t_share_links
+  n_C04 --> n_api_미정
+  n_C04 -.-> n_t_setlist_items
+  n_C04 -.-> n_t_scores
+  n_R01 --> n_api_없음_로컬_
+  n_R01 -.-> n_t_scores_기기_저장_
+  n_K01 --> n_api_없음_로컬_
+  n_K01 -.-> n_t_scores_기기_저장_
+  n_E01 --> n_api_없음_로컬_
+  n_E01 --> n_api_로그인_시_동기화
+  n_E01 -.-> n_t_scores
+  n_E02 --> n_api_없음_로컬_
+  n_E02 -.-> n_t_scores_읽기_
+  n_A01 --> n_api_미정

@@ -1,0 +1,1904 @@
+{
+ "version": "1",
+ "generated": "2026-11-02T03:34:11+00:00",
+ "docs": "docs",
+ "tokens": "기본 시작 토큰(프로젝트 토큰 없음)",
+ "sources": {
+  "docs/03_SCREENS_UX.md": "a23cb2e226c0",
+  "docs/05_DATA_MODEL.md": "752fea842f84",
+  "docs/specs/task-002-perform-boost.md": "816281386a73"
+ },
+ "changed": [
+  "E02"
+ ],
+ "removed": [
+  "perform(보강)"
+ ],
+ "screens": {
+  "L01": {
+   "id": "L01",
+   "name": "랜딩 개편",
+   "type_raw": "랜딩",
+   "route": "/",
+   "purpose": "허밍 시작 유도",
+   "blocks": [
+    {
+     "type": "header",
+     "label": "",
+     "items": []
+    },
+    {
+     "type": "hero",
+     "label": "한 줄 가치+실제 허밍→악보 15초 영상+샘플 악보",
+     "items": [
+      "한 줄 가치+실제 허밍→악보 15초 영상+샘플 악보"
+     ]
+    },
+    {
+     "type": "button",
+     "label": "지금 흥얼거려 보기",
+     "items": [
+      "지금 흥얼거려 보기"
+     ]
+    },
+    {
+     "type": "card",
+     "label": "후기·사용자 수(미확인)",
+     "items": [
+      "후기",
+      "사용자 수(미확인)"
+     ]
+    },
+    {
+     "type": "pricing",
+     "label": "",
+     "items": []
+    },
+    {
+     "type": "faq",
+     "label": "",
+     "items": []
+    },
+    {
+     "type": "footer",
+     "label": "",
+     "items": []
+    }
+   ],
+   "data": [],
+   "api": [
+    "미정"
+   ],
+   "role": "누구나",
+   "next": [
+    "R01",
+    "PR01"
+   ],
+   "states_combined": "",
+   "source": "docs/03_SCREENS_UX.md",
+   "type": "landing",
+   "must_missing": [],
+   "should_missing": [],
+   "states_missing": [],
+   "hash": "4aeb757f612c",
+   "wireframe": "design/wireframes/L01.html"
+  },
+  "Y01": {
+   "id": "Y01",
+   "name": "유튜브 링크 입력",
+   "type_raw": "폼",
+   "route": "/import/youtube",
+   "purpose": "링크 넣고 시작",
+   "blocks": [
+    {
+     "type": "header",
+     "label": "",
+     "items": []
+    },
+    {
+     "type": "breadcrumb",
+     "label": "",
+     "items": []
+    },
+    {
+     "type": "form",
+     "label": "유튜브 링크*",
+     "items": [
+      "유튜브 링크*"
+     ]
+    },
+    {
+     "type": "text",
+     "label": "저작권·기기 안 처리 안내",
+     "items": [
+      "저작권",
+      "기기 안 처리 안내"
+     ]
+    },
+    {
+     "type": "button",
+     "label": "다음",
+     "items": [
+      "다음"
+     ]
+    },
+    {
+     "type": "link",
+     "label": "취소",
+     "items": [
+      "취소"
+     ]
+    }
+   ],
+   "data": [
+    "youtube_sources"
+   ],
+   "api": [
+    "미정"
+   ],
+   "role": "로그인",
+   "next": [
+    "Y02"
+   ],
+   "states_combined": "",
+   "source": "docs/03_SCREENS_UX.md",
+   "type": "form",
+   "must_missing": [],
+   "should_missing": [
+    "임시 저장(긴 폼)"
+   ],
+   "states_missing": [],
+   "hash": "b2e7cca0ad87",
+   "wireframe": "design/wireframes/Y01.html"
+  },
+  "Y02": {
+   "id": "Y02",
+   "name": "탭 캡처 안내·진행",
+   "type_raw": "마법사",
+   "route": "/import/youtube/capture",
+   "purpose": "새 탭 재생→탭 오디오 공유→변환",
+   "blocks": [
+    {
+     "type": "header",
+     "label": "",
+     "items": []
+    },
+    {
+     "type": "steps",
+     "label": "링크 확인·새 탭에서 재생·탭 공유 선택·변환 중",
+     "items": [
+      "링크 확인",
+      "새 탭에서 재생",
+      "탭 공유 선택",
+      "변환 중"
+     ]
+    },
+    {
+     "type": "text",
+     "label": "단계별 안내",
+     "items": [
+      "단계별 안내"
+     ]
+    },
+    {
+     "type": "button",
+     "label": "이전",
+     "items": [
+      "이전"
+     ]
+    },
+    {
+     "type": "button",
+     "label": "다음",
+     "items": [
+      "다음"
+     ]
+    },
+    {
+     "type": "button",
+     "label": "취소",
+     "items": [
+      "취소"
+     ]
+    }
+   ],
+   "data": [
+    "— (오디오 저장 안 함)"
+   ],
+   "api": [
+    "미정"
+   ],
+   "role": "로그인",
+   "next": [
+    "Y03",
+    "Y01"
+   ],
+   "states_combined": "",
+   "source": "docs/03_SCREENS_UX.md",
+   "type": "wizard",
+   "must_missing": [
+    "단계별 입력"
+   ],
+   "should_missing": [
+    "중간 저장·이어하기"
+   ],
+   "states_missing": [],
+   "hash": "14d3216dc2c3",
+   "wireframe": "design/wireframes/Y02.html"
+  },
+  "Y03": {
+   "id": "Y03",
+   "name": "결과 악보",
+   "type_raw": "상세",
+   "route": "/import/youtube/result",
+   "purpose": "변환 결과 확인 후 편집",
+   "blocks": [
+    {
+     "type": "header",
+     "label": "",
+     "items": []
+    },
+    {
+     "type": "breadcrumb",
+     "label": "",
+     "items": []
+    },
+    {
+     "type": "text",
+     "label": "제목·출처 링크",
+     "items": [
+      "제목",
+      "출처 링크"
+     ]
+    },
+    {
+     "type": "card",
+     "label": "악보 미리보기",
+     "items": [
+      "악보 미리보기"
+     ]
+    },
+    {
+     "type": "text",
+     "label": "정확도 한계 안내",
+     "items": [
+      "정확도 한계 안내"
+     ]
+    },
+    {
+     "type": "button",
+     "label": "편집하기",
+     "items": [
+      "편집하기"
+     ]
+    },
+    {
+     "type": "button",
+     "label": "저장",
+     "items": [
+      "저장"
+     ]
+    },
+    {
+     "type": "button",
+     "label": "다시 변환",
+     "items": [
+      "다시 변환"
+     ]
+    }
+   ],
+   "data": [
+    "scores",
+    "youtube_sources"
+   ],
+   "api": [
+    "미정"
+   ],
+   "role": "로그인",
+   "next": [
+    "E01",
+    "Y01"
+   ],
+   "states_combined": "",
+   "source": "docs/03_SCREENS_UX.md",
+   "type": "detail",
+   "must_missing": [],
+   "should_missing": [
+    "관련 항목 탭",
+    "활동·변경 이력"
+   ],
+   "states_missing": [],
+   "hash": "bf30bab7d896",
+   "wireframe": "design/wireframes/Y03.html"
+  },
+  "P01": {
+   "id": "P01",
+   "name": "악보 연습 바",
+   "type_raw": "상세",
+   "route": "/scores/[id] (하단 바)",
+   "purpose": "구간 반복·속도로 연습",
+   "blocks": [
+    {
+     "type": "header",
+     "label": "",
+     "items": []
+    },
+    {
+     "type": "card",
+     "label": "악보",
+     "items": [
+      "악보"
+     ]
+    },
+    {
+     "type": "tabs",
+     "label": "재생·연습",
+     "items": [
+      "재생",
+      "연습"
+     ]
+    },
+    {
+     "type": "form",
+     "label": "구간 시작·구간 끝",
+     "items": [
+      "구간 시작",
+      "구간 끝"
+     ]
+    },
+    {
+     "type": "form",
+     "label": "속도 50~100%",
+     "items": [
+      "속도 50~100%"
+     ]
+    },
+    {
+     "type": "button",
+     "label": "재생",
+     "items": [
+      "재생"
+     ]
+    },
+    {
+     "type": "button",
+     "label": "반복 켜기",
+     "items": [
+      "반복 켜기"
+     ]
+    }
+   ],
+   "data": [
+    "scores"
+   ],
+   "api": [
+    "미정"
+   ],
+   "role": "로그인",
+   "next": [
+    "E02"
+   ],
+   "states_combined": "",
+   "source": "docs/03_SCREENS_UX.md",
+   "type": "detail",
+   "must_missing": [],
+   "should_missing": [
+    "활동·변경 이력"
+   ],
+   "states_missing": [],
+   "hash": "63b013f22b59",
+   "wireframe": "design/wireframes/P01.html"
+  },
+  "S01": {
+   "id": "S01",
+   "name": "공유 악보 보기",
+   "type_raw": "상세",
+   "route": "/s/[token]",
+   "purpose": "읽기 전용 악보 보기·재생",
+   "blocks": [
+    {
+     "type": "header",
+     "label": "",
+     "items": []
+    },
+    {
+     "type": "text",
+     "label": "제목·만든이 표시 여부",
+     "items": [
+      "제목",
+      "만든이 표시 여부"
+     ]
+    },
+    {
+     "type": "card",
+     "label": "악보",
+     "items": [
+      "악보"
+     ]
+    },
+    {
+     "type": "button",
+     "label": "재생",
+     "items": [
+      "재생"
+     ]
+    },
+    {
+     "type": "link",
+     "label": "HumScore로 만들어 보기",
+     "items": [
+      "HumScore로 만들어 보기"
+     ]
+    },
+    {
+     "type": "footer",
+     "label": "",
+     "items": []
+    }
+   ],
+   "data": [
+    "share_links",
+    "scores"
+   ],
+   "api": [
+    "미정"
+   ],
+   "role": "링크 소지자",
+   "next": [
+    "L01"
+   ],
+   "states_combined": "",
+   "source": "docs/03_SCREENS_UX.md",
+   "type": "detail",
+   "must_missing": [],
+   "should_missing": [
+    "관련 항목 탭",
+    "활동·변경 이력"
+   ],
+   "states_missing": [],
+   "hash": "4cde4ca8caab",
+   "wireframe": "design/wireframes/S01.html"
+  },
+  "S02": {
+   "id": "S02",
+   "name": "공유 설정",
+   "type_raw": "설정",
+   "route": "/scores/[id]/share",
+   "purpose": "링크 만들기·끄기",
+   "blocks": [
+    {
+     "type": "header",
+     "label": "",
+     "items": []
+    },
+    {
+     "type": "breadcrumb",
+     "label": "",
+     "items": []
+    },
+    {
+     "type": "form",
+     "label": "공유 켜기*·만료일",
+     "items": [
+      "공유 켜기*",
+      "만료일"
+     ]
+    },
+    {
+     "type": "text",
+     "label": "공유 링크",
+     "items": [
+      "공유 링크"
+     ]
+    },
+    {
+     "type": "link",
+     "label": "취소",
+     "items": [
+      "취소"
+     ]
+    },
+    {
+     "type": "button",
+     "label": "저장",
+     "items": [
+      "저장"
+     ]
+    },
+    {
+     "type": "button",
+     "label": "링크 복사",
+     "items": [
+      "링크 복사"
+     ]
+    },
+    {
+     "type": "button",
+     "label": "공유 끄기",
+     "items": [
+      "공유 끄기"
+     ]
+    }
+   ],
+   "data": [
+    "share_links"
+   ],
+   "api": [
+    "미정"
+   ],
+   "role": "로그인(소유자)",
+   "next": [
+    "E01"
+   ],
+   "states_combined": "",
+   "source": "docs/03_SCREENS_UX.md",
+   "type": "settings",
+   "must_missing": [
+    "구역(탭·사이드 메뉴)"
+   ],
+   "should_missing": [
+    "위험 작업 구역(삭제·탈퇴) 분리·확인"
+   ],
+   "states_missing": [],
+   "hash": "0710de935092",
+   "wireframe": "design/wireframes/S02.html"
+  },
+  "B01": {
+   "id": "B01",
+   "name": "내 악보",
+   "type_raw": "목록",
+   "route": "/library",
+   "purpose": "악보 찾고 정리",
+   "blocks": [
+    {
+     "type": "header",
+     "label": "",
+     "items": []
+    },
+    {
+     "type": "search",
+     "label": "",
+     "items": []
+    },
+    {
+     "type": "filter",
+     "label": "폴더·태그",
+     "items": [
+      "폴더",
+      "태그"
+     ]
+    },
+    {
+     "type": "sort",
+     "label": "최근·제목·수정일",
+     "items": [
+      "최근",
+      "제목",
+      "수정일"
+     ]
+    },
+    {
+     "type": "list",
+     "label": "악보 카드",
+     "items": [
+      "악보 카드"
+     ]
+    },
+    {
+     "type": "pagination",
+     "label": "",
+     "items": []
+    },
+    {
+     "type": "button",
+     "label": "새 폴더",
+     "items": [
+      "새 폴더"
+     ]
+    },
+    {
+     "type": "button",
+     "label": "악보 만들기",
+     "items": [
+      "악보 만들기"
+     ]
+    }
+   ],
+   "data": [
+    "scores",
+    "folders",
+    "tags"
+   ],
+   "api": [
+    "미정"
+   ],
+   "role": "누구나(기기 저장) · 로그인 시 동기화",
+   "next": [
+    "E01",
+    "R01"
+   ],
+   "states_combined": "",
+   "source": "docs/03_SCREENS_UX.md",
+   "type": "list",
+   "must_missing": [],
+   "should_missing": [
+    "일괄 작업(선택·삭제·내보내기)",
+    "저장된 보기·열 설정"
+   ],
+   "states_missing": [],
+   "hash": "dfcc34157d1d",
+   "wireframe": "design/wireframes/B01.html"
+  },
+  "PR01": {
+   "id": "PR01",
+   "name": "요금 안내(Pro)",
+   "type_raw": "랜딩",
+   "route": "/pricing",
+   "purpose": "무료·Pro 차이 확인",
+   "blocks": [
+    {
+     "type": "header",
+     "label": "",
+     "items": []
+    },
+    {
+     "type": "hero",
+     "label": "허밍은 무료",
+     "items": [
+      "허밍은 무료"
+     ]
+    },
+    {
+     "type": "pricing",
+     "label": "무료·Pro(가격 미확인)",
+     "items": [
+      "무료",
+      "Pro(가격 미확인)"
+     ]
+    },
+    {
+     "type": "faq",
+     "label": "",
+     "items": []
+    },
+    {
+     "type": "button",
+     "label": "사전 알림 받기",
+     "items": [
+      "사전 알림 받기"
+     ]
+    },
+    {
+     "type": "footer",
+     "label": "",
+     "items": []
+    }
+   ],
+   "data": [],
+   "api": [
+    "미정"
+   ],
+   "role": "누구나",
+   "next": [
+    "L01",
+    "R01"
+   ],
+   "states_combined": "",
+   "source": "docs/03_SCREENS_UX.md",
+   "type": "landing",
+   "must_missing": [],
+   "should_missing": [
+    "근거(사례·수치·후기 — 실제만)"
+   ],
+   "states_missing": [],
+   "hash": "81b71bc2b95d",
+   "wireframe": "design/wireframes/PR01.html"
+  },
+  "C01": {
+   "id": "C01",
+   "name": "콘티 목록",
+   "type_raw": "목록",
+   "route": "/setlists",
+   "purpose": "찬양 콘티 찾기",
+   "blocks": [
+    {
+     "type": "header",
+     "label": "",
+     "items": []
+    },
+    {
+     "type": "search",
+     "label": "",
+     "items": []
+    },
+    {
+     "type": "filter",
+     "label": "예배일 기간",
+     "items": [
+      "예배일 기간"
+     ]
+    },
+    {
+     "type": "sort",
+     "label": "최근(예배일 내림차순)",
+     "items": [
+      "최근(예배일 내림차순)"
+     ]
+    },
+    {
+     "type": "list",
+     "label": "날짜·예배명·곡 수",
+     "items": [
+      "날짜",
+      "예배명",
+      "곡 수"
+     ]
+    },
+    {
+     "type": "pagination",
+     "label": "",
+     "items": []
+    },
+    {
+     "type": "button",
+     "label": "새 콘티",
+     "items": [
+      "새 콘티"
+     ]
+    }
+   ],
+   "data": [
+    "setlists"
+   ],
+   "api": [
+    "미정"
+   ],
+   "role": "로그인",
+   "next": [
+    "C02",
+    "C03"
+   ],
+   "states_combined": "",
+   "source": "docs/03_SCREENS_UX.md",
+   "type": "list",
+   "must_missing": [],
+   "should_missing": [
+    "일괄 작업(선택·삭제·내보내기)",
+    "저장된 보기·열 설정"
+   ],
+   "states_missing": [],
+   "hash": "e95512ad4fac",
+   "wireframe": "design/wireframes/C01.html"
+  },
+  "C02": {
+   "id": "C02",
+   "name": "콘티 편집",
+   "type_raw": "폼",
+   "route": "/setlists/[id]/edit",
+   "purpose": "곡 순서·키·진행 정하기",
+   "blocks": [
+    {
+     "type": "header",
+     "label": "",
+     "items": []
+    },
+    {
+     "type": "breadcrumb",
+     "label": "",
+     "items": []
+    },
+    {
+     "type": "form",
+     "label": "예배명*·예배일*·메모",
+     "items": [
+      "예배명*",
+      "예배일*",
+      "메모"
+     ]
+    },
+    {
+     "type": "list",
+     "label": "곡(곡명·키 전조·템포·진행 순서 문자열·메모·위/아래 버튼·드래그 핸들)",
+     "items": [
+      "곡(곡명",
+      "키 전조",
+      "템포",
+      "진행 순서 문자열",
+      "메모",
+      "위",
+      "아래 버튼",
+      "드래그 핸들)"
+     ]
+    },
+    {
+     "type": "button",
+     "label": "곡 추가",
+     "items": [
+      "곡 추가"
+     ]
+    },
+    {
+     "type": "text",
+     "label": "곡 사이 전환 메모",
+     "items": [
+      "곡 사이 전환 메모"
+     ]
+    },
+    {
+     "type": "text",
+     "label": "인도자 멘트",
+     "items": [
+      "인도자 멘트"
+     ]
+    },
+    {
+     "type": "button",
+     "label": "저장",
+     "items": [
+      "저장"
+     ]
+    },
+    {
+     "type": "link",
+     "label": "취소",
+     "items": [
+      "취소"
+     ]
+    }
+   ],
+   "data": [
+    "setlists",
+    "setlist_items",
+    "scores"
+   ],
+   "api": [
+    "미정"
+   ],
+   "role": "로그인(소유자)",
+   "next": [
+    "C03",
+    "C01"
+   ],
+   "states_combined": "",
+   "source": "docs/03_SCREENS_UX.md",
+   "type": "form",
+   "must_missing": [],
+   "should_missing": [
+    "임시 저장(긴 폼)"
+   ],
+   "states_missing": [],
+   "hash": "5e7fd49b5d90",
+   "wireframe": "design/wireframes/C02.html"
+  },
+  "C03": {
+   "id": "C03",
+   "name": "콘티 보기·공유",
+   "type_raw": "상세",
+   "route": "/setlists/[id] · /s/[token]",
+   "purpose": "팀원에게 공유·인쇄",
+   "blocks": [
+    {
+     "type": "header",
+     "label": "",
+     "items": []
+    },
+    {
+     "type": "breadcrumb",
+     "label": "",
+     "items": []
+    },
+    {
+     "type": "table",
+     "label": "순서·곡명·키·템포·진행",
+     "items": [
+      "순서",
+      "곡명",
+      "키",
+      "템포",
+      "진행"
+     ]
+    },
+    {
+     "type": "text",
+     "label": "전환 메모·멘트",
+     "items": [
+      "전환 메모",
+      "멘트"
+     ]
+    },
+    {
+     "type": "button",
+     "label": "공유 링크 복사",
+     "items": [
+      "공유 링크 복사"
+     ]
+    },
+    {
+     "type": "button",
+     "label": "공유 끄기",
+     "items": [
+      "공유 끄기"
+     ]
+    },
+    {
+     "type": "button",
+     "label": "A4 인쇄",
+     "items": [
+      "A4 인쇄"
+     ]
+    },
+    {
+     "type": "button",
+     "label": "공연 모드",
+     "items": [
+      "공연 모드"
+     ]
+    }
+   ],
+   "data": [
+    "setlists",
+    "setlist_items",
+    "share_links"
+   ],
+   "api": [
+    "미정"
+   ],
+   "role": "소유자(편집·공유) / 링크 소지자(읽기)",
+   "next": [
+    "C04",
+    "C02"
+   ],
+   "states_combined": "",
+   "source": "docs/03_SCREENS_UX.md",
+   "type": "detail",
+   "must_missing": [],
+   "should_missing": [
+    "관련 항목 탭",
+    "활동·변경 이력"
+   ],
+   "states_missing": [],
+   "hash": "38d759ee3340",
+   "wireframe": "design/wireframes/C03.html"
+  },
+  "C04": {
+   "id": "C04",
+   "name": "콘티 공연 모드",
+   "type_raw": "상세",
+   "route": "/setlists/[id]/perform",
+   "purpose": "곡을 이어서 넘기며 인도",
+   "blocks": [
+    {
+     "type": "header",
+     "label": "",
+     "items": []
+    },
+    {
+     "type": "card",
+     "label": "현재 곡 악보",
+     "items": [
+      "현재 곡 악보"
+     ]
+    },
+    {
+     "type": "text",
+     "label": "다음 곡 제목·키(미리보기)",
+     "items": [
+      "다음 곡 제목",
+      "키(미리보기)"
+     ]
+    },
+    {
+     "type": "text",
+     "label": "전환 메모",
+     "items": [
+      "전환 메모"
+     ]
+    },
+    {
+     "type": "button",
+     "label": "이전 곡",
+     "items": [
+      "이전 곡"
+     ]
+    },
+    {
+     "type": "button",
+     "label": "다음 곡",
+     "items": [
+      "다음 곡"
+     ]
+    },
+    {
+     "type": "link",
+     "label": "나가기",
+     "items": [
+      "나가기"
+     ]
+    }
+   ],
+   "data": [
+    "setlist_items",
+    "scores"
+   ],
+   "api": [
+    "미정"
+   ],
+   "role": "소유자·링크 소지자",
+   "next": [
+    "C03"
+   ],
+   "states_combined": "",
+   "source": "docs/03_SCREENS_UX.md",
+   "type": "detail",
+   "must_missing": [],
+   "should_missing": [
+    "관련 항목 탭",
+    "활동·변경 이력"
+   ],
+   "states_missing": [],
+   "hash": "e7e255fde35b",
+   "wireframe": "design/wireframes/C04.html"
+  },
+  "R01": {
+   "id": "R01",
+   "name": "녹음",
+   "type_raw": "폼",
+   "route": "/record",
+   "purpose": "흥얼거려 음표로 변환",
+   "blocks": [
+    {
+     "type": "header",
+     "label": "",
+     "items": []
+    },
+    {
+     "type": "form",
+     "label": "박자*·음원(마이크·MIDI)",
+     "items": [
+      "박자*",
+      "음원(마이크",
+      "MIDI)"
+     ]
+    },
+    {
+     "type": "text",
+     "label": "카운트인·녹음 상태",
+     "items": [
+      "카운트인",
+      "녹음 상태"
+     ]
+    },
+    {
+     "type": "button",
+     "label": "녹음 시작",
+     "items": [
+      "녹음 시작"
+     ]
+    },
+    {
+     "type": "button",
+     "label": "녹음 멈춤",
+     "items": [
+      "녹음 멈춤"
+     ]
+    },
+    {
+     "type": "link",
+     "label": "취소",
+     "items": [
+      "취소"
+     ]
+    }
+   ],
+   "data": [
+    "scores(기기 저장)"
+   ],
+   "api": [
+    "없음(로컬)"
+   ],
+   "role": "누구나",
+   "next": [
+    "E01"
+   ],
+   "states_combined": "",
+   "source": "docs/03_SCREENS_UX.md",
+   "type": "form",
+   "must_missing": [],
+   "should_missing": [
+    "임시 저장(긴 폼)"
+   ],
+   "states_missing": [],
+   "hash": "14fba6e8e15d",
+   "wireframe": "design/wireframes/R01.html"
+  },
+  "K01": {
+   "id": "K01",
+   "name": "건반 입력",
+   "type_raw": "폼",
+   "route": "/keys",
+   "purpose": "88건반으로 음표 적기",
+   "blocks": [
+    {
+     "type": "header",
+     "label": "",
+     "items": []
+    },
+    {
+     "type": "form",
+     "label": "박자*·음 길이·악기",
+     "items": [
+      "박자*",
+      "음 길이",
+      "악기"
+     ]
+    },
+    {
+     "type": "card",
+     "label": "피아노 건반",
+     "items": [
+      "피아노 건반"
+     ]
+    },
+    {
+     "type": "card",
+     "label": "악보 미리보기",
+     "items": [
+      "악보 미리보기"
+     ]
+    },
+    {
+     "type": "button",
+     "label": "저장",
+     "items": [
+      "저장"
+     ]
+    },
+    {
+     "type": "link",
+     "label": "취소",
+     "items": [
+      "취소"
+     ]
+    }
+   ],
+   "data": [
+    "scores(기기 저장)"
+   ],
+   "api": [
+    "없음(로컬)"
+   ],
+   "role": "누구나",
+   "next": [
+    "E01",
+    "B01"
+   ],
+   "states_combined": "",
+   "source": "docs/03_SCREENS_UX.md",
+   "type": "form",
+   "must_missing": [],
+   "should_missing": [
+    "임시 저장(긴 폼)"
+   ],
+   "states_missing": [],
+   "hash": "904c4466667c",
+   "wireframe": "design/wireframes/K01.html"
+  },
+  "E01": {
+   "id": "E01",
+   "name": "악보 상세·편집",
+   "type_raw": "상세",
+   "route": "/scores/[id]",
+   "purpose": "음표·코드 다듬고 전조·내보내기",
+   "blocks": [
+    {
+     "type": "header",
+     "label": "",
+     "items": []
+    },
+    {
+     "type": "breadcrumb",
+     "label": "",
+     "items": []
+    },
+    {
+     "type": "text",
+     "label": "제목",
+     "items": [
+      "제목"
+     ]
+    },
+    {
+     "type": "card",
+     "label": "악보",
+     "items": [
+      "악보"
+     ]
+    },
+    {
+     "type": "form",
+     "label": "음 길이·악기·코드 진행",
+     "items": [
+      "음 길이",
+      "악기",
+      "코드 진행"
+     ]
+    },
+    {
+     "type": "text",
+     "label": "전조 키",
+     "items": [
+      "전조 키"
+     ]
+    },
+    {
+     "type": "button",
+     "label": "공연 모드",
+     "items": [
+      "공연 모드"
+     ]
+    },
+    {
+     "type": "button",
+     "label": "내보내기(PDF·MIDI·MusicXML)",
+     "items": [
+      "내보내기(PDF",
+      "MIDI",
+      "MusicXML)"
+     ]
+    },
+    {
+     "type": "button",
+     "label": "저장",
+     "items": [
+      "저장"
+     ]
+    },
+    {
+     "type": "button",
+     "label": "삭제",
+     "items": [
+      "삭제"
+     ]
+    },
+    {
+     "type": "modal",
+     "label": "삭제 확인",
+     "items": [
+      "삭제 확인"
+     ]
+    }
+   ],
+   "data": [
+    "scores"
+   ],
+   "api": [
+    "없음(로컬)",
+    "로그인 시 동기화"
+   ],
+   "role": "누구나(기기 저장)",
+   "next": [
+    "E02",
+    "S02",
+    "B01"
+   ],
+   "states_combined": "",
+   "source": "docs/03_SCREENS_UX.md",
+   "type": "detail",
+   "must_missing": [],
+   "should_missing": [
+    "관련 항목 탭",
+    "활동·변경 이력"
+   ],
+   "states_missing": [],
+   "hash": "cc4d7135a102",
+   "wireframe": "design/wireframes/E01.html"
+  },
+  "E02": {
+   "id": "E02",
+   "name": "공연 모드 + 연습 바",
+   "type_raw": "상세",
+   "route": "/scores/[id]/perform",
+   "purpose": "느리게·구간 반복으로 듣고 연습",
+   "blocks": [
+    {
+     "type": "header(닫기·제목·따라 치기·a−/a+)",
+     "label": "",
+     "items": []
+    },
+    {
+     "type": "card",
+     "label": "악보(재생 커서)",
+     "items": [
+      "악보(재생 커서)"
+     ]
+    },
+    {
+     "type": "toolbar",
+     "label": "연습 바(button:재생·일시정지",
+     "items": [
+      "연습 바(button:재생",
+      "일시정지"
+     ]
+    },
+    {
+     "type": "button",
+     "label": "처음으로",
+     "items": [
+      "처음으로"
+     ]
+    },
+    {
+     "type": "form",
+     "label": "속도 50~100%",
+     "items": [
+      "속도 50~100%"
+     ]
+    },
+    {
+     "type": "form",
+     "label": "구간 시작·구간 끝",
+     "items": [
+      "구간 시작",
+      "구간 끝"
+     ]
+    },
+    {
+     "type": "button",
+     "label": "반복 켜기)",
+     "items": [
+      "반복 켜기)"
+     ]
+    },
+    {
+     "type": "기존 transposebar",
+     "label": "",
+     "items": []
+    },
+    {
+     "type": "aside",
+     "label": "따라 치기(켜졌을 때)",
+     "items": [
+      "따라 치기(켜졌을 때)"
+     ]
+    }
+   ],
+   "data": [
+    "scores(읽기)"
+   ],
+   "api": [
+    "없음(로컬)"
+   ],
+   "role": "기존 perform과 같음",
+   "next": [
+    "E01"
+   ],
+   "states_combined": "",
+   "source": "docs/specs/task-002-perform-boost.md",
+   "type": "detail",
+   "must_missing": [
+    "제목·상태 표시",
+    "뒤로·경로(breadcrumb)"
+   ],
+   "should_missing": [
+    "관련 항목 탭",
+    "활동·변경 이력"
+   ],
+   "states_missing": [],
+   "hash": "d495f74fcb77",
+   "wireframe": "design/wireframes/E02.html"
+  },
+  "W01": {
+   "id": "W01",
+   "name": "시작 안내",
+   "type_raw": "랜딩",
+   "route": "/welcome",
+   "purpose": "사용법 보고 시작",
+   "blocks": [
+    {
+     "type": "hero",
+     "label": "흥얼거리거나 건반으로 입력",
+     "items": [
+      "흥얼거리거나 건반으로 입력"
+     ]
+    },
+    {
+     "type": "card",
+     "label": "사용 3단계",
+     "items": [
+      "사용 3단계"
+     ]
+    },
+    {
+     "type": "stat",
+     "label": "기능 요약",
+     "items": [
+      "기능 요약"
+     ]
+    },
+    {
+     "type": "button",
+     "label": "시작하기",
+     "items": [
+      "시작하기"
+     ]
+    },
+    {
+     "type": "footer",
+     "label": "",
+     "items": []
+    }
+   ],
+   "data": [],
+   "api": [],
+   "role": "누구나",
+   "next": [
+    "B01"
+   ],
+   "states_combined": "",
+   "source": "docs/03_SCREENS_UX.md",
+   "type": "landing",
+   "must_missing": [],
+   "should_missing": [
+    "가격",
+    "자주 묻는 질문"
+   ],
+   "states_missing": [],
+   "hash": "252b08f2f0e2",
+   "wireframe": "design/wireframes/W01.html"
+  },
+  "A01": {
+   "id": "A01",
+   "name": "로그인",
+   "type_raw": "로그인",
+   "route": "/login",
+   "purpose": "로그인 후 원래 화면으로",
+   "blocks": [
+    {
+     "type": "header",
+     "label": "",
+     "items": []
+    },
+    {
+     "type": "form",
+     "label": "이메일*·인증번호(6자리)",
+     "items": [
+      "이메일*",
+      "인증번호(6자리)"
+     ]
+    },
+    {
+     "type": "button",
+     "label": "로그인",
+     "items": [
+      "로그인"
+     ]
+    },
+    {
+     "type": "link",
+     "label": "약관·개인정보",
+     "items": [
+      "약관",
+      "개인정보"
+     ]
+    }
+   ],
+   "data": [],
+   "api": [
+    "미정"
+   ],
+   "role": "누구나",
+   "next": [
+    "B01"
+   ],
+   "states_combined": "",
+   "source": "docs/03_SCREENS_UX.md",
+   "type": "auth",
+   "must_missing": [],
+   "should_missing": [],
+   "states_missing": [],
+   "hash": "a92b9cb56cff",
+   "wireframe": "design/wireframes/A01.html"
+  }
+ },
+ "states": {
+  "L01": {
+   "빈": "—",
+   "로딩": "영상 포스터 먼저 표시",
+   "오류": "영상 실패 시 샘플 악보 이미지만",
+   "성공": "—"
+  },
+  "Y01": {
+   "빈": "링크 입력 전 예시 안내",
+   "로딩": "링크 확인 중",
+   "오류": "유튜브 링크 형식 아님·재생 불가 영상 안내",
+   "성공": "링크 확인됨 → Y02"
+  },
+  "Y02": {
+   "빈": "탭 공유 전 단계 안내",
+   "로딩": "변환 중 진행 표시(기기 안)",
+   "오류": "미지원 브라우저·공유 취소·탭 오디오 없음·무음 감지 안내",
+   "성공": "변환 완료 → Y03"
+  },
+  "Y03": {
+   "빈": "인식된 음 없음 + 다시 변환",
+   "로딩": "악보 그리는 중",
+   "오류": "저장 실패 다시 시도",
+   "성공": "저장됨 → 편집"
+  },
+  "P01": {
+   "빈": "악보 음표 없음 시 비활성",
+   "로딩": "오디오 준비 중",
+   "오류": "오디오 시작 실패 안내",
+   "성공": "구간 반복 중 표시"
+  },
+  "S01": {
+   "빈": "—",
+   "로딩": "악보 스켈레톤",
+   "오류": "링크 만료·해제·없음(동일 안내, 존재 여부 비노출)",
+   "성공": "—"
+  },
+  "S02": {
+   "빈": "공유 꺼짐 상태 안내",
+   "로딩": "링크 생성 중",
+   "오류": "생성 실패 다시 시도",
+   "성공": "저장됨·링크 복사됨"
+  },
+  "B01": {
+   "빈": "악보 없음 + 허밍 시작 버튼 / 검색 결과 없음",
+   "로딩": "목록 스켈레톤",
+   "오류": "다시 시도",
+   "성공": "폴더·태그 저장됨"
+  },
+  "PR01": {
+   "빈": "—",
+   "로딩": "—",
+   "오류": "—",
+   "성공": "사전 알림 등록됨"
+  },
+  "C01": {
+   "빈": "콘티 없음 + 새 콘티 버튼 / 검색 결과 없음",
+   "로딩": "목록 스켈레톤",
+   "오류": "다시 시도",
+   "성공": "삭제·생성됨 안내"
+  },
+  "C02": {
+   "빈": "곡 없음 + 곡 추가 안내",
+   "로딩": "저장 중 표시",
+   "오류": "저장 실패 다시 시도·삭제된 악보 표시",
+   "성공": "저장됨"
+  },
+  "C03": {
+   "빈": "곡 없는 콘티 안내",
+   "로딩": "표 스켈레톤",
+   "오류": "링크 만료·해제·없음(동일 안내)",
+   "성공": "링크 복사됨"
+  },
+  "C04": {
+   "빈": "곡 없음 시 진입 불가 안내",
+   "로딩": "악보 준비 중",
+   "오류": "악보 불러오기 실패 다시 시도",
+   "성공": "마지막 곡 끝 안내"
+  },
+  "R01": {
+   "빈": "마이크 권한 전 안내",
+   "로딩": "카운트인·변환 중 표시",
+   "오류": "마이크 거부·입력 없음 안내",
+   "성공": "저장됨 → E01"
+  },
+  "K01": {
+   "빈": "음표 없음 안내",
+   "로딩": "악보 준비 중",
+   "오류": "저장 실패 다시 시도",
+   "성공": "저장됨 → E01"
+  },
+  "E01": {
+   "빈": "음표 없음 + 입력 안내",
+   "로딩": "악보 스켈레톤",
+   "오류": "없는 악보(404)·불러오기 실패 다시 시도",
+   "성공": "저장됨"
+  },
+  "E02": {
+   "빈": "음표 0개 → 연습 바 비활성 \"음표가 없어 재생할 수 없어요\"",
+   "로딩": "오디오 준비 중",
+   "오류": "없는 악보(404)·오디오 시작 실패 안내",
+   "성공": "구간 반복 중 표시"
+  },
+  "W01": {
+   "빈": "—",
+   "로딩": "—",
+   "오류": "—",
+   "성공": "—"
+  },
+  "A01": {
+   "빈": "입력 전 안내",
+   "로딩": "인증번호 확인 중",
+   "오류": "인증번호 오류·만료 안내",
+   "성공": "로그인됨 → 원래 화면"
+  }
+ },
+ "flows": {
+  "F-Y": {
+   "id": "F-Y",
+   "name": "유튜브 → 악보",
+   "steps": [
+    "Y01",
+    "Y02",
+    "Y03",
+    "E01"
+   ],
+   "source": "docs/03_SCREENS_UX.md"
+  },
+  "F-S": {
+   "id": "F-S",
+   "name": "공유",
+   "steps": [
+    "E01",
+    "S02",
+    "S01"
+   ],
+   "source": "docs/03_SCREENS_UX.md"
+  },
+  "F-L": {
+   "id": "F-L",
+   "name": "첫 방문",
+   "steps": [
+    "L01",
+    "R01",
+    "E01"
+   ],
+   "source": "docs/03_SCREENS_UX.md"
+  },
+  "F-C": {
+   "id": "F-C",
+   "name": "찬양 콘티",
+   "steps": [
+    "C01",
+    "C02",
+    "C03",
+    "C04"
+   ],
+   "source": "docs/03_SCREENS_UX.md"
+  }
+ },
+ "apis": {},
+ "tables": {
+  "tags": {
+   "name": "tags",
+   "row": {
+    "테이블": "tags",
+    "컬럼": "id uuid PK, user_id FK, name text, created_at",
+    "비고": "(user_id, name) 유니크"
+   },
+   "source": "docs/05_DATA_MODEL.md"
+  },
+  "score_tags": {
+   "name": "score_tags",
+   "row": {
+    "테이블": "score_tags",
+    "컬럼": "score_id FK scores, tag_id FK tags, PK(score_id, tag_id)",
+    "비고": "인덱스 tag_id"
+   },
+   "source": "docs/05_DATA_MODEL.md"
+  },
+  "setlists": {
+   "name": "setlists",
+   "row": {
+    "테이블": "setlists",
+    "컬럼": "id uuid PK, user_id FK auth.users, title text not null, service_date date, memo text, created_at, updated_at",
+    "비고": "인덱스 (user_id, service_date desc)"
+   },
+   "source": "docs/05_DATA_MODEL.md"
+  },
+  "setlist_items": {
+   "name": "setlist_items",
+   "row": {
+    "테이블": "setlist_items",
+    "컬럼": "id uuid PK, setlist_id FK setlists on delete cascade, score_id FK scores, position int, transpose int, tempo int null, form text null, memo text, transition_memo text",
+    "비고": "인덱스 setlist_id; 유니크 (setlist_id, position)"
+   },
+   "source": "docs/05_DATA_MODEL.md"
+  }
+ },
+ "issues": [
+  [
+   "🟡",
+   "Y01",
+   "유튜브 링크 입력 권장: 임시 저장(긴 폼)"
+  ],
+  [
+   "🟡",
+   "Y01",
+   "데이터 'youtube_sources' — 05_DATA_MODEL 표에 없음"
+  ],
+  [
+   "🔴",
+   "Y02",
+   "탭 캡처 안내·진행(단계 진행(온보딩·마법사)) 필수 빠짐: 단계별 입력"
+  ],
+  [
+   "🟡",
+   "Y02",
+   "탭 캡처 안내·진행 권장: 중간 저장·이어하기"
+  ],
+  [
+   "🟡",
+   "Y02",
+   "데이터 '— (오디오 저장 안 함)' — 05_DATA_MODEL 표에 없음"
+  ],
+  [
+   "🟡",
+   "Y03",
+   "결과 악보 권장: 관련 항목 탭, 활동·변경 이력"
+  ],
+  [
+   "🟡",
+   "Y03",
+   "데이터 'scores' — 05_DATA_MODEL 표에 없음"
+  ],
+  [
+   "🟡",
+   "Y03",
+   "데이터 'youtube_sources' — 05_DATA_MODEL 표에 없음"
+  ],
+  [
+   "🟡",
+   "P01",
+   "악보 연습 바 권장: 활동·변경 이력"
+  ],
+  [
+   "🟡",
+   "P01",
+   "데이터 'scores' — 05_DATA_MODEL 표에 없음"
+  ],
+  [
+   "🟡",
+   "S01",
+   "공유 악보 보기 권장: 관련 항목 탭, 활동·변경 이력"
+  ],
+  [
+   "🟡",
+   "S01",
+   "데이터 'share_links' — 05_DATA_MODEL 표에 없음"
+  ],
+  [
+   "🟡",
+   "S01",
+   "데이터 'scores' — 05_DATA_MODEL 표에 없음"
+  ],
+  [
+   "🔴",
+   "S02",
+   "공유 설정(설정) 필수 빠짐: 구역(탭·사이드 메뉴)"
+  ],
+  [
+   "🟡",
+   "S02",
+   "공유 설정 권장: 위험 작업 구역(삭제·탈퇴) 분리·확인"
+  ],
+  [
+   "🟡",
+   "S02",
+   "데이터 'share_links' — 05_DATA_MODEL 표에 없음"
+  ],
+  [
+   "🟡",
+   "B01",
+   "내 악보 권장: 일괄 작업(선택·삭제·내보내기), 저장된 보기·열 설정"
+  ],
+  [
+   "🟡",
+   "B01",
+   "데이터 'scores' — 05_DATA_MODEL 표에 없음"
+  ],
+  [
+   "🟡",
+   "B01",
+   "데이터 'folders' — 05_DATA_MODEL 표에 없음"
+  ],
+  [
+   "🟡",
+   "PR01",
+   "요금 안내(Pro) 권장: 근거(사례·수치·후기 — 실제만)"
+  ],
+  [
+   "🟡",
+   "C01",
+   "콘티 목록 권장: 일괄 작업(선택·삭제·내보내기), 저장된 보기·열 설정"
+  ],
+  [
+   "🟡",
+   "C02",
+   "콘티 편집 권장: 임시 저장(긴 폼)"
+  ],
+  [
+   "🟡",
+   "C02",
+   "데이터 'scores' — 05_DATA_MODEL 표에 없음"
+  ],
+  [
+   "🟡",
+   "C03",
+   "콘티 보기·공유 권장: 관련 항목 탭, 활동·변경 이력"
+  ],
+  [
+   "🟡",
+   "C03",
+   "데이터 'share_links' — 05_DATA_MODEL 표에 없음"
+  ],
+  [
+   "🟡",
+   "C04",
+   "콘티 공연 모드 권장: 관련 항목 탭, 활동·변경 이력"
+  ],
+  [
+   "🟡",
+   "C04",
+   "데이터 'scores' — 05_DATA_MODEL 표에 없음"
+  ],
+  [
+   "🟡",
+   "R01",
+   "녹음 권장: 임시 저장(긴 폼)"
+  ],
+  [
+   "🟡",
+   "R01",
+   "데이터 'scores(기기 저장)' — 05_DATA_MODEL 표에 없음"
+  ],
+  [
+   "🟡",
+   "K01",
+   "건반 입력 권장: 임시 저장(긴 폼)"
+  ],
+  [
+   "🟡",
+   "K01",
+   "데이터 'scores(기기 저장)' — 05_DATA_MODEL 표에 없음"
+  ],
+  [
+   "🟡",
+   "E01",
+   "악보 상세·편집 권장: 관련 항목 탭, 활동·변경 이력"
+  ],
+  [
+   "🟡",
+   "E01",
+   "데이터 'scores' — 05_DATA_MODEL 표에 없음"
+  ],
+  [
+   "🔴",
+   "E02",
+   "공연 모드 + 연습 바(상세) 필수 빠짐: 제목·상태 표시, 뒤로·경로(breadcrumb)"
+  ],
+  [
+   "🟡",
+   "E02",
+   "공연 모드 + 연습 바 권장: 관련 항목 탭, 활동·변경 이력"
+  ],
+  [
+   "🟡",
+   "E02",
+   "데이터 'scores(읽기)' — 05_DATA_MODEL 표에 없음"
+  ],
+  [
+   "ℹ️",
+   "E02",
+   "모르는 블록(회색 상자로 표시): aside, header(닫기·제목·따라 치기·a−/a+), toolbar, 기존 transposebar"
+  ],
+  [
+   "🟡",
+   "W01",
+   "시작 안내 권장: 가격, 자주 묻는 질문"
+  ],
+  [
+   "ℹ️",
+   "P01",
+   "악보 연습 바 — 들어오는 경로 없음(메뉴에서만 진입이면 무시)"
+  ],
+  [
+   "ℹ️",
+   "K01",
+   "건반 입력 — 들어오는 경로 없음(메뉴에서만 진입이면 무시)"
+  ]
+ ]
+}

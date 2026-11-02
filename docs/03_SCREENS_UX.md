@@ -1,25 +1,31 @@
 # 03. 신규·개선 화면 (경쟁 분석 반영)
 
 > 근거: [07_COMPETITORS.md](07_COMPETITORS.md)#3 · [06_BENCHMARK.md](06_BENCHMARK.md)#4. 유튜브 결정은 [adr/0001-youtube-tab-capture.md](adr/0001-youtube-tab-capture.md), 흐름은 [diagrams/youtube-capture-flow.mmd](diagrams/youtube-capture-flow.mmd).
-> 기존 화면(record·keys·scores/[id]·perform·welcome·login)은 이 문서 범위 밖. API 열의 `미정`은 04_API 작성 전.
+> 기존 화면(R01·K01·E01·E02·W01·A01)은 `src/app` 실제 경로 기준 행만 추가(구성은 구현 코드에서 확인된 범위). `다음`은 화면 ID만 쓴다. API 열의 `미정`은 04_API 작성 전.
 > 반응형: 모바일 ~767 / 태블릿 768~1199 / 데스크톱 1200~. 구간별 차이는 `## 반응형` 표.
 
 ## 화면
 | ID | 화면 | 유형 | 경로 | 주된 일 | 구성 | 데이터 | API | 권한 | 다음 |
 |---|---|---|---|---|---|---|---|---|---|
-| L01 | 랜딩 개편 | 랜딩 | / | 허밍 시작 유도 | header, hero:한 줄 가치+실제 허밍→악보 15초 영상+샘플 악보, button:지금 흥얼거려 보기, card:후기·사용자 수(미확인), pricing, faq, footer | — | 미정 | 누구나 | record, PR01 |
+| L01 | 랜딩 개편 | 랜딩 | / | 허밍 시작 유도 | header, hero:한 줄 가치+실제 허밍→악보 15초 영상+샘플 악보, button:지금 흥얼거려 보기, card:후기·사용자 수(미확인), pricing, faq, footer | — | 미정 | 누구나 | R01, PR01 |
 | Y01 | 유튜브 링크 입력 | 폼 | /import/youtube | 링크 넣고 시작 | header, breadcrumb, form:유튜브 링크*, text:저작권·기기 안 처리 안내, button:다음, link:취소 | youtube_sources | 미정 | 로그인 | Y02 |
 | Y02 | 탭 캡처 안내·진행 | 마법사 | /import/youtube/capture | 새 탭 재생→탭 오디오 공유→변환 | header, steps:링크 확인·새 탭에서 재생·탭 공유 선택·변환 중, text:단계별 안내, button:이전, button:다음, button:취소 | — (오디오 저장 안 함) | 미정 | 로그인 | Y03, Y01 |
-| Y03 | 결과 악보 | 상세 | /import/youtube/result | 변환 결과 확인 후 편집 | header, breadcrumb, text:제목·출처 링크, card:악보 미리보기, text:정확도 한계 안내, button:편집하기, button:저장, button:다시 변환 | scores, youtube_sources | 미정 | 로그인 | scores/[id], Y01 |
-| P01 | 악보 연습 바 | 상세 | /scores/[id] (하단 바) | 구간 반복·속도로 연습 | header, card:악보, tabs:재생·연습, form:구간 시작·구간 끝, form:속도 50~100%, button:재생, button:반복 켜기 | scores | 미정 | 로그인 | perform |
+| Y03 | 결과 악보 | 상세 | /import/youtube/result | 변환 결과 확인 후 편집 | header, breadcrumb, text:제목·출처 링크, card:악보 미리보기, text:정확도 한계 안내, button:편집하기, button:저장, button:다시 변환 | scores, youtube_sources | 미정 | 로그인 | E01, Y01 |
+| P01 | 악보 연습 바 | 상세 | /scores/[id] (하단 바) | 구간 반복·속도로 연습 | header, card:악보, tabs:재생·연습, form:구간 시작·구간 끝, form:속도 50~100%, button:재생, button:반복 켜기 | scores | 미정 | 로그인 | E02 |
 | S01 | 공유 악보 보기 | 상세 | /s/[token] | 읽기 전용 악보 보기·재생 | header, text:제목·만든이 표시 여부, card:악보, button:재생, link:HumScore로 만들어 보기, footer | share_links, scores | 미정 | 링크 소지자 | L01 |
-| S02 | 공유 설정 | 설정 | /scores/[id]/share | 링크 만들기·끄기 | header, breadcrumb, form:공유 켜기*·만료일, text:공유 링크, button:링크 복사, button:공유 끄기 | share_links | 미정 | 로그인(소유자) | scores/[id] |
-| B01 | 내 악보 | 목록 | /library | 악보 찾고 정리 | header, search, filter:폴더·태그, sort:최근·제목·수정일, list:악보 카드, pagination, button:새 폴더, button:악보 만들기 | scores, folders, tags | 미정 | 누구나(기기 저장) · 로그인 시 동기화 | scores/[id], record |
-| PR01 | 요금 안내(Pro) | 랜딩 | /pricing | 무료·Pro 차이 확인 | header, hero:허밍은 무료, pricing:무료·Pro(가격 미확인), faq, button:사전 알림 받기, footer | — | 미정 | 누구나 | L01, record |
-| C01 | 콘티 목록 | 목록 | /setlists | 찬양 콘티 찾기 | header, search, sort:최근(예배일 내림차순), list:날짜·예배명·곡 수, pagination, button:새 콘티 | setlists | 미정 | 로그인 | C02, C03 |
+| S02 | 공유 설정 | 설정 | /scores/[id]/share | 링크 만들기·끄기 | header, breadcrumb, form:공유 켜기*·만료일, text:공유 링크, link:취소, button:저장, button:링크 복사, button:공유 끄기 | share_links | 미정 | 로그인(소유자) | E01 |
+| B01 | 내 악보 | 목록 | /library | 악보 찾고 정리 | header, search, filter:폴더·태그, sort:최근·제목·수정일, list:악보 카드, pagination, button:새 폴더, button:악보 만들기 | scores, folders, tags | 미정 | 누구나(기기 저장) · 로그인 시 동기화 | E01, R01 |
+| PR01 | 요금 안내(Pro) | 랜딩 | /pricing | 무료·Pro 차이 확인 | header, hero:허밍은 무료, pricing:무료·Pro(가격 미확인), faq, button:사전 알림 받기, footer | — | 미정 | 누구나 | L01, R01 |
+| C01 | 콘티 목록 | 목록 | /setlists | 찬양 콘티 찾기 | header, search, filter:예배일 기간, sort:최근(예배일 내림차순), list:날짜·예배명·곡 수, pagination, button:새 콘티 | setlists | 미정 | 로그인 | C02, C03 |
 | C02 | 콘티 편집 | 폼 | /setlists/[id]/edit | 곡 순서·키·진행 정하기 | header, breadcrumb, form:예배명*·예배일*·메모, list:곡(곡명·키 전조·템포·진행 순서 문자열·메모·위/아래 버튼·드래그 핸들), button:곡 추가, text:곡 사이 전환 메모, text:인도자 멘트, button:저장, link:취소 | setlists, setlist_items, scores | 미정 | 로그인(소유자) | C03, C01 |
 | C03 | 콘티 보기·공유 | 상세 | /setlists/[id] · /s/[token] | 팀원에게 공유·인쇄 | header, breadcrumb, table:순서·곡명·키·템포·진행, text:전환 메모·멘트, button:공유 링크 복사, button:공유 끄기, button:A4 인쇄, button:공연 모드 | setlists, setlist_items, share_links | 미정 | 소유자(편집·공유) / 링크 소지자(읽기) | C04, C02 |
 | C04 | 콘티 공연 모드 | 상세 | /setlists/[id]/perform | 곡을 이어서 넘기며 인도 | header, card:현재 곡 악보, text:다음 곡 제목·키(미리보기), text:전환 메모, button:이전 곡, button:다음 곡, link:나가기 | setlist_items, scores | 미정 | 소유자·링크 소지자 | C03 |
+| R01 | 녹음 | 폼 | /record | 흥얼거려 음표로 변환 | header, form:박자*·음원(마이크·MIDI), text:카운트인·녹음 상태, button:녹음 시작, button:녹음 멈춤, link:취소 | scores(기기 저장) | 없음(로컬) | 누구나 | E01 |
+| K01 | 건반 입력 | 폼 | /keys | 88건반으로 음표 적기 | header, form:박자*·음 길이·악기, card:피아노 건반, card:악보 미리보기, button:저장, link:취소 | scores(기기 저장) | 없음(로컬) | 누구나 | E01, B01 |
+| E01 | 악보 상세·편집 | 상세 | /scores/[id] | 음표·코드 다듬고 전조·내보내기 | header, breadcrumb, text:제목, card:악보, form:음 길이·악기·코드 진행, text:전조 키, button:공연 모드, button:내보내기(PDF·MIDI·MusicXML), button:저장, button:삭제, modal:삭제 확인 | scores | 없음(로컬) · 로그인 시 동기화 | 누구나(기기 저장) | E02, S02, B01 |
+| E02 | 공연 모드 + 연습 바 | 상세 | /scores/[id]/perform | 느리게·구간 반복으로 듣고 연습 | header, link:닫기(뒤로), text:제목, button:따라 치기, button:글자 크기 A−/A+, card:악보(재생 커서), text:전조 막대, button:재생·일시정지, button:처음으로, form:속도 50~100%, form:구간 시작·구간 끝, button:반복 켜기, card:따라 치기 패널(켜졌을 때) | scores(읽기) | 없음(로컬) | E01과 같음 | E01 |
+| W01 | 시작 안내 | 랜딩 | /welcome | 사용법 보고 시작 | hero:흥얼거리거나 건반으로 입력, card:사용 3단계, stat:기능 요약, button:시작하기, footer | — | 없음 | 누구나 | B01 |
+| A01 | 로그인 | 로그인 | /login | 로그인 후 원래 화면으로 | header, form:이메일*·인증번호(6자리), button:로그인, link:약관·개인정보 | — | 미정 | 누구나 | B01 |
 
 ## 상태
 | ID | 빈 | 로딩 | 오류 | 성공 |
@@ -30,13 +36,19 @@
 | Y03 | 인식된 음 없음 + 다시 변환 | 악보 그리는 중 | 저장 실패 다시 시도 | 저장됨 → 편집 |
 | P01 | 악보 음표 없음 시 비활성 | 오디오 준비 중 | 오디오 시작 실패 안내 | 구간 반복 중 표시 |
 | S01 | — | 악보 스켈레톤 | 링크 만료·해제·없음(동일 안내, 존재 여부 비노출) | — |
-| S02 | 공유 꺼짐 상태 안내 | 링크 생성 중 | 생성 실패 다시 시도 | 링크 복사됨 |
+| S02 | 공유 꺼짐 상태 안내 | 링크 생성 중 | 생성 실패 다시 시도 | 저장됨·링크 복사됨 |
 | B01 | 악보 없음 + 허밍 시작 버튼 / 검색 결과 없음 | 목록 스켈레톤 | 다시 시도 | 폴더·태그 저장됨 |
 | PR01 | — | — | — | 사전 알림 등록됨 |
 | C01 | 콘티 없음 + 새 콘티 버튼 / 검색 결과 없음 | 목록 스켈레톤 | 다시 시도 | 삭제·생성됨 안내 |
 | C02 | 곡 없음 + 곡 추가 안내 | 저장 중 표시 | 저장 실패 다시 시도·삭제된 악보 표시 | 저장됨 |
 | C03 | 곡 없는 콘티 안내 | 표 스켈레톤 | 링크 만료·해제·없음(동일 안내) | 링크 복사됨 |
 | C04 | 곡 없음 시 진입 불가 안내 | 악보 준비 중 | 악보 불러오기 실패 다시 시도 | 마지막 곡 끝 안내 |
+| R01 | 마이크 권한 전 안내 | 카운트인·변환 중 표시 | 마이크 거부·입력 없음 안내 | 저장됨 → E01 |
+| K01 | 음표 없음 안내 | 악보 준비 중 | 저장 실패 다시 시도 | 저장됨 → E01 |
+| E01 | 음표 없음 + 입력 안내 | 악보 스켈레톤 | 없는 악보(404)·불러오기 실패 다시 시도 | 저장됨 |
+| E02 | 음표 0개 → 연습 바 비활성 "음표가 없어 재생할 수 없어요" | 오디오 준비 중 | 없는 악보(404)·오디오 시작 실패 안내 | 구간 반복 중 표시 |
+| W01 | — | — | — | — |
+| A01 | 입력 전 안내 | 인증번호 확인 중 | 인증번호 오류·만료 안내 | 로그인됨 → 원래 화면 |
 
 ## 반응형
 | ID | 모바일 ~767 | 태블릿 768~1199 | 데스크톱 1200~ |
@@ -56,10 +68,16 @@
 ## 흐름
 | ID | 흐름 | 단계 |
 |---|---|---|
-| F-Y | 유튜브 → 악보 | Y01 → Y02 → Y03 → scores/[id] |
-| F-S | 공유 | scores/[id] → S02 → S01 |
-| F-L | 첫 방문 | L01 → record → scores/[id] |
+| F-Y | 유튜브 → 악보 | Y01 → Y02 → Y03 → E01 |
+| F-S | 공유 | E01 → S02 → S01 |
+| F-L | 첫 방문 | L01 → R01 → E01 |
 | F-C | 찬양 콘티 | C01 → C02 → C03 → C04 |
+
+## 비고 (불필요 판단)
+- C01 필터: 예배일 기간 필터 추가(예배일 내림차순 목록이라 지난 콘티 찾기에 필요).
+- S02 탭: 불필요(공유 설정은 구역 1개, 탭·사이드 메뉴 없음). 저장 버튼만 추가(만료일 변경 저장용). 🔴 "구역" 1건은 이 이유로 유지.
+- Y02 단계별 입력: 불필요(탭 공유 선택은 브라우저 대화상자가 맡고 앱 입력란 없음). 입력란 신설은 기능 추가라 팀장 결정. 🔴 1건 유지.
+- E02: task-002 명세(`docs/specs/task-002-perform-boost.md`#4)의 `perform(보강)` 행을 이 문서 E02로 정리. 그 문서의 옛 행은 ID만 E02로 바꾸거나 표를 지워야 🔴이 사라진다(이 작업 범위 밖).
 
 ## 팀장 결정 필요
 - 후기·사용자 수는 실제 수치 확보 전까지 `미확인`(가짜 수치 금지).
