@@ -37,15 +37,15 @@ function ShareLinkList() {
   }, [load]);
 
   async function revoke(item: ShareLinkItem) {
-    setRevoking(item.scoreId);
+    setRevoking(item.id);
     setRevokeError(false);
-    const r = await revokeShareLink(item.scoreId);
+    const r = await revokeShareLink({ kind: item.kind, id: item.id });
     setRevoking(null);
     if (!r.ok) {
       setRevokeError(true);
       return;
     }
-    setList((l) => (l.state === "ok" ? { state: "ok", items: l.items.filter((x) => x.scoreId !== item.scoreId) } : l));
+    setList((l) => (l.state === "ok" ? { state: "ok", items: l.items.filter((x) => x.id !== item.id) } : l));
   }
 
   if (list.state === "loading") return <p className="text-sm text-ink-soft" aria-live="polite">불러오는 중…</p>;
@@ -66,24 +66,24 @@ function ShareLinkList() {
       {revokeError && <p role="alert" className="text-sm text-tune-bad">링크를 끄지 못했어요. 잠시 후 다시 시도해 주세요.</p>}
       <ul className="grid gap-2">
         {list.items.map((item) => (
-          <li key={item.scoreId} className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-line p-3 text-sm">
+          <li key={`${item.kind}:${item.id}`} className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-line p-3 text-sm">
             <div className="grid min-w-0 gap-0.5">
-              <Link href={`/scores/${item.scoreId}`} className="truncate font-medium underline-offset-4 outline-none hover:underline focus-visible:ring-3 focus-visible:ring-ring/60">
+              <Link href={item.kind === "score" ? `/scores/${item.id}` : `/setlists/${item.id}`} className="truncate font-medium underline-offset-4 outline-none hover:underline focus-visible:ring-3 focus-visible:ring-ring/60">
                 {item.title || "제목 없음"}
               </Link>
               <span className="text-xs text-ink-soft">
-                만든 날 {fmtDate(item.createdAt)} · {item.expiresAt ? `만료 ${fmtDate(item.expiresAt)}` : "만료 없음"}
+                {item.kind === "setlist" ? "콘티 · " : "악보 · "}만든 날 {fmtDate(item.createdAt)} · {item.expiresAt ? `만료 ${fmtDate(item.expiresAt)}` : "만료 없음"}
               </span>
             </div>
             <Button
               type="button"
               variant="outline"
-              disabled={revoking === item.scoreId}
+              disabled={revoking === item.id}
               onClick={() => setTarget(item)}
               aria-label={`${item.title || "제목 없음"} 공유 링크 끄기`}
               className="h-11 shrink-0 text-tune-bad hover:text-tune-bad lg:h-9"
             >
-              {revoking === item.scoreId ? "끄는 중…" : "링크 끄기"}
+              {revoking === item.id ? "끄는 중…" : "링크 끄기"}
             </Button>
           </li>
         ))}
