@@ -22,13 +22,14 @@ import { usePianoSound } from "@/hooks/use-piano-sound";
 import { MidiConnectButton } from "@/components/midi-connect-button";
 import { RecordSourcePicker, loadRecordSource, saveRecordSource, type RecordSource } from "@/components/record-source-picker";
 import { saveScore } from "@/lib/storage/scores";
+import { loadScoreDefaults } from "@/lib/storage/preferences";
 import type { Meter, PitchFrame, Score } from "@/lib/music/types";
 import { TitleDialog } from "@/components/title-dialog";
 
 type Status = "idle" | "countin" | "recording" | "processing";
 
 const METER_KEY = "humscore.record.meter";
-/** 예전 저장값(숫자 "2"|"3"|"4")도 허용 */
+/** 녹음 화면에서 고른 박자 우선, 없으면 설정의 새 악보 기본 박자. 예전 저장값(숫자 "2"|"3"|"4")도 허용 */
 function loadMeter(): Meter {
   try {
     const v = localStorage.getItem(METER_KEY);
@@ -37,7 +38,7 @@ function loadMeter(): Meter {
   } catch {
     /* 저장소 사용 불가 */
   }
-  return "4/4";
+  return loadScoreDefaults().meter;
 }
 
 const LIVE_INTERVAL_MS = 280;
@@ -170,7 +171,10 @@ function RecordPageInner() {
   }, []);
 
   useEffect(() => {
-    const t = setTimeout(() => setMeterId(loadMeter()), 0);
+    const t = setTimeout(() => {
+      setMeterId(loadMeter());
+      setBpm(Math.min(160, Math.max(50, loadScoreDefaults().bpm))); // 설정의 새 악보 기본 템포 (슬라이더 범위 50~160)
+    }, 0);
     return () => clearTimeout(t);
   }, []);
 

@@ -142,3 +142,37 @@ export async function getShareStatus(scoreId: unknown): Promise<ShareResult<{ ac
     return { ok: false, error: "failed" };
   }
 }
+
+export type ShareLinkItem = { scoreId: string; title: string; expiresAt: string | null; createdAt: string };
+
+const listRowSchema = z.object({
+  score_id: z.uuid(),
+  expires_at: isoSchema.nullable(),
+  created_at: isoSchema,
+  scores: z.object({ title: z.string(), deleted_at: z.string().nullable() }).nullable(),
+});
+
+/** 내 활성(회수·만료·삭제 아님) 공유 링크 목록 — 토큰·해시는 돌려주지 않는다. 최근 만든 순. */
+export async function listShareLinks(): Promise<ShareResult<ShareLinkItem[]>> {
+  try {
+    const a = await authed();
+    if (!a.ok) return { ok: false, error: a.error };
+    const { data, error } = await a.sb
+      .from("share_links")
+      .select("score_id, expires_at, created_at, scores(title, deleted_at)")
+      .eq("owner_id", a.userId)
+      .is("revoked_at", null)
+      .order("created_at", { ascending: false })
+      .limit(200);
+    if (error) return { ok: false, error: "failed" };
+    const rows = z.array(listRowSchema).safeParse(data ?? []);
+    if (!rows.success) return { ok: false, error: "failed" };
+    const now = Date.now();
+    const items = rows.data
+      .filter((r) => r.scores && !r.scores.deleted_at && (r.expires_at === null || Date.parse(r.expires_at) > now))
+      .map((r) => ({ scoreId: r.score_id, title: r.scores!.title, expiresAt: r.expires_at, createdAt: r.created_at }));
+    return { ok: true, data: items };
+  } catch {
+    return { ok: false, error: "failed" };
+  }
+}

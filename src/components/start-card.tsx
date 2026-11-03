@@ -7,6 +7,8 @@ import { FileAudio, Mic, Piano } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { createBlankScore } from "@/lib/music/edit";
+import { beatsPerMeasureOf } from "@/lib/music/meter";
+import { loadScoreDefaults } from "@/lib/storage/preferences";
 import { saveScore } from "@/lib/storage/scores";
 
 type Mode = "record" | "keys" | "audio";
@@ -30,7 +32,9 @@ export function StartCard() {
   async function startFromAudio() {
     setBusy(true);
     try {
-      const score = await saveScore(createBlankScore({ title: `음원 악보 ${new Date().toLocaleString("ko-KR")}` }));
+      const { bpm, meter } = loadScoreDefaults(); // 설정의 새 악보 기본값
+      const blank = createBlankScore({ title: `음원 악보 ${new Date().toLocaleString("ko-KR")}`, bpm, beatsPerMeasure: beatsPerMeasureOf(meter) });
+      const score = await saveScore({ ...blank, meter });
       router.push(`/scores/${score.id}?import=audio`);
     } catch {
       setBusy(false);

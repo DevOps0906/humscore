@@ -27,6 +27,7 @@ import { fifthsFor, keyName, suggestChords } from "@/lib/music/theory";
 import type { KeyInfo, Meter, NoteEvent } from "@/lib/music/types";
 import { AUTO_PROGRESSION, parseKeysDraft, serializeKeysDraft } from "@/lib/storage/keys-draft";
 import { saveScore } from "@/lib/storage/scores";
+import { loadScoreDefaults } from "@/lib/storage/preferences";
 
 const DRAFT_KEY = "humscore.keysDraft";
 
@@ -171,6 +172,11 @@ function KeysPageInner() {
         setMode(d.key.mode);
         setProgressionId(d.progressionId);
         setEntry(true);
+      } else {
+        // 초안이 없으면 설정의 새 악보 기본 템포·박자 (BPM 입력 범위 30~240 안)
+        const p = loadScoreDefaults();
+        setBpm(p.bpm);
+        setMeter(p.meter);
       }
       if (new URLSearchParams(window.location.search).get("entry") === "1") setEntry(true);
       setLoaded(true);

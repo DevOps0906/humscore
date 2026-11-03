@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { House, Library, Mic, Piano } from "lucide-react";
+import { House, Library, Mic, Piano, Settings } from "lucide-react";
 import { AppLogo } from "@/components/app-logo";
 
 // 홈 = 랜딩(앱 밖), 내 악보 = 앱의 첫 화면(대시보드)
@@ -11,6 +11,7 @@ const TABS = [
   { href: "/library", label: "내 악보", icon: Library },
   { href: "/record", label: "녹음", icon: Mic },
   { href: "/keys", label: "88건반", icon: Piano },
+  { href: "/settings", label: "설정", icon: Settings },
 ] as const;
 
 /**
