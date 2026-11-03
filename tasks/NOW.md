@@ -1,11 +1,11 @@
 # NOW — 재진입 스냅샷 (30줄 이내, 매 작업 끝에 덮어쓴다)
 
 - 갱신: 2026-11-03
-- 현재 작업: 로컬 OTP 로그인 e2e 완료·커밋(Arch-Studio Supabase를 멈추고 실행 — 포트 5532x 공유, 한쪽만 켤 수 있음)
+- 현재 작업: task-004 조건부 go(2026-11-03) → 004-0b 2차 확인 준비: worktree spike/real/run.mjs(실녹음 A/B 하네스) 작성 중
 - 마지막으로 한 일: cloud-sync e2e 수정(input-otp는 꽉 찬 값 위 fill 무시 → clear 먼저, 최근 수정 영역 때문에 링크 .first()). 2개 통과
-- 다음 한 걸음: 실기기 실측(task-005 + 010-d + 008) — iOS·앱 워클릿 로드 여부, 카운트인 지연, 박자·음표 위치, ONSET_RATIO·ONSET_MIN_RMS·FOLLOW_* 조정
+- 다음 한 걸음: 사용자가 곡을 주면 run.mjs로 A/B 측정 → no-go 조건(B≤A 또는 iOS 3분>60초) 판정. 별도로 실기기 실측(task-005 + 010-d + 008)
 - 미확인: rAF 누수 수정은 코드로만(브라우저 실측 필요). OSMD 시스템 경계 단위(task-001)
-- 열린 결정: task-002 범위. task-004 스파이크 승인·보컬 정책(가/나)·실녹음 5~10곡·보류 여부(challenger 축소 권고, docs/specs/task-004-audio-transcription.md)
+- 열린 결정: task-004 확정 — 보컬 (나), ISC·BSD-2 허용, tfjs 3 고정. 남은 것: 사용자 실녹음 5~10곡(spike/real/in/), 휴대폰(iOS Safari) 3분 곡 실측. 8장 #2·#4·#6~#8은 본 구현 착수 시
 - 주의: 영역은 `.claude/rules/delegation.md` ①표 + `npm run agents:check -- <팀원>`. 푸시는 사용자 지시가 있을 때만. `.serena/`는 커밋하지 않음.
 - SDLC 단계: 07 QA 완료 → 실기기 확인(가사 음성 인식·목소리 필터 상수)
 - 담당 모델/역할: builder·tester·music-logic-coder(Opus) → codex-reviewer(sol). 지시: 위임은 Opus 기본, astra 금지
