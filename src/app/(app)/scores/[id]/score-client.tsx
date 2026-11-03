@@ -48,6 +48,14 @@ export function ScoreClient({ id }: { id: string }) {
   const [pdfBusy, setPdfBusy] = useState(false);
   const [lyricsOpen, setLyricsOpen] = useState(false);
   const [audioOpen, setAudioOpen] = useState(false);
+  // '내 악보 → 음원 파일'로 들어오면(?import=audio) 음원 등록 창을 바로 연다. 적용 없이 닫으면 빈 악보는 지운다
+  const fromImport = useRef(false);
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get("import") !== "audio") return;
+    fromImport.current = true;
+    window.history.replaceState(null, "", window.location.pathname);
+    setAudioOpen(true); // eslint-disable-line react-hooks/set-state-in-effect -- 주소 파라미터는 마운트 후에만 읽을 수 있다
+  }, []);
   const viewHandle = useRef<ScoreViewHandle | null>(null);
   const playback = useRef<Playback | null>(null);
   const stopTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -337,9 +345,18 @@ export function ScoreClient({ id }: { id: string }) {
       />
       <AudioImportDialog
         open={audioOpen}
-        onOpenChange={setAudioOpen}
+        onOpenChange={(open) => {
+          setAudioOpen(open);
+          if (open || !fromImport.current) return;
+          fromImport.current = false;
+          if (score.notes.length === 0) {
+            deleteScore(score.id);
+            router.replace("/library");
+          }
+        }}
         score={score}
         onApply={(patch) => {
+          fromImport.current = false;
           setSelected(null);
           update(patch);
         }}

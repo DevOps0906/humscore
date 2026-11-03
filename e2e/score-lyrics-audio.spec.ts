@@ -84,3 +84,27 @@ test("음원 등록: 합성 WAV 업로드 → 음표 교체", async ({ page }) =
   await expect(page.getByText("음표를 새로 바꿨어요")).toBeVisible();
   await expect.poll(async () => heads.count(), { timeout: 10_000 }).toBeGreaterThan(before);
 });
+
+test("내 악보 → 음원 파일: 새 악보 만들고 등록 창 자동으로 열림, 취소하면 빈 악보 삭제", async ({ page }) => {
+  await page.goto("/library");
+  const start = page.getByLabel("새 악보 만들기");
+  await start.getByRole("tab", { name: "음원 파일" }).click();
+  await start.getByRole("button", { name: "음원 파일 올리기" }).click();
+  await expect(page).toHaveURL(/\/scores\/[^/?]+$/);
+  const dialog = page.getByRole("dialog");
+  await expect(dialog.getByLabel("음원 파일")).toBeAttached();
+  await noOverflow(page);
+  await page.keyboard.press("Escape");
+  await expect(page).toHaveURL(/\/library$/);
+  await expect(page.getByRole("link", { name: /^음원 악보/ })).toHaveCount(0);
+
+  // 다시 들어가 파일 적용 → 악보 유지
+  await start.getByRole("tab", { name: "음원 파일" }).click();
+  await start.getByRole("button", { name: "음원 파일 올리기" }).click();
+  await dialog.getByLabel("음원 파일").setInputFiles({ name: "sine.wav", mimeType: "audio/wav", buffer: sineWav([261.63, 329.63, 392, 523.25]) });
+  await expect(dialog.getByText(/음표 \d+개를 찾았어요/)).toBeVisible({ timeout: 20_000 });
+  await dialog.getByRole("button", { name: "적용" }).click();
+  await expect(page.locator(".score-sheet .vf-notehead").first()).toBeVisible({ timeout: 15_000 });
+  await page.goto("/library");
+  await expect(page.getByRole("link", { name: /음원 악보/ }).first()).toBeVisible();
+});
