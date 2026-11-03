@@ -1,5 +1,6 @@
-<!-- 로컬 개발 전용 템플릿 (supabase/config.toml). 운영 메일은 Supabase 대시보드에서 관리 -->
-<h2>HumScore 로그인</h2>
-<p>앱 로그인 화면에 아래 6자리 코드를 입력하세요.</p>
-<p>코드: <b>{{ .Token }}</b></p>
-<p>또는 이 링크를 누르세요: <a href="{{ .ConfirmationURL }}">로그인하기</a></p>
+<h2>HumScore 가입 확인</h2>
+<p>아래 링크를 누르면 가입이 확인되고 로그인됩니다.</p>
+<p><a href="{{ .ConfirmationURL }}">가입 확인하기</a></p>
+<p>링크가 열리지 않으면 아래 6자리 코드를 앱에 입력하세요.</p>
+<p style="font-size:24px;letter-spacing:4px;"><strong>{{ .Token }}</strong></p>
+<p>본인이 요청하지 않았다면 이 메일을 무시하세요.</p>

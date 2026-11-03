@@ -1,0 +1,52 @@
+sequenceDiagram
+    autonumber
+    participant O as 소유자 (S02)
+    participant A as Server Action
+    participant D as DB (share_links · scores)
+    participant V as 열람자 (비로그인)
+    participant P as "/s/[token] 페이지"
+    participant R as RPC get_shared_score
+
+    Note over O,D: 흐름 1 — 공유 켜기 (소유자)
+    O->>A: 공유 켜기 (score id, 클라이언트 updatedAt, 만료일 선택)
+    A->>D: 서버 행 존재·updated_at 일치 확인
+    alt 미동기화 또는 updatedAt 불일치
+        A-->>O: 거부 "동기화 후 공유"
+    else 확인 통과
+        A->>A: 토큰 생성 randomBytes(32) → base64url 43자
+        A->>A: token_hash = sha256(UTF-8) hex 64자 (원문 미저장)
+        A->>D: insert share_links
+        Note over D: RLS with check — 본인 소유 악보·deleted_at 없음<br/>트리거 — 활성 200개 상한·만료 최대 1년
+        alt 상한·만료 위반 또는 부분 유니크 충돌 23505
+            D-->>A: 거부
+            A-->>O: 실패 또는 "이미 켜짐"
+        else insert 성공
+            D-->>A: ok
+            A-->>O: 링크 표시 (원문 토큰은 이 응답에서 1회만)
+        end
+    end
+
+    Note over V,R: 흐름 2 — 열람 (링크 소지자, 비로그인)
+    V->>P: 링크 접속 (동적 · noindex · no-store)
+    P->>P: zod 검증 43자 base64url
+    alt 형식 불일치
+        P-->>V: 단일 "열 수 없는 링크" 안내
+    else 형식 통과
+        P->>R: get_shared_score(token) — anon 키
+        R->>D: sha256 해시 비교 + revoked_at·expires_at·deleted_at·소유자 일치 (단일 WHERE)
+        alt 0행 — 만료·회수·삭제·없음 (모두 동일 응답)
+            D-->>R: 빈 결과
+            R-->>P: 0행
+            P-->>V: 단일 "열 수 없는 링크" 안내
+        else 1행
+            D-->>R: title, data
+            R-->>P: 1행 (user_id 미반환)
+            P->>P: score-schema zod 재검증
+            P-->>V: 읽기 전용 악보·재생 (편집 UI 없음)
+        end
+    end
+
+    Note over O,D: 보조 — 악보 삭제 시 링크 자동 회수
+    O->>A: 악보 삭제 요청
+    A->>D: scores.deleted_at 설정
+    D->>D: 같은 트랜잭션 트리거 — share_links.revoked_at = now()

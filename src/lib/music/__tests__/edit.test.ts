@@ -118,3 +118,28 @@ describe("셈여림·마디 기호 편집", () => {
     expect(s.marks!.map((m) => m.kind)).toEqual(["repeatEnd", "dc"]);
   });
 });
+
+describe("헤어핀 겹침 거부", () => {
+  const base = makeScore([]);
+  const hp = setDynamic(base, 4, "cresc", 4); // [4,8)
+
+  it("헤어핀 안쪽에 단계 기호·헤어핀을 놓으면 원본 그대로", () => {
+    expect(setDynamic(hp, 6, "f")).toBe(hp);
+    expect(setDynamic(hp, 5, "dim", 1)).toBe(hp);
+  });
+  it("새 헤어핀 구간 안에 기존 기호가 있으면 거부", () => {
+    const withF = setDynamic(base, 6, "f");
+    expect(setDynamic(withF, 4, "cresc", 4)).toBe(withF);
+    expect(setDynamic(hp, 2, "dim", 4)).toBe(hp);
+  });
+  it("경계에 맞닿는 것은 허용", () => {
+    expect(setDynamic(hp, 8, "f").dynamics).toHaveLength(2);
+    expect(setDynamic(hp, 0, "p").dynamics).toHaveLength(2);
+    expect(setDynamic(hp, 8, "dim", 4).dynamics).toHaveLength(2);
+    expect(setDynamic(hp, 0, "dim", 4).dynamics).toHaveLength(2);
+  });
+  it("같은 박의 헤어핀은 교체 가능", () => {
+    expect(setDynamic(hp, 4, "dim", 2).dynamics).toEqual([{ startBeat: 4, kind: "dim", durationBeats: 2 }]);
+    expect(setDynamic(hp, 4, "f").dynamics).toEqual([{ startBeat: 4, kind: "f" }]);
+  });
+});

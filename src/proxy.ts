@@ -1,8 +1,12 @@
 import type { NextRequest } from "next/server";
+import { applyShareHeaders } from "@/lib/platform/share-headers";
 import { updateSession } from "@/lib/storage/supabase/proxy";
 
 export async function proxy(request: NextRequest) {
-  return updateSession(request);
+  const response = await updateSession(request);
+  // 공유 링크(/s/…): noindex·캐시 금지·Referer 미전송
+  applyShareHeaders(request.nextUrl.pathname, response.headers);
+  return response;
 }
 
 export const config = {
@@ -17,5 +21,7 @@ export const config = {
         { type: "header", key: "purpose", value: "prefetch" },
       ],
     },
+    // 공유 링크(/s/…)는 프리페치 요청에도 보안 헤더가 붙도록 별도 항목(missing 없음)
+    { source: "/s/:path*" },
   ],
 };

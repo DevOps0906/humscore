@@ -1,0 +1,68 @@
+flowchart LR
+  subgraph g0["누구나"]
+    n_L01["L01 랜딩 개편<br/>/"]
+    n_PR01["PR01 요금 안내(Pro)<br/>/pricing"]
+    n_R01["R01 녹음<br/>/record"]
+    n_K01["K01 건반 입력<br/>/keys"]
+    n_W01["W01 시작 안내<br/>/welcome"]
+    n_A01["A01 로그인<br/>/login"]
+  end
+  subgraph g1["로그인"]
+    n_Y01["Y01 유튜브 링크 입력<br/>/import/youtube"]
+    n_Y02["Y02 탭 캡처 안내·진행<br/>/import/youtube/capture"]
+    n_Y03["Y03 결과 악보<br/>/import/youtube/result"]
+    n_P01["P01 악보 연습 바<br/>/scores/[id] (하단 바)"]
+    n_C01["C01 콘티 목록<br/>/setlists"]
+  end
+  subgraph g2["링크 소지자"]
+    n_S01["S01 공유 악보 보기<br/>/s/[token]"]
+  end
+  subgraph g3["로그인(소유자)"]
+    n_S02["S02 공유 설정<br/>/scores/[id]/share"]
+    n_C02["C02 콘티 편집<br/>/setlists/[id]/edit"]
+  end
+  subgraph g4["누구나(기기 저장) · 로그인 시 동기화"]
+    n_B01["B01 내 악보<br/>/library"]
+  end
+  subgraph g5["소유자(편집·공유) / 링크 소지자(읽기)"]
+    n_C03["C03 콘티 보기·공유<br/>/setlists/[id] · /s/[token]"]
+  end
+  subgraph g6["소유자·링크 소지자"]
+    n_C04["C04 콘티 공연 모드<br/>/setlists/[id]/perform"]
+  end
+  subgraph g7["누구나(기기 저장)"]
+    n_E01["E01 악보 상세·편집<br/>/scores/[id]"]
+  end
+  subgraph g8["기존 perform과 같음"]
+    n_E02["E02 공연 모드 + 연습 바<br/>/scores/[id]/perform"]
+  end
+  n_L01 --> n_R01
+  n_L01 --> n_PR01
+  n_Y01 --> n_Y02
+  n_Y02 --> n_Y03
+  n_Y02 --> n_Y01
+  n_Y03 --> n_E01
+  n_Y03 --> n_Y01
+  n_P01 --> n_E02
+  n_S01 --> n_L01
+  n_S02 --> n_E01
+  n_B01 --> n_E01
+  n_B01 --> n_R01
+  n_PR01 --> n_L01
+  n_PR01 --> n_R01
+  n_C01 --> n_C02
+  n_C01 --> n_C03
+  n_C02 --> n_C03
+  n_C02 --> n_C01
+  n_C03 --> n_C04
+  n_C03 --> n_C02
+  n_C04 --> n_C03
+  n_R01 --> n_E01
+  n_K01 --> n_E01
+  n_K01 --> n_B01
+  n_E01 --> n_E02
+  n_E01 --> n_S02
+  n_E01 --> n_B01
+  n_E02 --> n_E01
+  n_W01 --> n_B01
+  n_A01 --> n_B01

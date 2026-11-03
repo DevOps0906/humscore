@@ -51,7 +51,9 @@ next-env.d.ts
 /playwright/.cache/
 
 # 디자인 시안 (로컬 참고용, 외부 폰트·이미지 포함 가능)
-/Design/
+/Design/*
+!/Design/spec.json
+!/Design/wireframes/
 .nomad/
 .env
 .env.*
