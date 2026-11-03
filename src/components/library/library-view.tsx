@@ -84,6 +84,15 @@ export function LibraryList() {
   return (
     <>
       <GuestBanner />
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-section/60 px-4 py-3">
+        <div>
+          <p className="font-medium">예배 순서도 한곳에서</p>
+          <p className="text-sm text-ink-soft">내 클라우드 악보로 찬양 콘티를 만들고 공유해요.</p>
+        </div>
+        <Button asChild variant="outline" className="h-11 shrink-0 px-4">
+          <Link href="/setlists">찬양 콘티</Link>
+        </Button>
+      </div>
       {stored.length === 0 ? (
         <div className="flex flex-col items-start gap-2 rounded-2xl border border-dashed border-line p-6">
           <p className="font-medium">아직 악보가 없어요</p>

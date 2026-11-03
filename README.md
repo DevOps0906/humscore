@@ -54,10 +54,10 @@
 | P1 | 구간 반복 · 재생 속도 · 따라 치기 | ✅ 구현 |
 | P1 | 읽기 전용 공유 링크 | ✅ 구현 · 운영 적용 |
 | P1 | 설정(운영·관리 화면) | ✅ 구현 |
-| P1 | 찬양 콘티(세트리스트) | ⏳ 예정 |
+| P1 | 찬양 콘티(세트리스트) | ✅ 구현(C01 목록·C02 편집·C03 공유·읽기 전용 열람·A4 인쇄) |
 | P1 | 내 악보 검색·폴더·태그 | 🔸 검색만 구현 |
 | P1 | 가격 안내 · Pro 결제 · 앱 스토어 출시 | ⏳ 예정 |
-| P2 | 반주 섞인 음원 → 멜로디 악보 | 🧪 실험 중(task-004) |
+| P2 | 반주 섞인 음원 → 멜로디 악보 | ⏸ 실녹음 A/B no-go · 재개 결정 대기(task-004) |
 | P2 | 유튜브 링크 → 악보(탭 캡처) | ⏳ 예정 · [ADR 0001](docs/adr/0001-youtube-tab-capture.md) |
 | P2 | 자동 반주 · 장르 스타일 | ⏳ 예정 |
 
@@ -109,7 +109,7 @@ flowchart LR
   end
   subgraph Supabase["Supabase"]
     Auth["Auth<br/>이메일 코드 · Google"]
-    DB[("Postgres + RLS<br/>scores · share_links")]
+    DB[("Postgres + RLS<br/>scores · setlists · share_links")]
   end
   Local <-->|"로그인 시 동기화 (음표 숫자만)"| DB
   Device --> Pages
@@ -129,6 +129,10 @@ flowchart TB
   Tab --> Keys["🎹 88건반<br/>/keys"]
   Tab --> Set["⚙️ 설정<br/>/settings"]
   Lib -->|"새 악보: 녹음 · 건반 · 음원 파일"| Edit["악보 편집<br/>/scores/id"]
+  Lib -->|찬양 콘티| Setlists["콘티 목록<br/>/setlists"]
+  Setlists --> SetlistEdit["콘티 편집<br/>/setlists/id/edit"]
+  SetlistEdit --> SetlistView["콘티 보기·공유·인쇄<br/>/setlists/id"]
+  SetlistView -->|읽기 전용 링크| SetlistPublic["공유 콘티<br/>/s/token"]
   Rec --> Edit
   Keys --> Edit
   Edit --> Perform["공연 모드 · 연습 · 따라 치기<br/>/scores/id/perform"]
@@ -202,13 +206,13 @@ sequenceDiagram
 
 ## 5. 진행 현황 (2026-11-03 기준)
 
-웹 MVP(허밍 → 악보 → 편집·재생·내보내기·동기화·공유)는 운영(https://humscore.vercel.app)에 배포돼 있습니다. 남은 큰 일은 **실기기 확인**과 **반주 섞인 음원 → 멜로디 악보**입니다.
+기존 웹 MVP(허밍 → 악보 → 편집·재생·내보내기·동기화·악보 공유)는 운영(https://humscore.vercel.app)에 배포돼 있습니다. 찬양 콘티(task-020)는 코드 구현과 로컬 Supabase·E2E 검증을 마쳤으며, 운영 DB 마이그레이션은 별도 배포 전 확인이 필요합니다. 남은 큰 일은 **실기기 확인**과 후속 기능 결정입니다.
 
 ### 전체 완성도
 
 | 구분 | 완성도 | 근거 |
 |---|---|---|
-| **작업 표 기준** | **75%** (15 / 20) | [`tasks/README.md`](tasks/README.md) 완료 개수, 가중치 없음 |
+| **작업 표 기준** | **80%** (16 / 20) | [`tasks/README.md`](tasks/README.md) 완료 개수, 가중치 없음 |
 | **웹 MVP 기능** | **약 90%** | 아래 영역별 표의 웹 기능 평균(추정) |
 | **앱 출시 준비** | **약 40%** | 실기기 체크리스트·스토어 등록 미수행 |
 
@@ -219,11 +223,11 @@ sequenceDiagram
 | 1. 기획(PRD·화면·데이터 모델) | 완료 | 100% |
 | 2. 디자인(토큰·랜딩·내 악보 재디자인) | 완료 | 100% |
 | 3. 핵심 구현(입력·편집·재생·내보내기) | 완료 | 100% |
-| 4. 서버·동기화(Supabase RLS·공유 링크) | 완료 · 운영 DB 적용 | 100% |
-| 5. 자동 테스트(unit 668 · e2e) | 진행 | 90% |
+| 4. 서버·동기화(Supabase RLS·공유 링크·콘티) | 완료 · 콘티는 로컬 Supabase 검증, 운영 migration 대기 | 100% |
+| 5. 자동 테스트(Vitest 697 통과 · 로컬 RLS 15 · 콘티 E2E) | 진행 | 95% |
 | 6. 배포(Vercel·GitHub CI) | 운영 배포 중 · DB 자동 반영용 Secrets 미등록 | 80% |
 | 7. 실기기 확인(iOS·Android) | 사용자 확인 시작 | 10% |
-| 8. 음원 → 멜로디 악보(task-004·011) | 실험 2단계 진행 | 40% |
+| 8. 음원 → 멜로디 악보(task-004·011) | task-004 실녹음 no-go · 보류 | 20% |
 | 9. 앱 스토어 출시 | 시작 전 | 0% |
 
 ### 영역별 완성도
@@ -234,12 +238,13 @@ sequenceDiagram
 | 편집(셈여림·도돌이표·가사)·전조·내보내기(PDF·MIDI·MusicXML) | 100% | 구현 |
 | 재생·연습(속도·구간 반복)·따라 치기 | 90% | 구현 · 판정 임계값 실기기 조정 대기(task-016) |
 | 클라우드 동기화(Supabase RLS·LWW) | 100% | 구현 · 통합 검증(task-012) · 로컬 OTP 로그인 e2e |
-| 읽기 전용 공유 링크(`/s/[token]`) | 100% | 구현(task-019) · 운영 DB 적용(2026-11-03) |
-| 내비게이션(하단 탭 홈·내 악보·녹음·88건반·설정) | 100% | 홈(랜딩)·설정 탭, 내 악보 → 음원 파일로 새 악보 |
+| 읽기 전용 공유 링크(`/s/[token]`) | 100% | 악보(task-019, 운영 DB 적용) · 콘티(task-020, 로컬 DB/E2E 검증·운영 migration 대기) |
+| 찬양 콘티(`/setlists`) | 100% | 목록·편집·순서·키/템포·메모·CAS 저장·공유·비로그인 열람·A4 인쇄 |
+| 내비게이션(하단 탭 홈·내 악보·녹음·88건반·설정) | 100% | 내 악보에서 찬양 콘티·음원 파일 진입 |
 | 설정(계정·동기화·마이크 점검·기본값·공유 링크·도움말) | 100% | 운영·관리 화면(`/settings`) · 새 악보 기본값 적용 |
 | 음원 파일 → 음표(악기 하나) | 100% | 편집 화면·내 악보에서 MP3·WAV 업로드 |
-| 반주 섞인 음원 → 멜로디(task-004) | 40% | 1단계 멜로디 추적 후처리, 2단계 음원 분리 실험 — 청취 판정 대기 |
-| 외부 소리 실시간 받아 적기(task-011) | 0% | task-004 결과 대기 · 같은 휴대폰 재생 캡처는 OS 제약으로 불가 |
+| 반주 섞인 음원 → 멜로디(task-004) | 20% | 2026-11-03 실녹음 2곡 A/B 청취 no-go · 중단 |
+| 외부 소리 실시간 받아 적기(task-011) | 0% | task-004 재개 결정 대기 · 같은 휴대폰 재생 캡처는 OS 제약으로 불가 |
 | 앱(iOS·Android) | 40% | Capacitor 원격 로드 · 실기기 체크리스트 미수행 |
 
 ### 웨이브별 작업 진행률
@@ -248,9 +253,9 @@ sequenceDiagram
 |---|---|---|---|
 | W0 준비 | 1 / 1 | 100% | — |
 | W1 기본 기능·정리 | 7 / 8 | 88% | task-005 실기기 체크리스트(사용자) |
-| W2 핵심 기능 | 6 / 8 | 75% | task-014 실기기 상수 조정, task-016 실기기 결과 반영 |
+| W2 핵심 기능 | 7 / 9 | 78% | task-014 실기기 상수 조정, task-016 실기기 결과 반영 |
 | W3 음원 변환 | 1 / 3 | 33% | task-004(재개, 실험 중), task-011(task-004 대기) |
-| **합계** | **15 / 20** | **75%** | |
+| **합계** | **16 / 20** | **80%** | |
 
 제한: 로그인은 체험용 자동 로그인(`NEXT_PUBLIC_AUTH_MOCK`)이 기본입니다. 운영 Supabase는 무료 플랜이라 오래 안 쓰면 일시 정지됩니다(대시보드에서 Restore).
 
@@ -260,10 +265,10 @@ sequenceDiagram
 |---|---|---|---|
 | 1 | 설정 화면(계정·동기화·마이크 점검·기본값·공유 링크·도움말) | ✅ 완료(2026-11-03) | 팀 |
 | 2 | 실기기 체크리스트 → 판정·카운트인 상수 조정(task-005·016) | ⏳ 사용자 확인 대기 | 사용자 → 팀 |
-| 3 | 반주 섞인 음원 → 멜로디: 1·2단계 결과 청취 판정 → 본 구현 결정(task-004) | ⏳ 사용자 판정 대기 | 사용자 |
+| 3 | 반주 섞인 음원 → 멜로디: 실녹음 A/B no-go 후 재개 여부 결정(task-004) | ⏸ 보류 | 사용자 |
 | 4 | 외부 소리 실시간 받아 적기(task-011) | ⏳ task-004 대기 | 팀 |
 | 5 | GitHub Secrets 등록 → DB 자동 반영 | ⏳ | 사용자 |
-| 6 | 찬양 콘티(세트리스트) — 공유 링크 재사용 | ⏳ 다음 기능 | 팀 |
+| 6 | 찬양 콘티 C04 공연 모드(이번 MVP 제외) | ⏳ 후속 명세 | 팀 |
 | 7 | 내 악보 폴더·태그 | ⏳ | 팀 |
 | 8 | 가격 안내 · Pro 결제 | ⏳ | 팀 |
 | 9 | 앱 스토어 출시(iOS·Android) | ⏳ | 팀 |
@@ -317,11 +322,12 @@ src/
 │   ├── auth/callback/        # Supabase OAuth 코드 교환 (Route Handler)
 │   ├── (app)/                # 앱 화면 (탭바)
 │   │   ├── library/          # 내 악보 목록
+│   │   ├── setlists/         # 찬양 콘티 목록·편집·보기
 │   │   ├── record/           # 녹음: 메트로놈 + 실시간 음정(Hz·센트) + 궤적
 │   │   ├── keys/             # 88건반 입력
 │   │   ├── settings/         # 설정: 계정·동기화·마이크 점검·기본값·공유 링크·도움말
 │   │   └── scores/[id]/      # 악보 보기·편집·재생·전조·내보내기, perform/ 공연 모드
-│   └── actions/              # Server Actions (악보 동기화, 로그아웃)
+│   └── actions/              # Server Actions (악보·콘티 저장, 공유, 로그아웃)
 ├── proxy.ts                  # Supabase 세션 쿠키 갱신
 ├── components/               # 공유 컴포넌트 (ui/ = shadcn)
 ├── hooks/
@@ -330,7 +336,7 @@ src/
     ├── audio/                # Web Audio: 피치 추적(pitchy), 배음 합성 피아노, 메트로놈
     ├── platform/             # 웹/앱 차이 흡수 (파일 저장·공유 시트)
     └── storage/              # localStorage 기본 저장 + Supabase 동기화(병합·삭제 기록)
-supabase/migrations/          # scores(RLS·소프트 삭제·LWW 트리거), transcription_jobs
+supabase/migrations/          # scores·share_links·setlists(RLS·제약·트리거), transcription_jobs
 e2e/                          # Playwright E2E
 native-shell/                 # 앱 오프라인 안내 페이지
 ```
@@ -347,7 +353,8 @@ native-shell/                 # 앱 오프라인 안내 페이지
 | 공연 모드·연습 | `/scores/[id]/perform` | [task-002 명세](docs/specs/task-002-perform-boost.md) | [`src/app/(app)/scores/[id]/perform/`](<src/app/(app)/scores/[id]/perform/>) |
 | 따라 치기 | `/scores/[id]/perform` | [task-010 명세](docs/specs/task-010-follow-along.md) | [`src/lib/music/follow.ts`](src/lib/music/follow.ts) |
 | 공유 설정 | `/scores/[id]/share` | [task-019 명세](docs/specs/task-019-share-link.md) · [04_API](docs/04_API.md) | [`src/app/(app)/scores/[id]/share/`](<src/app/(app)/scores/[id]/share/>) |
-| 공유 악보 보기 | `/s/[token]` | [task-019 명세](docs/specs/task-019-share-link.md) | [`src/app/s/[token]/`](<src/app/s/[token]/>) |
+| 콘티 목록·편집·보기 | `/setlists` · `/setlists/[id]/edit` · `/setlists/[id]` | [task-020 명세](docs/specs/task-020-setlist.md) | [`src/app/(app)/setlists/`](<src/app/(app)/setlists/>) |
+| 공유 악보·콘티 보기 | `/s/[token]` | [task-019 명세](docs/specs/task-019-share-link.md) · [task-020 명세](docs/specs/task-020-setlist.md) | [`src/app/s/[token]/`](<src/app/s/[token]/>) |
 | 음원 → 음표(스파이크) | — | [task-004 명세](docs/specs/task-004-audio-transcription.md) · [1차·재개 보고](docs/specs/task-004-spike-report.md) · [2단계 보고](docs/specs/task-004-spike2-report.md) | 브랜치 `spike/task-004` |
 | 설정 | `/settings` | 이 README 5·6장 | [`src/app/(app)/settings/`](<src/app/(app)/settings/>) |
 | 기획 문서 | — | [PRD](docs/01_PRD.md) · [데이터 모델](docs/05_DATA_MODEL.md) · [벤치마크](docs/06_BENCHMARK.md) · [경쟁 분석](docs/07_COMPETITORS.md) · [ADR 0001](docs/adr/0001-youtube-tab-capture.md) | — |
@@ -361,7 +368,7 @@ native-shell/                 # 앱 오프라인 안내 페이지
 | CI 워크플로 | [ci.yml](.github/workflows/ci.yml)(린트·타입·테스트·빌드) · [db-migrate.yml](.github/workflows/db-migrate.yml)(운영 DB 마이그레이션) |
 | 기획 | [01 PRD](docs/01_PRD.md) · [03 화면 기획](docs/03_SCREENS_UX.md) · [04 API](docs/04_API.md) · [05 데이터 모델](docs/05_DATA_MODEL.md) |
 | 조사 | [06 벤치마크](docs/06_BENCHMARK.md) · [07 경쟁 분석](docs/07_COMPETITORS.md) · [08 재디자인 벤치마크](docs/08_REDESIGN_BENCHMARK.md) |
-| 기능 명세 | [task-002 공연 모드](docs/specs/task-002-perform-boost.md) · [task-010 따라 치기](docs/specs/task-010-follow-along.md) · [task-019 공유 링크](docs/specs/task-019-share-link.md) · [task-004 음원 변환](docs/specs/task-004-audio-transcription.md) |
+| 기능 명세 | [task-002 공연 모드](docs/specs/task-002-perform-boost.md) · [task-010 따라 치기](docs/specs/task-010-follow-along.md) · [task-019 공유 링크](docs/specs/task-019-share-link.md) · [task-020 찬양 콘티](docs/specs/task-020-setlist.md) · [task-004 음원 변환](docs/specs/task-004-audio-transcription.md) |
 | 실험 보고 | [task-004 1차·재개](docs/specs/task-004-spike-report.md) · [task-004 2단계](docs/specs/task-004-spike2-report.md) |
 | 결정 기록 | [ADR 0001 유튜브 탭 캡처](docs/adr/0001-youtube-tab-capture.md) |
 | DB | [마이그레이션](supabase/migrations/) |

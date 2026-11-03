@@ -47,7 +47,7 @@ describe.skipIf(!run)("setlists·콘티 공유 서버 계약 (로컬 Supabase)",
       id,
       user_id: userId,
       title: `곡-${id.slice(0, 4)}`,
-      data: { id, title: "s", ...extra },
+      data: { id, title: "s", bpm: 120, transpose: 0, key: { tonic: 0, mode: "major", fifths: 0 }, ...extra },
       created_at: "2026-01-01T00:00:00.000Z",
       updated_at: "2026-01-01T00:00:00.000Z",
       deleted_at: null,
@@ -95,6 +95,23 @@ describe.skipIf(!run)("setlists·콘티 공유 서버 계약 (로컬 Supabase)",
     if (aId) await admin.auth.admin.deleteUser(aId);
     if (bId) await admin.auth.admin.deleteUser(bId);
   }, 60_000);
+
+  it("악보 선택·미리보기는 제목·조성·템포·전조만 조회한다", async () => {
+    const sid = await newScore(a, aId, { transpose: 3, bpm: 96 });
+    const { data, error } = await a.from("scores")
+      .select("id, title, deleted_at, transpose:data->>transpose, bpm:data->>bpm, key:data->key")
+      .eq("user_id", aId)
+      .eq("id", sid)
+      .single();
+    expect(error).toBeNull();
+    expect(data).toMatchObject({
+      id: sid,
+      transpose: "3",
+      bpm: "96",
+      key: { tonic: 0, mode: "major", fifths: 0 },
+      deleted_at: null,
+    });
+  });
 
   it("#1 생성·순서 변경·저장 후 목록이 예배일 내림차순, item_count 반영", async () => {
     const u = await makeUser("order");

@@ -22,7 +22,7 @@
 | task-017 | 화면 사양 🟡 정리 — 05_DATA_MODEL 표와 화면 표 데이터 칸 이름 맞추기(scores·share_links·youtube_sources·folders), 권장 구조는 반영 또는 비고에 사유 | W1 | — | 낮음 | planner → reviewer(doc) | 완료 |
 | task-018 | 랜딩 CSS 남은 px 정리 — `landing.module.css` 아이콘·그림자·애니메이션 px를 --spacing 배수·--lp-* 변수로, 화면 변화 없음 | W1 | — | 낮음 | builder → reviewer(design) | 완료 |
 | task-019 | 읽기 전용 공유 링크 (S01·S02) — 로그인 없이 보기·편집 불가·회수 가능, 찬양 콘티 선행 | W2 | task-003 | 높음 | planner → challenger → builder → reviewer(security) → tester | 완료(PGlite 통합 32/32, 로컬 Supabase 통합 테스트는 Docker 환경에서 추가 확인) |
-| task-020 | 찬양 콘티(세트리스트) — C01 목록·C02 편집·C03 보기·공유·인쇄, share_links에 setlist_id (명세 `docs/specs/task-020-setlist.md`) | W2 | task-019 | 높음 | planner → challenger → builder → reviewer(security) | 진행(명세 완료 · challenger 검토 중) |
+| task-020 | 찬양 콘티(세트리스트) — C01 목록·C02 편집·C03 보기·공유·인쇄, share_links에 setlist_id (명세 `docs/specs/task-020-setlist.md`) | W2 | task-019 | 높음 | planner → challenger → builder → reviewer(security) | 완료(화면·서버·로컬 RLS·비로그인 E2E 검증, 운영 migration 대기) |
 
 상태: 대기 / 진행 / 완료 / 보류
 

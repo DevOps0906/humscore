@@ -113,6 +113,44 @@ test("OTP 코드 로그인 → 악보 저장 → 새 브라우저 컨텍스트 �
   }
 });
 
+test("찬양 콘티 생성·저장·공유 → 비로그인 읽기 전용 열람", async ({ page, browser, baseURL }) => {
+  test.setTimeout(90_000);
+  const email = `e2e-setlist-${Date.now()}@example.test`;
+  await loginWithOtp(page, email);
+  const scoreId = await createScoreViaKeys(page);
+  await expect(page.getByText("동기화 중…")).toHaveCount(0, { timeout: 15_000 });
+
+  await page.goto("/setlists");
+  await page.getByRole("button", { name: "새 콘티" }).click();
+  await page.waitForURL(/\/setlists\/[^/]+\/edit$/);
+  await page.locator("#setlist-title").fill("E2E 주일 콘티");
+  await page.locator("#setlist-service-date").fill("2026-11-08");
+  await page.getByLabel("추가할 악보 선택").selectOption(scoreId);
+  await page.getByRole("button", { name: "추가", exact: true }).click();
+  await page.getByLabel("연주 키").selectOption("2");
+  await page.getByRole("button", { name: "저장", exact: true }).click();
+  await page.waitForURL(/\/setlists\/[^/]+$/);
+  await expect(page.getByRole("heading", { name: "E2E 주일 콘티" })).toBeVisible();
+  await expect(page.getByText(/키 D/)).toBeVisible();
+  await page.getByRole("button", { name: "공유 링크 만들기" }).click();
+  const sharedLink = page.getByRole("textbox", { name: "공유 링크", exact: true });
+  await expect(sharedLink).toHaveValue(/\/s\/[A-Za-z0-9_-]{43}$/);
+  const path = new URL(await sharedLink.inputValue()).pathname;
+
+  const guestContext = await browser.newContext({ baseURL, locale: "ko-KR" });
+  try {
+    const guest = await guestContext.newPage();
+    await guest.goto(path);
+    await expect(guest.getByRole("heading", { name: "E2E 주일 콘티" })).toBeVisible();
+    await expect(guest.getByRole("button", { name: "A4 인쇄" })).toBeVisible();
+    await expect(guest.getByRole("button", { name: "편집" })).toHaveCount(0);
+    await guest.getByRole("button", { name: "악보 보기" }).click();
+    await expect(guest.getByTestId("score-header")).toBeVisible();
+  } finally {
+    await guestContext.close();
+  }
+});
+
 test("메일 코드 추출: <strong> 안 6자리만, HTML 없으면 Text의 6자리 줄", () => {
   const html = '<p><a href="http://127.0.0.1:55321/auth/v1/verify?token=1234567890">로그인하기</a></p><p style="font-size:24px;"><strong>482913</strong></p>';
   expect(extractCode("", html)).toBe("482913");

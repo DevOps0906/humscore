@@ -8,6 +8,7 @@ import {
   type Setlist,
   type SetlistSummary,
 } from "@/lib/storage/setlist-schema";
+import { keyInfoSchema } from "@/lib/storage/score-schema";
 import { createSupabaseServer } from "@/lib/storage/supabase/server";
 
 // stale: CAS 기준(updated_at)이 서버와 다름 — 다른 곳에서 바뀌었거나 삭제됨, 다시 불러오기 / limit: 콘티 2000개 상한
@@ -182,6 +183,71 @@ export async function deleteSetlist(id: unknown): Promise<SetlistResult<null>> {
       .is("deleted_at", null);
     if (error) return { ok: false, error: "failed" };
     return { ok: true, data: null };
+  } catch {
+    return { ok: false, error: "failed" };
+  }
+}
+
+export type SetlistScorePreview = {
+  id: string;
+  title: string;
+  transpose: number;
+  bpm: number;
+  key: { tonic: number; mode: "major" | "minor"; fifths: number };
+  deleted: boolean;
+};
+
+const scorePreviewRowSchema = z.object({
+  id: z.uuid(),
+  title: z.string(),
+  transpose: z.coerce.number().int().min(-24).max(24),
+  bpm: z.coerce.number().finite().min(1).max(400),
+  key: keyInfoSchema,
+  deleted_at: z.string().nullable(),
+});
+
+async function queryScorePreviews(ids?: string[]): Promise<SetlistResult<SetlistScorePreview[]>> {
+  const a = await authed();
+  if (!a.ok) return { ok: false, error: a.error };
+  if (ids && ids.length === 0) return { ok: true, data: [] };
+  let query = a.sb
+    .from("scores")
+    .select("id, title, deleted_at, transpose:data->>transpose, bpm:data->>bpm, key:data->key")
+    .eq("user_id", a.userId);
+  if (ids) query = query.in("id", ids);
+  else query = query.is("deleted_at", null);
+  const { data, error } = await query.order("updated_at", { ascending: false }).limit(2000);
+  if (error) return { ok: false, error: "failed" };
+  const parsed = z.array(scorePreviewRowSchema).safeParse(data ?? []);
+  if (!parsed.success) return { ok: false, error: "failed" };
+  return {
+    ok: true,
+    data: parsed.data.map((row) => ({
+      id: row.id,
+      title: row.title,
+      transpose: row.transpose,
+      bpm: row.bpm,
+      key: row.key,
+      deleted: row.deleted_at !== null,
+    })),
+  };
+}
+
+/** 내 클라우드 악보 선택 목록. 기기 전용 악보는 의도적으로 포함하지 않는다. */
+export async function listSetlistScoreOptions(): Promise<SetlistResult<SetlistScorePreview[]>> {
+  try {
+    return await queryScorePreviews();
+  } catch {
+    return { ok: false, error: "failed" };
+  }
+}
+
+/** 콘티에 저장된 악보만 조회한다. 삭제된 행도 표시해 편집기에서 제거할 수 있게 한다. */
+export async function getSetlistScorePreviews(ids: unknown): Promise<SetlistResult<SetlistScorePreview[]>> {
+  try {
+    const parsed = z.array(z.uuid()).max(50).safeParse(ids);
+    if (!parsed.success) return { ok: false, error: "invalid" };
+    return await queryScorePreviews(parsed.data);
   } catch {
     return { ok: false, error: "failed" };
   }
