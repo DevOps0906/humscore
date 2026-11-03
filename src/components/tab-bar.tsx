@@ -2,12 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Library, Mic, Piano } from "lucide-react";
+import { House, Library, Mic, Piano } from "lucide-react";
 import { AppLogo } from "@/components/app-logo";
 
+// 홈 = 랜딩(앱 밖), 내 악보 = 앱의 첫 화면(대시보드)
 const TABS = [
-  { href: "/record", label: "녹음", icon: Mic },
+  { href: "/", label: "홈", icon: House },
   { href: "/library", label: "내 악보", icon: Library },
+  { href: "/record", label: "녹음", icon: Mic },
   { href: "/keys", label: "88건반", icon: Piano },
 ] as const;
 
@@ -30,13 +32,14 @@ export function TabBar() {
       <AppLogo className="mb-4 hidden self-start lg:inline-flex" />
       <ul className="mx-auto flex max-w-md justify-around md:max-w-xl lg:mx-0 lg:max-w-none lg:flex-col lg:justify-start lg:gap-1">
         {TABS.map(({ href, label, icon: Icon }) => {
-          const active = href === "/library" ? pathname.startsWith("/library") || pathname.startsWith("/scores") : pathname.startsWith(href);
+          const active =
+            href === "/" ? pathname === "/" : href === "/library" ? pathname.startsWith("/library") || pathname.startsWith("/scores") : pathname.startsWith(href);
           return (
             <li key={href} className="lg:w-full">
               <Link
                 href={href}
                 aria-current={active ? "page" : undefined}
-                className={`flex min-w-20 flex-col items-center justify-center gap-0.5 rounded-lg px-3 py-1 text-xs lg:min-h-12 outline-none transition-colors focus-visible:ring-3 focus-visible:ring-ring/60 md:min-w-28 md:text-sm lg:min-w-0 lg:flex-row lg:justify-start lg:gap-3 lg:px-3 lg:text-sm ${active ? "text-accent lg:bg-section/60" : "text-ink-soft hover:text-ink lg:hover:bg-section/40"}`}
+                className={`flex min-w-16 flex-col items-center justify-center gap-0.5 rounded-lg px-3 py-1 text-xs lg:min-h-12 outline-none transition-colors focus-visible:ring-3 focus-visible:ring-ring/60 md:min-w-28 md:text-sm lg:min-w-0 lg:flex-row lg:justify-start lg:gap-3 lg:px-3 lg:text-sm ${active ? "text-accent lg:bg-section/60" : "text-ink-soft hover:text-ink lg:hover:bg-section/40"}`}
               >
                 <Icon className="size-6 lg:size-5" strokeWidth={1.8} aria-hidden />
                 {label}
