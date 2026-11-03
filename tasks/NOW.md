@@ -3,7 +3,7 @@
 - 갱신: 2026-11-03
 - 현재 작업: origin/main(다른 세션 13커밋: task-017~019 등)과 병합. task-004 no-go 확정(task-015 판정 완료), task-011 보류
 - 마지막으로 한 일: 실녹음 2곡 A/B 청취 → no-go. cloud-sync e2e(OTP 코드 로그인) 통과·원격 메일 템플릿 형식(<strong> 코드)에 맞춤
-- 다음 한 걸음: ① Vercel의 Supabase 통합 'Suspended' 해제(사용자) — 최근 배포 9건 'Resource provisioning failed' ② 푸시(승인 후) → 운영 배포 ③ 휴대폰 실측(task-005·016) · CI db-migrate 성공 확인 · 다음 기능 찬양 콘티(PRD P1)
+- 다음 한 걸음: 휴대폰 실측(task-005·016) — https://humscore.vercel.app (2026-11-03 운영 배포 Ready, 운영 Supabase 복구·share_links 적용). GitHub Secrets 미등록이라 CI db-migrate는 수동 대체 중
 - 미확인: rAF 누수 수정은 코드로만(브라우저 실측 필요). OSMD 시스템 경계 단위(task-001)
 - 열린 결정: 없음. task-011 재계획은 나중에. 스파이크 worktree(.claude/worktrees/agent-aa9849d89ba9916a9) 정리 여부
 - 주의: 영역은 `.claude/rules/delegation.md` ①표 + `npm run agents:check -- <팀원>`. 푸시는 사용자 지시가 있을 때만. `.serena/`는 커밋하지 않음.
