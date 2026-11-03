@@ -1,7 +1,7 @@
 # NOW — 재진입 스냅샷 (30줄 이내, 매 작업 끝에 덮어쓴다)
 
 - 갱신: 2026-11-03
-- 현재 작업: task-004 조건부 go(2026-11-03) → 004-0b 2차 확인 준비: worktree spike/real/run.mjs(실녹음 A/B 하네스) 작성 중
+- 현재 작업: task-004 조건부 go(2026-11-03) → 004-0b 2차 확인 준비: worktree .claude/worktrees/agent-aa9849d89ba9916a9/spike/real/run.mjs 완성(합성 30초 검증: A 46.2%·B 62.0%), 곡 대기
 - 마지막으로 한 일: cloud-sync e2e 수정(input-otp는 꽉 찬 값 위 fill 무시 → clear 먼저, 최근 수정 영역 때문에 링크 .first()). 2개 통과
 - 다음 한 걸음: 사용자가 곡을 주면 run.mjs로 A/B 측정 → no-go 조건(B≤A 또는 iOS 3분>60초) 판정. 별도로 실기기 실측(task-005 + 010-d + 008)
 - 미확인: rAF 누수 수정은 코드로만(브라우저 실측 필요). OSMD 시스템 경계 단위(task-001)
