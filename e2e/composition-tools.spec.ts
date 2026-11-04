@@ -149,10 +149,10 @@ test("리하모니제이션: 후보 비교·코드만 적용·음표와 절별 �
   expect((await storedScore(page, id)).notes).toEqual(original.notes);
 });
 
-test("건반 빈 악보에서 작곡 진입·빈 리하모니 차단·3구간 도구 배치", async ({ page }, testInfo) => {
+test("건반 빈 악보에서 작곡 직접 열기·재열기·3구간 도구 배치", async ({ page }, testInfo) => {
   await openKeysInput(page);
-  await page.getByRole("button", { name: "작곡", exact: true }).click();
-  await page.waitForURL(/\/scores\/[\w-]+(?:\?compose=1)?$/);
+  await page.getByRole("button", { name: "작곡하기", exact: true }).click();
+  await expect(page).toHaveURL(/\/keys$/);
   const dialog = page.getByRole("dialog");
   await expect(dialog.getByRole("heading", { name: "작곡", exact: true })).toBeVisible();
   for (const width of [390, 900, 1440]) {
@@ -164,7 +164,8 @@ test("건반 빈 악보에서 작곡 진입·빈 리하모니 차단·3구간 �
     await page.screenshot({ path: `.nomad/compose-${testInfo.project.name}-${width}.png`, fullPage: true });
   }
   await dialog.getByRole("button", { name: "취소", exact: true }).click();
-  await page.getByRole("button", { name: "고급 리하모니제이션", exact: true }).click();
-  await expect(dialog.getByRole("button", { name: "리하모니 후보 만들기", exact: true })).toBeDisabled();
-  await expect(dialog.getByText("먼저 멜로디를 입력하거나 작곡으로 만들어 주세요.")).toBeVisible();
+  await expect(page.getByRole("button", { name: "작곡하기", exact: true })).toBeEnabled();
+  await page.getByRole("button", { name: "작곡하기", exact: true }).click();
+  await expect(dialog.getByRole("heading", { name: "작곡", exact: true })).toBeVisible();
+  await dialog.getByRole("button", { name: "취소", exact: true }).click();
 });

@@ -80,8 +80,9 @@ const GAIN_LIMIT = 1; // 엔벨롭·믹스 단계 개별 gain 목표값 상한
 const OUTPUT_LIMIT = 0.5; // destination 직전 gain 상한
 
 describe("instruments", () => {
-  it("순서·라벨이 9종 모두 존재", () => {
-    expect(INSTRUMENT_ORDER).toHaveLength(9);
+  it("피아노와 기타 4종을 포함해 모든 악기 라벨이 존재", () => {
+    expect(INSTRUMENT_ORDER).toHaveLength(12);
+    expect(INSTRUMENT_ORDER).toEqual(expect.arrayContaining(["classicalGuitar", "acousticGuitar", "electricGuitar", "bassGuitar"]));
     for (const id of INSTRUMENT_ORDER) {
       expect(INSTRUMENT_LABELS[id]).toBeTruthy();
       expect(isInstrumentId(id)).toBe(true);
@@ -136,6 +137,18 @@ describe("instruments", () => {
     for (const inst of INSTRUMENT_ORDER) {
       expect(() => playInstrumentNote(ctx, inst, 135, 0)).not.toThrow();
     }
+  });
+
+  it("기타 4종은 같은 음높이를 유지하면서 서로 다른 배음과 엔벨롭을 쓴다", () => {
+    const fingerprints = new Set<string>();
+    for (const instrument of ["classicalGuitar", "acousticGuitar", "electricGuitar", "bassGuitar"] as const) {
+      const { ctx, nodes } = makeCtx();
+      playInstrumentNote(ctx, instrument, 45, 0, { duration: 0.4 });
+      const oscillators = nodes.filter((node) => node.kind === "osc");
+      expect(oscillators[0].frequency.events[0].v).toBeCloseTo(110);
+      fingerprints.add(JSON.stringify(nodes.map((node) => ({ kind: node.kind, gain: node.gain.events, stop: node.stops }))));
+    }
+    expect(fingerprints.size).toBe(4);
   });
 
   it("NaN/음수 입력에도 NaN 시각을 만들지 않음", () => {

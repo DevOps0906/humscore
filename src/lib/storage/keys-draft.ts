@@ -7,6 +7,8 @@ import type { ChordEvent, KeyInfo, Meter, NoteEvent } from "../music/types";
 
 /** 건반 입력 화면 초안 (음표 숫자와 설정만, 오디오 아님) */
 export interface KeysDraft {
+  /** 작곡 도구로 저장한 악보를 다시 열 때 같은 악보에 이어서 저장한다. */
+  scoreId?: string;
   notes: NoteEvent[];
   bpm: number;
   meter: Meter;
@@ -36,6 +38,8 @@ export function parseKeysDraft(raw: string | null): KeysDraft | null {
   }
   if (!d || typeof d !== "object") return null;
   const o = d as Record<string, unknown>;
+  const scoreId = typeof o.scoreId === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(o.scoreId)
+    ? o.scoreId : undefined;
   if (!Array.isArray(o.notes)) return null;
 
   // 원소 하나라도 검증 실패하면 초안 전체 폐기: 일부만 살리면 박/음이 빠진 채 조용히
@@ -70,9 +74,9 @@ export function parseKeysDraft(raw: string | null): KeysDraft | null {
   if (o.chords !== undefined) {
     const parsedChords = chordsSchema.safeParse(o.chords);
     if (!parsedChords.success) return null;
-    return { notes: parsedNotes.data, bpm, meter, key, progressionId, chords: parsedChords.data };
+    return { notes: parsedNotes.data, bpm, meter, key, progressionId, chords: parsedChords.data, ...(scoreId ? { scoreId } : {}) };
   }
-  return { notes: parsedNotes.data, bpm, meter, key, progressionId };
+  return { notes: parsedNotes.data, bpm, meter, key, progressionId, ...(scoreId ? { scoreId } : {}) };
 }
 
 export function serializeKeysDraft(d: KeysDraft): string {

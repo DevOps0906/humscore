@@ -11,6 +11,8 @@ import { CompositionDialog, type CompositionMode } from "@/components/compositio
 import { NoteChordEditor } from "@/components/note-chord-editor";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { TabScoreView } from "@/components/tab-score-view";
 import { ChordEditor } from "@/components/chord-editor";
 import { NoteEditor } from "@/components/note-editor";
 import { ScoreView, type ScoreViewHandle } from "@/components/score-view";
@@ -36,6 +38,7 @@ import { exportFile, isNativeApp, safeFileName } from "@/lib/platform/export-fil
 import { sheetToPdf } from "@/lib/platform/sheet-pdf";
 import { deleteScore, getScore, saveScore } from "@/lib/storage/scores";
 import type { Score } from "@/lib/music/types";
+import { isGuitarInstrument, type GuitarInstrumentId } from "@/lib/music/tablature";
 
 const compositionSignature = (score: Score) => JSON.stringify([score.notes, score.chords, score.marks, score.dynamics]);
 
@@ -49,6 +52,8 @@ export function ScoreClient({ id }: { id: string }) {
     persist(patch);
   }
   const [layout, setLayout] = useState<ScoreLayout>("lead");
+  const [showTab, setShowTab] = useState(false);
+  const [chordEditingBeat, setChordEditingBeat] = useState<number | null>(null);
   const [instrument, setInstrument] = useInstrument();
   const [editNotes, setEditNotes] = useState(false);
   const [selectedRaw, setSelected] = useState<number | null>(null);
@@ -115,6 +120,7 @@ export function ScoreClient({ id }: { id: string }) {
     );
 
   const shownKey = transposeKey(score.key, score.transpose);
+  const tabInstrument: GuitarInstrumentId = isGuitarInstrument(instrument) ? instrument : "acousticGuitar";
 
   function togglePlay() {
     if (playing) {
@@ -267,13 +273,19 @@ export function ScoreClient({ id }: { id: string }) {
             key={l}
             type="button"
             variant="outline"
-            onClick={() => setLayout(l)}
-            aria-pressed={layout === l}
-            className={`h-11 rounded-full px-4 lg:h-9 ${layout === l ? "border-accent bg-accent/15 text-accent hover:bg-accent/20 hover:text-accent" : ""}`}
+            onClick={() => { setLayout(l); setShowTab(false); }}
+            aria-pressed={layout === l && !showTab}
+            className={`h-11 rounded-full px-4 lg:h-9 ${layout === l && !showTab ? "border-accent bg-accent/15 text-accent hover:bg-accent/20 hover:text-accent" : ""}`}
           >
             {l === "lead" ? "코드 악보" : "피아노"}
           </Button>
         ))}
+        <Button type="button" variant="outline" aria-pressed={showTab} onClick={() => setShowTab(true)} className={`h-11 rounded-full px-4 lg:h-9 ${showTab ? "border-accent bg-accent/15 text-accent" : ""}`}>TAB</Button>
+        {showTab && <label className="flex min-w-0 items-center gap-2">TAB 악기
+          <select aria-label="TAB 악기" value={tabInstrument} onChange={(event) => { if (isGuitarInstrument(event.target.value)) setInstrument(event.target.value); }} className="h-11 min-w-0 rounded-md border border-input bg-surface px-3 text-sm">
+            {(["classicalGuitar", "acousticGuitar", "electricGuitar", "bassGuitar"] as const).map((id) => <option key={id} value={id}>{INSTRUMENT_LABELS[id]}</option>)}
+          </select>
+        </label>}
         <span className="ml-auto text-ink-soft">
           {score.bpm} BPM · <span className="text-xs">{meterLabel}</span>
         </span>
@@ -287,6 +299,7 @@ export function ScoreClient({ id }: { id: string }) {
         showHeader={false}
         header={header}
         xml={xml}
+        chordEditor={editNotes ? { chords: score.chords, onSelect: (startBeat) => { setChordEditingBeat(startBeat); setToolbarOpen(false); } } : undefined}
         cursor={
           editNotes
             ? {
@@ -303,7 +316,7 @@ export function ScoreClient({ id }: { id: string }) {
                 dragLabel,
                 onDragPreview: dragPreview,
                 onDragCommit: dragCommit,
-                toolbar: curNote ? (
+                toolbar: curNote ? (<>
                   <ScoreEditToolbar
                     noteLabel={curNote.midi === null ? "쉼표" : midiToName(curNote.midi + score.transpose, flats)}
                     interval={selected !== null ? describeInterval(score.notes, selected, score.transpose, shownKey) : null}
@@ -328,11 +341,20 @@ export function ScoreClient({ id }: { id: string }) {
                     activeMarks={(score.marks ?? []).filter((m) => m.measure === curMeasure).map((m) => m.kind)}
                     onToggleMark={(k) => update({ marks: toggleMeasureMark(score, curMeasure, k).marks })}
                   />
-                ) : null,
+                  {curNote.midi !== null && <NoteChordEditor score={score} selected={selected} onChange={(chords) => update({ chords })} />}
+                </>) : null,
               }
             : undefined
         }
       />
+
+      {showTab && <TabScoreView score={score} instrument={tabInstrument} />}
+      <Dialog open={chordEditingBeat !== null} onOpenChange={(open) => { if (!open) setChordEditingBeat(null); }}>
+        <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-lg">
+          <DialogHeader><DialogTitle>코드 변경</DialogTitle><DialogDescription>선택한 위치의 코드 근음과 종류를 고르고 적용해 주세요.</DialogDescription></DialogHeader>
+          {chordEditingBeat !== null && <NoteChordEditor score={score} selected={null} startBeat={chordEditingBeat} onChange={(chords) => update({ chords })} />}
+        </DialogContent>
+      </Dialog>
 
       <div className="no-print flex flex-wrap gap-2">
         <Button type="button" variant="outline" onClick={() => { clearPlayback(); setPlaying(false); setCompositionMode("compose"); }} className="h-11 rounded-full px-4 text-sm lg:h-9">
@@ -366,6 +388,7 @@ export function ScoreClient({ id }: { id: string }) {
         key={compositionMode}
         score={score}
         mode={compositionMode}
+        instrument={instrument}
         onClose={() => setCompositionMode(null)}
         onApply={async (patch) => {
           const before = { notes: score.notes, chords: score.chords, marks: score.marks, dynamics: score.dynamics };
@@ -405,7 +428,7 @@ export function ScoreClient({ id }: { id: string }) {
       {editNotes && (
         <>
           <NoteEditor score={score} onChange={(notes) => update({ notes })} selected={selected} onSelect={setSelected} sound={sound} />
-          <NoteChordEditor score={score} selected={selected} onChange={(chords) => update({ chords })} />
+          {!toolbarOpen && <NoteChordEditor score={score} selected={selected} onChange={(chords) => update({ chords })} />}
         </>
       )}
 

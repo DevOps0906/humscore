@@ -14,7 +14,10 @@ export const GM_INSTRUMENTS = {
   cello: 42,
   trumpet: 56,
   clarinet: 71,
-  acousticGuitar: 24,
+  classicalGuitar: 24,
+  acousticGuitar: 25,
+  electricGuitar: 27,
+  bassGuitar: 33,
   choir: 52,
 } as const;
 export type InstrumentId = keyof typeof GM_INSTRUMENTS;

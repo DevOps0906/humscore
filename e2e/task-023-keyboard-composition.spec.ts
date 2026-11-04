@@ -1,6 +1,6 @@
 import type { Page } from "@playwright/test";
 import type { Score } from "../src/lib/music/types";
-import { expect, openKeysInput, test } from "./fixtures";
+import { createScoreViaKeys, expect, openKeysInput, test } from "./fixtures";
 
 async function storedScore(page: Page, id: string): Promise<Score> {
   return page.evaluate((scoreId) => {
@@ -9,9 +9,20 @@ async function storedScore(page: Page, id: string): Promise<Score> {
   }, id);
 }
 
+async function openEmptySavedComposer(page: Page): Promise<string> {
+  const id = await createScoreViaKeys(page);
+  await page.evaluate((scoreId) => {
+    const scores = JSON.parse(localStorage.getItem("humscore.scores.v1") ?? "[]") as Score[];
+    localStorage.setItem("humscore.scores.v1", JSON.stringify(scores.map((score) => score.id === scoreId ? { ...score, notes: [], chords: [] } : score)));
+  }, id);
+  await page.reload();
+  await page.getByRole("button", { name: "작곡", exact: true }).click();
+  return id;
+}
+
 test("악보생성 문구와 BPM 아래 코드 수정은 새로고침·악보 저장 후에도 유지된다", async ({ page }) => {
   await openKeysInput(page);
-  await expect(page.getByRole("heading", { name: "피아노 88건반으로 악보생성", exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "건반으로 악보생성", exact: true })).toBeVisible();
   for (const key of ["a", "s", "d", "f"]) await page.keyboard.press(key);
   await page.getByRole("button", { name: "입력 마치기", exact: true }).click();
   await page.getByRole("button", { name: "악보 편집", exact: true }).click();
@@ -35,10 +46,7 @@ test("악보생성 문구와 BPM 아래 코드 수정은 새로고침·악보 �
 });
 
 test("작곡 2-5-1 후보를 저장하기로 확정하면 새로고침 후에도 8마디와 코드가 남는다", async ({ page }) => {
-  await openKeysInput(page);
-  await page.getByRole("button", { name: "작곡", exact: true }).click();
-  await page.waitForURL(/\/scores\/[\w-]+(?:\?compose=1)?$/);
-  const id = page.url().split("/scores/")[1].split("?")[0];
+  const id = await openEmptySavedComposer(page);
   const dialog = page.getByRole("dialog");
   const save = dialog.getByRole("button", { name: "저장하기", exact: true });
   await expect(save).toBeDisabled();
@@ -74,10 +82,7 @@ test("작곡 2-5-1 후보를 저장하기로 확정하면 새로고침 후에도
 });
 
 test("작곡 저장 실패는 후보 창을 유지하고 다시 저장할 수 있다", async ({ page }) => {
-  await openKeysInput(page);
-  await page.getByRole("button", { name: "작곡", exact: true }).click();
-  await page.waitForURL(/\/scores\/[\w-]+(?:\?compose=1)?$/);
-  const id = page.url().split("/scores/")[1].split("?")[0];
+  const id = await openEmptySavedComposer(page);
   const dialog = page.getByRole("dialog");
   await dialog.getByLabel("작곡 마디 수", { exact: true }).fill("5");
   await dialog.getByRole("button", { name: "멜로디 후보 만들기", exact: true }).click();

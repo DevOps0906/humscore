@@ -5,7 +5,7 @@ import type { OpenSheetMusicDisplay } from "opensheetmusicdisplay";
 import { ChevronDown } from "lucide-react";
 import { LoadingSpinner } from "@/components/loading-spinner";
 import { beatKey, dragSteps, hitTestMarks, noteIndexByStart, type MarkRect } from "@/components/score-cursor";
-import type { NoteEvent } from "@/lib/music/types";
+import type { ChordEvent, NoteEvent } from "@/lib/music/types";
 
 const DEBOUNCE_MS = 200;
 const MEASURES_PER_LINE = 4;
@@ -58,6 +58,40 @@ export interface ScoreCursorProps {
   onDragCommit: (steps: number) => void;
 }
 
+export interface ScoreChordEditorProps {
+  chords: ChordEvent[];
+  onSelect: (startBeat: number) => void;
+}
+
+interface ChordMark extends MarkRect {
+  startBeat: number;
+  label: string;
+}
+
+/** 렌더된 코드의 SVG 문자 위치에 마우스·터치·키보드 공용 버튼을 겹친다. */
+function computeChordMarks(osmd: OpenSheetMusicDisplay, sheet: HTMLElement, chords: ChordEvent[]): ChordMark[] {
+  const base = sheet.getBoundingClientRect();
+  return (osmd.GraphicSheet?.MeasureList ?? []).flatMap((staves) => {
+    const measure = staves[0];
+    if (!measure) return [];
+    const measureStart = measure.parentSourceMeasure.AbsoluteTimestamp.RealValue * 4;
+    const measureEnd = measureStart + measure.parentSourceMeasure.Duration.RealValue * 4;
+    const events = chords.filter((chord) => chord.startBeat >= measureStart - 1e-6 && chord.startBeat < measureEnd - 1e-6).sort((left, right) => left.startBeat - right.startBeat);
+    // MusicXML harmony offset은 OSMD staff entry의 timestamp에 반영되지 않는다.
+    // 같은 마디의 코드 컨테이너는 XML 순서이므로 실제 코드 이벤트와 순서로 연결한다.
+    return measure.staffEntries.flatMap((entry) => entry.graphicalChordContainers).flatMap((container, index) => {
+        const chord = events[index];
+        if (!chord) return [];
+        const node = container.GraphicalLabel.SVGNode;
+        if (!(node instanceof SVGElement)) return [];
+        const box = node.getBoundingClientRect();
+        if (!box.width || !box.height) return [];
+        return [{ startBeat: chord.startBeat, label: node.textContent ?? "코드", left: box.left - base.left + sheet.scrollLeft,
+          top: box.top - base.top + sheet.scrollTop, width: box.width, height: box.height }];
+    });
+  });
+}
+
 interface GNoteLike {
   getSVGGElement?: () => SVGGElement | null;
 }
@@ -77,6 +111,10 @@ function computeMarks(osmd: OpenSheetMusicDisplay, sheet: HTMLElement, notes: No
       if (idx === undefined || marks[idx]) continue;
       const g = (gn as unknown as GNoteLike).getSVGGElement?.();
       if (!g) continue;
+      // SVG는 다음 XML을 로드하는 동안에도 보인다. 현재 음표와 대조할 수 있는
+      // 원본 식별자를 붙여 코드 변경 직후의 빠른 클릭·터치도 놓치지 않는다.
+      g.dataset.scoreNoteStart = String(notes[idx].startBeat);
+      g.dataset.scoreNoteMidi = String(notes[idx].midi);
       const all = g.getBoundingClientRect();
       const head = (g.querySelector(".vf-notehead") ?? g).getBoundingClientRect();
       if (all.width === 0 && all.height === 0) continue;
@@ -133,6 +171,7 @@ export function ScoreView({
   zoom = 1,
   className = "",
   cursor,
+  chordEditor,
   showHeader = false,
   header,
   onHandle,
@@ -141,6 +180,7 @@ export function ScoreView({
   zoom?: number;
   className?: string;
   cursor?: ScoreCursorProps;
+  chordEditor?: ScoreChordEditorProps;
   /** MusicXML 의 제목·작곡자를 악보 맨 위에 그림 (생성 시점에만 반영) */
   showHeader?: boolean;
   /** 악보(종이) 맨 위, OSMD 그림 앞에 놓는 HTML 머리글 (인쇄에 포함됨) */
@@ -172,21 +212,29 @@ export function ScoreView({
   const sheetRef = useRef<HTMLDivElement>(null);
   const markerRef = useRef<HTMLSpanElement>(null);
   const cursorRef = useRef(cursor);
+  const chordEditorRef = useRef(chordEditor);
   useLayoutEffect(() => {
     cursorRef.current = cursor;
+    chordEditorRef.current = chordEditor;
   });
   const [marks, setMarks] = useState<{ xml: string; list: (MarkRect | undefined)[] } | null>(null);
+  const [chordMarks, setChordMarks] = useState<{ xml: string; list: ChordMark[] } | null>(null);
   const hasCursor = !!cursor;
+  const hasChordEditor = !!chordEditor;
+  const interactive = hasCursor || hasChordEditor;
 
   const updateMarks = useCallback(() => {
     const c = cursorRef.current;
     const osmd = osmdRef.current;
     const loaded = loadedXml.current;
-    if (!c || !osmd || !sheetRef.current || loaded === null) return;
+    if (!osmd || !sheetRef.current || loaded === null) return;
     try {
-      setMarks({ xml: loaded, list: computeMarks(osmd, sheetRef.current, c.notes) });
+      if (c) setMarks({ xml: loaded, list: computeMarks(osmd, sheetRef.current, c.notes) });
+      const editor = chordEditorRef.current;
+      if (editor) setChordMarks({ xml: loaded, list: computeChordMarks(osmd, sheetRef.current, editor.chords) });
     } catch {
       setMarks(null);
+      setChordMarks(null);
     }
   }, []);
 
@@ -256,7 +304,7 @@ export function ScoreView({
   // 커서 모드: OSMD 가 자체적으로 다시 그릴 때(창 크기 변경 등)도 위치 재계산
   useEffect(() => {
     const el = ref.current;
-    if (!hasCursor || !el) return;
+    if (!interactive || !el) return;
     let raf = 0;
     const mo = new MutationObserver(() => {
       cancelAnimationFrame(raf);
@@ -268,14 +316,14 @@ export function ScoreView({
       mo.disconnect();
       cancelAnimationFrame(raf);
     };
-  }, [hasCursor, updateMarks]);
+  }, [interactive, updateMarks]);
 
   // 머리글 높이가 바뀌면(글자 크기·글꼴, 줄바꿈, 웹폰트 로딩) 그 아래 악보가 밀리므로 좌표를 다시 잰다
   const headerRef = useRef<HTMLDivElement>(null);
   const hasHeader = !!header;
   useEffect(() => {
     const el = headerRef.current;
-    if (!hasCursor || !hasHeader || !el || typeof ResizeObserver === "undefined") return;
+    if (!interactive || !hasHeader || !el || typeof ResizeObserver === "undefined") return;
     let raf = 0;
     const ro = new ResizeObserver(() => {
       cancelAnimationFrame(raf);
@@ -286,12 +334,12 @@ export function ScoreView({
       ro.disconnect();
       cancelAnimationFrame(raf);
     };
-  }, [hasCursor, hasHeader, updateMarks]);
+  }, [interactive, hasHeader, updateMarks]);
 
   // 로딩 표시("악보 그리는 중…")가 사라지면 악보가 위로 당겨지므로 그 뒤에 위치를 다시 잰다
   useEffect(() => {
-    if (!rendering && hasCursor) updateMarks();
-  }, [rendering, hasCursor, updateMarks]);
+    if (!rendering && interactive) updateMarks();
+  }, [rendering, interactive, updateMarks]);
 
   const selected = cursor?.selected ?? null;
   const mark = hasCursor && !rendering && marks && marks.xml === xml && selected !== null ? marks.list[selected] : undefined;
@@ -305,7 +353,14 @@ export function ScoreView({
   function onSheetClick(e: React.MouseEvent<HTMLDivElement>) {
     const c = cursorRef.current;
     const sheet = sheetRef.current;
-    if (!c || !sheet || !marks || marks.xml !== xml) return;
+    if (!c || !sheet) return;
+    const target = e.target instanceof Element ? e.target.closest<SVGElement>("[data-score-note-start]") : null;
+    if (target && sheet.contains(target)) {
+      const start = Number(target.dataset.scoreNoteStart);
+      const index = c.notes.findIndex((note) => Math.abs(note.startBeat - start) < 1e-6 && String(note.midi) === target.dataset.scoreNoteMidi);
+      if (index >= 0) { c.onSelect(index); return; }
+    }
+    if (!marks || marks.xml !== xml) return;
     const r = sheet.getBoundingClientRect();
     const hit = hitTestMarks(marks.list, e.clientX - r.left + sheet.scrollLeft, e.clientY - r.top + sheet.scrollTop, 14);
     if (hit !== null) c.onSelect(hit);
@@ -409,7 +464,19 @@ export function ScoreView({
           <span>악보 그리는 중…</span>
         </div>
       )}
-      <div ref={ref} />
+      <div ref={ref} aria-busy={rendering} />
+      {chordEditor && !rendering && chordMarks?.xml === xml && chordMarks.list.map((chord, index) => (
+        <button
+          key={`${chord.startBeat}:${index}`}
+          type="button"
+          data-testid="score-chord-target"
+          data-start-beat={chord.startBeat}
+          aria-label={`코드 ${chord.label} 변경`}
+          onClick={(event) => { event.stopPropagation(); chordEditor.onSelect(chord.startBeat); }}
+          className="no-print absolute z-10 cursor-pointer rounded-md border border-transparent bg-transparent outline-none hover:border-accent hover:bg-accent/10 focus-visible:border-accent focus-visible:ring-3 focus-visible:ring-ring/60"
+          style={{ left: chord.left - 8, top: chord.top - 8, width: Math.max(36, chord.width + 16), height: Math.max(36, chord.height + 16) }}
+        />
+      ))}
       {mark && (
         <span
           ref={markerRef}
@@ -453,7 +520,7 @@ export function ScoreView({
           ref={toolbarRef}
           onClick={(e) => e.stopPropagation()}
           onPointerDown={(e) => e.stopPropagation()}
-          className="no-print absolute z-10 w-max max-w-[min(24rem,calc(100%-8px))] scroll-mb-44 scroll-mt-16 rounded-xl border border-line bg-surface p-2 text-ink shadow-lg"
+          className="no-print absolute z-10 max-h-[45dvh] w-max max-w-[min(24rem,calc(100%-8px))] overflow-y-auto scroll-mb-44 scroll-mt-16 rounded-xl border border-line bg-surface p-2 text-ink shadow-lg"
           style={{ left: tbPos?.left ?? 0, top: tbPos?.top ?? 0, visibility: tbPos ? "visible" : "hidden", cursor: "default" }}
         >
           {cursor.toolbar}

@@ -1,9 +1,10 @@
 import { midiToFreq } from "../music/frequency";
 import type { InstrumentId } from "../music/midi";
+import type { GuitarInstrumentId } from "../music/tablature";
 import { playPianoNote, type PlayNoteOptions } from "./piano-synth";
 
 /**
- * Web Audio 합성 악기 9종 (샘플·음원 파일·외부 라이브러리 0개).
+ * Web Audio 합성 악기 (샘플·음원 파일·외부 라이브러리 0개).
  * 피아노는 piano-synth 를 그대로 쓰고, 나머지는 오실레이터 + 필터 + 엔벨롭으로 음색을 만든다.
  * 모든 소스는 stop 시각이 지정되며, 끝나면 그래프를 disconnect 한다.
  */
@@ -19,6 +20,9 @@ export const INSTRUMENT_ORDER: readonly InstrumentId[] = [
   "trumpet",
   "clarinet",
   "acousticGuitar",
+  "classicalGuitar",
+  "electricGuitar",
+  "bassGuitar",
   "choir",
 ];
 
@@ -30,7 +34,10 @@ export const INSTRUMENT_LABELS: Record<InstrumentId, string> = {
   cello: "첼로",
   trumpet: "트럼펫",
   clarinet: "클라리넷",
-  acousticGuitar: "어쿠스틱 기타",
+  acousticGuitar: "통기타",
+  classicalGuitar: "클래식 기타",
+  electricGuitar: "일렉기타",
+  bassGuitar: "베이스기타",
   choir: "합창",
 };
 
@@ -50,6 +57,9 @@ const LEVEL: Record<Exclude<InstrumentId, "piano">, number> = {
   trumpet: 0.22,
   clarinet: 0.2,
   acousticGuitar: 0.22,
+  classicalGuitar: 0.25,
+  electricGuitar: 0.18,
+  bassGuitar: 0.3,
   choir: 0.36,
 };
 
@@ -97,7 +107,7 @@ interface VoiceSpec {
   breath?: { gain: number; q: number; mult: number };
 }
 
-const SPECS: Record<Exclude<InstrumentId, "piano" | "acousticGuitar">, VoiceSpec> = {
+const SPECS: Record<Exclude<InstrumentId, "piano" | GuitarInstrumentId>, VoiceSpec> = {
   flute: {
     waves: [{ type: "custom", harmonics: [1, 0.12, 0.04], cents: 0, gain: 1 }],
     attack: 0.06,
@@ -305,8 +315,16 @@ function playSustained(
   };
 }
 
-/** 어쿠스틱 기타: 배음 1~8 가산합성 + 피크 노이즈, 고차 배음일수록 빠른 감쇠 */
-function playGuitar(ctx: AudioContext, midi: number, when: number, opts: PlayNoteOptions): void {
+/** 기타별 배음·어택·감쇠를 달리하는 가산합성. 음높이는 입력한 MIDI 그대로 유지한다. */
+const GUITAR_VOICES: Record<GuitarInstrumentId, { harmonics: number; brightness: number; decay: number; attack: number; pluck: number }> = {
+  classicalGuitar: { harmonics: 8, brightness: 1.8, decay: 2.1, attack: 0.008, pluck: 0.045 },
+  acousticGuitar: { harmonics: 8, brightness: 1.15, decay: 2.5, attack: 0.004, pluck: 0.18 },
+  electricGuitar: { harmonics: 12, brightness: 0.95, decay: 3.2, attack: 0.003, pluck: 0.06 },
+  bassGuitar: { harmonics: 6, brightness: 2.1, decay: 2.8, attack: 0.006, pluck: 0.035 },
+};
+
+function playGuitar(ctx: AudioContext, instrument: GuitarInstrumentId, midi: number, when: number, opts: PlayNoteOptions): void {
+  const voice = GUITAR_VOICES[instrument];
   const freq = midiToFreq(midi);
   const nyq = ctx.sampleRate / 2;
   if (!Number.isFinite(freq) || freq <= 0 || freq >= nyq * 0.9 || !Number.isFinite(when)) return;
@@ -314,32 +332,32 @@ function playGuitar(ctx: AudioContext, midi: number, when: number, opts: PlayNot
   const dest = opts.destination ?? ctx.destination;
   const t0 = Math.max(0, when);
   const dur = safeDuration(opts.duration);
-  const baseDecay = clamp(2.5 - (midi - 40) / 44, 1.5, 2.5); // 저음일수록 길게
+  const baseDecay = clamp(voice.decay - (midi - 40) / 44, 1.2, voice.decay); // 저음일수록 길게
   const MUTE = 0.25;
   const total = dur !== undefined ? Math.min(baseDecay, dur + MUTE) : baseDecay;
   const tStop = t0 + total + 0.02;
 
   const master = ctx.createGain();
-  master.gain.setValueAtTime(LEVEL.acousticGuitar * velocity, t0);
+  master.gain.setValueAtTime(LEVEL[instrument] * velocity, t0);
   if (dur !== undefined && dur + MUTE < baseDecay) {
-    master.gain.setValueAtTime(LEVEL.acousticGuitar * velocity, t0 + dur);
+    master.gain.setValueAtTime(LEVEL[instrument] * velocity, t0 + dur);
     master.gain.linearRampToValueAtTime(0, t0 + dur + MUTE);
   }
   master.connect(dest);
 
   const nodes: AudioNode[] = [master];
   let last: AudioScheduledSourceNode | null = null;
-  for (let n = 1; n <= 8; n++) {
+  for (let n = 1; n <= voice.harmonics; n++) {
     const f = freq * n;
     if (f >= nyq * 0.95) break;
     const decay = Math.max(0.08, (baseDecay * 0.9) / (1 + 0.7 * (n - 1)));
-    const amp = 1 / Math.pow(n, 1.15);
+    const amp = 1 / Math.pow(n, voice.brightness);
     const osc = ctx.createOscillator();
     osc.type = "sine";
     osc.frequency.setValueAtTime(f, t0);
     const g = ctx.createGain();
     g.gain.setValueAtTime(0.0001, t0);
-    g.gain.linearRampToValueAtTime(amp, t0 + 0.004);
+    g.gain.linearRampToValueAtTime(amp, t0 + voice.attack);
     g.gain.exponentialRampToValueAtTime(amp * 0.002, t0 + decay);
     osc.connect(g);
     g.connect(master);
@@ -358,7 +376,7 @@ function playGuitar(ctx: AudioContext, midi: number, when: number, opts: PlayNot
   bp.Q.value = 1.2;
   const ng = ctx.createGain();
   ng.gain.setValueAtTime(0.0001, t0);
-  ng.gain.linearRampToValueAtTime(0.18, t0 + 0.002);
+  ng.gain.linearRampToValueAtTime(voice.pluck, t0 + 0.002);
   ng.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.04);
   src.connect(bp);
   bp.connect(ng);
@@ -389,7 +407,10 @@ export function playInstrumentNote(
       playPianoNote(ctx, midi, when, opts);
       return;
     case "acousticGuitar":
-      playGuitar(ctx, midi, when, opts);
+    case "classicalGuitar":
+    case "electricGuitar":
+    case "bassGuitar":
+      playGuitar(ctx, instrument, midi, when, opts);
       return;
     default: {
       const spec = SPECS[instrument];

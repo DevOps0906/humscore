@@ -7,6 +7,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { ScoreView } from "@/components/score-view";
 import { getAudioContext, setAudioSessionType } from "@/lib/audio/context";
 import { playScore, type Playback } from "@/lib/audio/piano-synth";
+import type { InstrumentId } from "@/lib/music/midi";
 import { composeMelody, reharmonize, type MelodyStyle, type ReharmStyle } from "@/lib/music/compose";
 import { applyComposedPhrase, type CompositionPlacement } from "@/lib/music/composition-apply";
 import { scoreToMusicXML } from "@/lib/music/musicxml";
@@ -20,9 +21,10 @@ export type CompositionMode = "compose" | "reharmonize";
 const field = "h-11 min-w-0 w-full rounded-md border border-input bg-surface px-3 text-sm outline-none focus-visible:ring-3 focus-visible:ring-ring/60";
 const signature = (s: Score) => JSON.stringify([s.notes, s.chords, s.key, s.beatsPerMeasure, s.meter, s.bpm, s.transpose, s.marks, s.dynamics]);
 
-export function CompositionDialog({ score, mode, onClose, onApply }: {
+export function CompositionDialog({ score, mode, instrument = "piano", onClose, onApply }: {
   score: Score;
   mode: CompositionMode;
+  instrument?: InstrumentId;
   onClose: () => void;
   onApply: (patch: Partial<Score>) => void | Promise<void>;
 }) {
@@ -77,7 +79,7 @@ export function CompositionDialog({ score, mode, onClose, onApply }: {
     setPlaying(true);
     const start = () => {
       try {
-        playback.current = playScore(ctx, target);
+        playback.current = playScore(ctx, target, { instrument });
         timer.current = setTimeout(stop, (playback.current.durationSec + 1) * 1000);
       } catch {
         stop(); setError("미리듣기를 시작하지 못했어요. 다시 눌러 주세요.");

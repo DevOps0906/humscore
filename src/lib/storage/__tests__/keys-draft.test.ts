@@ -4,6 +4,13 @@ import { parseKeysDraft, serializeKeysDraft, type KeysDraft } from "../keys-draf
 const note = { midi: 60, startBeat: 0, durationBeats: 1 };
 
 describe("keys-draft", () => {
+  it("작곡한 악보 식별자를 복원하고 잘못된 식별자는 저장 대상으로 쓰지 않는다", () => {
+    const scoreId = "a5400aa8-7afd-4d28-a0f2-9ce2d5f069fb";
+    const draft: KeysDraft = { notes: [note], bpm: 90, meter: "4/4", key: { tonic: 0, mode: "major", fifths: 0 }, progressionId: "auto", scoreId };
+    expect(parseKeysDraft(serializeKeysDraft(draft))?.scoreId).toBe(scoreId);
+    expect(parseKeysDraft(JSON.stringify({ ...draft, scoreId: "손상된 식별자" }))?.scoreId).toBeUndefined();
+    expect(parseKeysDraft(JSON.stringify({ notes: [note] }))?.scoreId).toBeUndefined();
+  });
   it("잘못된 JSON / 빈 값 / notes 없음은 null", () => {
     expect(parseKeysDraft(null)).toBeNull();
     expect(parseKeysDraft("{oops")).toBeNull();

@@ -10,7 +10,7 @@ import { Card } from "@/components/ui/card";
 const STATS = [
   { num: "88건반", label: "피아노 건반 입력" },
   { num: "12키", label: "원클릭 전조" },
-  { num: "9종", label: "MIDI 악기" },
+  { num: "12종", label: "MIDI 악기" },
   { num: "3가지", label: "내보내기 (PDF · MIDI · MusicXML)" },
 ];
 

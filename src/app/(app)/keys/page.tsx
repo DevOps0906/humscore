@@ -3,12 +3,16 @@ import { Suspense } from "react";
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { ChordEditor } from "@/components/chord-editor";
+import { CompositionDialog } from "@/components/composition-dialog";
+import { GuitarFretboard } from "@/components/guitar-fretboard";
+import { NoteChordEditor } from "@/components/note-chord-editor";
+import { TabScoreView } from "@/components/tab-score-view";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { DurationPicker } from "@/components/note-editor";
 import { PianoKeyboard } from "@/components/piano-keyboard";
 import { BASS_CLEF_PATH, CLEF_UNITS_PER_SPACE, TREBLE_CLEF_PATH } from "@/components/clef-glyphs";
@@ -19,7 +23,7 @@ import { usePianoSound } from "@/hooks/use-piano-sound";
 import { useInstrument } from "@/hooks/use-instrument";
 import { useMidiInput } from "@/hooks/use-midi-input";
 import { getAudioContext } from "@/lib/audio/context";
-import { INSTRUMENT_LABELS, INSTRUMENT_ORDER, isInstrumentId } from "@/lib/audio/instruments";
+import { INSTRUMENT_LABELS } from "@/lib/audio/instruments";
 import { appendNote, createBlankScore, deleteNote, scoreMeasureCount } from "@/lib/music/edit";
 import { PIANO_KEYS } from "@/lib/music/frequency";
 import { keysCanAppend, keysPreviewMinMeasures, keysShowsScore, keysToggleInput, type KeysScorePhase } from "@/lib/music/keys-entry";
@@ -27,12 +31,14 @@ import { beatsPerMeasureOf, METERS } from "@/lib/music/meter";
 import { buildProgression, PROGRESSIONS } from "@/lib/music/progressions";
 import { scoreToMusicXML } from "@/lib/music/musicxml";
 import { fifthsFor, keyName, suggestChords } from "@/lib/music/theory";
+import { isGuitarInstrument, type GuitarInstrumentId } from "@/lib/music/tablature";
 import type { ChordEvent, KeyInfo, Meter, NoteEvent } from "@/lib/music/types";
 import { AUTO_PROGRESSION, parseKeysDraft, serializeKeysDraft } from "@/lib/storage/keys-draft";
-import { saveScore } from "@/lib/storage/scores";
+import { getScore, saveScore } from "@/lib/storage/scores";
 import { loadScoreDefaults } from "@/lib/storage/preferences";
 
 const DRAFT_KEY = "humscore.keysDraft";
+const INPUT_INSTRUMENTS = ["piano", "classicalGuitar", "electricGuitar", "acousticGuitar", "bassGuitar"] as const;
 
 function loadDraft() {
   try {
@@ -144,7 +150,11 @@ const PC_MAP: Record<string, number> = {
 function KeysPageInner() {
   const router = useRouter();
   const [instrument, setInstrument] = useInstrument();
-  const { playNote, sustain, setSustain } = usePianoSound(instrument);
+  const guitar = isGuitarInstrument(instrument) ? instrument : null;
+  const inputInstrument = guitar ?? "piano";
+  const { playNote, sustain, setSustain } = usePianoSound(inputInstrument);
+  const [tabVisible, setTabVisible] = useState(false);
+  const tabInstrument: GuitarInstrumentId = guitar ?? "acousticGuitar";
   const [active, setActive] = useState(69);
   const [pressed, setPressed] = useState<Set<number>>(new Set());
 
@@ -164,15 +174,20 @@ function KeysPageInner() {
   const [loaded, setLoaded] = useState(false);
   const [confirmClear, setConfirmClear] = useState(false);
   const [titleOpen, setTitleOpen] = useState(false);
-  const [composerOpening, setComposerOpening] = useState(false);
+  const [composerOpen, setComposerOpen] = useState(false);
+  const [selectedNote, setSelectedNote] = useState<number | null>(null);
+  const [selectedChordBeat, setSelectedChordBeat] = useState<number | undefined>();
+  const [noteChordOpen, setNoteChordOpen] = useState(false);
   const [defaultTitle, setDefaultTitle] = useState("");
-  const [base] = useState(() => createBlankScore());
+  const [base, setBase] = useState(() => createBlankScore());
 
   // 초안 복원 / 저장 (음표 숫자만, 오디오 아님)
   useEffect(() => {
     const t = setTimeout(() => {
       const d = loadDraft();
       if (d && d.notes.length > 0) {
+        const saved = d.scoreId ? getScore(d.scoreId) : undefined;
+        if (saved) setBase(saved);
         setNotes(d.notes);
         setBpm(d.bpm || 90);
         setMeter(d.meter);
@@ -200,13 +215,13 @@ function KeysPageInner() {
       else {
         localStorage.setItem(
           DRAFT_KEY,
-          serializeKeysDraft({ notes, bpm, meter, key: { tonic, mode, fifths: fifthsFor(tonic, mode) }, progressionId, chords: customChords }),
+          serializeKeysDraft({ notes, bpm, meter, key: { tonic, mode, fifths: fifthsFor(tonic, mode) }, progressionId, chords: customChords, scoreId: base.id }),
         );
       }
     } catch {
       /* 저장 불가 환경 무시 */
     }
-  }, [notes, bpm, meter, tonic, mode, progressionId, customChords, loaded]);
+  }, [notes, bpm, meter, tonic, mode, progressionId, customChords, loaded, base.id]);
 
   // 조는 사용자가 고른 값 그대로 (음을 눌러도 조표가 바뀌지 않음)
   const draftScore = useMemo(() => {
@@ -229,7 +244,7 @@ function KeysPageInner() {
     handler.current = (midi: number) => {
       setActive(midi);
       playNote(midi);
-      if (canAppend && !titleOpen) setNotes((n) => appendNote(n, midi, dur));
+      if (canAppend && !titleOpen && !composerOpen && !noteChordOpen) setNotes((n) => appendNote(n, midi, dur));
     };
   });
 
@@ -260,7 +275,7 @@ function KeysPageInner() {
     const down = (e: KeyboardEvent) => {
       if (e.ctrlKey || e.metaKey || e.altKey) return;
       const t = e.target as HTMLElement | null;
-      if (t && (t.tagName === "INPUT" || t.tagName === "SELECT" || t.tagName === "TEXTAREA")) return;
+      if (t && (t.tagName === "INPUT" || t.tagName === "SELECT" || t.tagName === "TEXTAREA" || t.closest('[role="dialog"]'))) return;
       const m = PC_MAP[e.key.toLowerCase()];
       if (m && !e.repeat) {
         setPressed((p) => new Set([...p, m]));
@@ -293,18 +308,9 @@ function KeysPageInner() {
     router.push(`/scores/${saved.id}`);
   }
 
-  async function openComposer() {
-    if (composerOpening) return;
-    setComposerOpening(true);
+  function openComposer() {
     setPhase("done");
-    try {
-      const saved = await saveScore({ ...draftScore, chords: notes.length === 0 ? [] : draftScore.chords });
-      try { localStorage.removeItem(DRAFT_KEY); } catch { /* 저장소 접근 불가 무시 */ }
-      router.push(`/scores/${saved.id}?compose=1`);
-    } catch {
-      toast.error("작곡 도구를 열지 못했어요. 다시 시도해 주세요.");
-      setComposerOpening(false);
-    }
+    setComposerOpen(true);
   }
 
   const btn = "h-11 rounded-full px-4 text-sm lg:h-9";
@@ -313,21 +319,24 @@ function KeysPageInner() {
     <div className="flex flex-col gap-5">
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-medium">피아노 88건반으로 악보생성</h1>
-          <p className="text-sm text-ink-soft">
-            f = 440 × 2^((n − 49) / 12) · 건반을 누르거나 PC 키보드 A~K
-          </p>
+          <h1 className="text-2xl font-medium">건반으로 악보생성</h1>
         </div>
         <div className="flex w-full min-w-0 max-w-full flex-wrap items-center justify-end gap-2 sm:w-auto">
         <label className="flex items-center gap-2 text-sm">
           <span className="text-ink-soft">악기</span>
           <select
             aria-label="악기 음색"
-            value={instrument}
-            onChange={(e) => isInstrumentId(e.target.value) && setInstrument(e.target.value)}
+            value={inputInstrument}
+            onChange={(e) => {
+              const value = e.target.value;
+              if (value === "piano" || isGuitarInstrument(value)) {
+                setInstrument(value);
+                if (value === "piano") setTabVisible(false);
+              }
+            }}
             className={selectCls}
           >
-            {INSTRUMENT_ORDER.map((id) => (
+            {INPUT_INSTRUMENTS.map((id) => (
               <option key={id} value={id}>{INSTRUMENT_LABELS[id]}</option>
             ))}
           </select>
@@ -352,8 +361,8 @@ function KeysPageInner() {
         >
           악보 편집
         </Button>
-        <Button type="button" variant="outline" disabled={!loaded || composerOpening} onClick={() => void openComposer()} title="현재 입력을 저장하고 작곡 도구 열기" className="h-11 rounded-full px-4 text-sm lg:h-9">
-          {composerOpening ? "작곡 여는 중…" : "작곡"}
+        <Button type="button" variant="outline" disabled={!loaded} onClick={openComposer} title="현재 악보로 작곡 도구 열기" className="h-11 rounded-full px-4 text-sm lg:h-9">
+          작곡하기
         </Button>
         </div>
       </header>
@@ -497,11 +506,36 @@ function KeysPageInner() {
         onConfirm={() => { setNotes([]); setCustomChords(undefined); }}
       />
 
-      {/* 건반 */}
-      <PianoKeyboard active={active} pressed={pressed} onPress={(m) => handler.current(m)} />
+      {/* 선택한 악기의 입력 화면 */}
+      {guitar
+        ? <GuitarFretboard instrument={guitar} active={active} onPress={(m) => handler.current(m)} />
+        : <PianoKeyboard active={active} pressed={pressed} onPress={(m) => handler.current(m)} />}
 
       {/* 악보 미리보기 (건반 바로 아래) */}
-      {showScore && <ScoreView xml={xml} />}
+      {showScore && <>
+        <div className="flex flex-wrap items-center gap-2" aria-label="악보 표시 형식">
+          <Button type="button" variant="outline" aria-pressed={!tabVisible} onClick={() => setTabVisible(false)} className={btn}>피아노</Button>
+          <Button type="button" variant="outline" aria-pressed={tabVisible} onClick={() => setTabVisible(true)} className={btn}>TAB</Button>
+        </div>
+        <ScoreView xml={xml} chordEditor={phase === "edit" ? {
+          chords: draftScore.chords,
+          onSelect: (startBeat) => {
+            setSelectedChordBeat(startBeat);
+            setSelectedNote(notes.findIndex((note) => Math.abs(note.startBeat - startBeat) < 1e-6));
+            setNoteChordOpen(true);
+          },
+        } : undefined} cursor={phase === "edit" ? {
+          notes, beatsPerMeasure: beats, selected: selectedNote,
+          onSelect: (index) => { setSelectedNote(index); setSelectedChordBeat(undefined); setNoteChordOpen(true); },
+          announce: selectedNote === null ? "음표를 눌러 코드를 수정하세요" : `${selectedNote + 1}번째 음표 코드 수정`,
+          toolbarOpen: false,
+          onDismiss: () => setSelectedNote(null),
+          dragLabel: () => null,
+          onDragPreview: () => {},
+          onDragCommit: () => {},
+        } : undefined} />
+        {tabVisible && <TabScoreView score={draftScore} instrument={tabInstrument} minMeasures={keysPreviewMinMeasures(phase)} />}
+      </>}
       {phase === "done" && (
         <p role="status" className="text-sm text-ink-soft">
           입력을 마쳤어요. 남은 빈 마디를 정리하고 마지막 마디에 마침줄을 넣었어요. 악보 편집을 누르면 이어서 입력하고 코드도 수정할 수 있어요.
@@ -518,15 +552,15 @@ function KeysPageInner() {
         </div>
       </Card>
 
-      <label className={`flex min-h-11 items-center gap-2 text-sm ${instrument === "piano" ? "" : "opacity-50"}`}>
+      <label className={`flex min-h-11 items-center gap-2 text-sm ${inputInstrument === "piano" ? "" : "opacity-50"}`}>
         <input
           type="checkbox"
           checked={sustain}
-          disabled={instrument !== "piano"}
+          disabled={inputInstrument !== "piano"}
           onChange={(e) => setSustain(e.target.checked)}
           className="h-5 w-5 accent-accent"
         />
-        서스테인 페달 (감쇠 2.5배){instrument !== "piano" && " · 피아노에서만 사용"}
+        서스테인 페달 (감쇠 2.5배){inputInstrument !== "piano" && " · 피아노에서만 사용"}
       </label>
 
       {showScore && (
@@ -540,6 +574,30 @@ function KeysPageInner() {
         onConfirm={save}
         onCancel={() => setTitleOpen(false)}
       />
+
+      {composerOpen && <CompositionDialog
+        score={notes.length ? draftScore : { ...draftScore, chords: [] }}
+        instrument={inputInstrument}
+        mode="compose"
+        onClose={() => setComposerOpen(false)}
+        onApply={async (patch) => {
+          const saved = await saveScore({ ...draftScore, ...patch });
+          if (getScore(saved.id)?.updatedAt !== saved.updatedAt) throw new Error("악보를 저장하지 못했어요. 기기 저장 공간을 확인한 뒤 다시 시도해 주세요.");
+          setBase(saved);
+          if (patch.notes) setNotes(patch.notes);
+          if (patch.chords) setCustomChords(patch.chords);
+          setPhase("done");
+        }}
+      />}
+      <Dialog open={noteChordOpen} onOpenChange={setNoteChordOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>음표 코드 변경</DialogTitle>
+            <DialogDescription>선택한 음표의 코드를 바꾸고 적용하세요.</DialogDescription>
+          </DialogHeader>
+          <NoteChordEditor score={draftScore} selected={selectedNote !== null && selectedNote >= 0 ? selectedNote : null} startBeat={selectedChordBeat} onChange={setCustomChords} />
+        </DialogContent>
+      </Dialog>
 
 
       <details className="rounded-2xl border border-line bg-surface p-4 text-sm">

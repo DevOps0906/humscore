@@ -62,6 +62,12 @@ describe("scoreToMidi", () => {
   it("기본 악기는 피아노(0)", () => {
     expect(new Midi(scoreToMidi(makeScore(melody))).tracks[0].instrument.number).toBe(0);
   });
+  it("기타 종류는 대응하는 GM 악기 번호로 내보낸다", () => {
+    for (const [instrument, number] of [["classicalGuitar", 24], ["acousticGuitar", 25], ["electricGuitar", 27], ["bassGuitar", 33]] as const) {
+      const parsed = new Midi(scoreToMidi(makeScore(melody), { melodyInstrument: instrument }));
+      expect(parsed.tracks[0].instrument.number).toBe(number);
+    }
+  });
   it("박자표/제목 헤더 (ASCII 제목)", () => {
     const parsed = new Midi(scoreToMidi(makeScore(melody, { beatsPerMeasure: 3, title: "Waltz" })));
     expect(parsed.header.timeSignatures[0].timeSignature).toEqual([3, 4]);
