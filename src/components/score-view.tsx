@@ -8,6 +8,32 @@ import { beatKey, dragSteps, hitTestMarks, noteIndexByStart, type MarkRect } fro
 import type { NoteEvent } from "@/lib/music/types";
 
 const DEBOUNCE_MS = 200;
+const MEASURES_PER_LINE = 4;
+
+/** 음표가 빽빽하거나 화면이 좁아도 네 마디가 한 줄에 남도록 종이의 최소 폭을 구한다. */
+function renderFourMeasureLines(osmd: OpenSheetMusicDisplay, container: HTMLElement) {
+  container.style.minWidth = "";
+  osmd.render();
+  const measures = osmd.GraphicSheet?.MeasureList ?? [];
+  const rules = osmd.EngravingRules;
+  let widestGroup = 0;
+  for (let start = 0; start < measures.length; start += MEASURES_PER_LINE) {
+    let width = 0;
+    for (const staves of measures.slice(start, start + MEASURES_PER_LINE)) {
+      width += Math.max(0, ...staves.map((measure) =>
+        measure.minimumStaffEntriesWidth + measure.beginInstructionsWidth + measure.endInstructionsWidth,
+      ));
+    }
+    widestGroup = Math.max(widestGroup, width);
+  }
+  // 줄 시작의 음자리표·조표와 페이지 여백을 포함한다. 좁은 화면은 종이 안에서만 스크롤한다.
+  const margin = rules.PageLeftMargin + rules.PageRightMargin + rules.SystemLeftMargin + rules.SystemRightMargin;
+  const minimumWidth = Math.ceil((widestGroup * 1.2 + margin) * 10 * osmd.zoom);
+  if (minimumWidth > 0) {
+    container.style.minWidth = `${minimumWidth}px`;
+    osmd.render();
+  }
+}
 
 /** 편집 커서 (편집 모드에서만 전달). 없으면 ScoreView 는 순수 뷰어로 동작 */
 export interface ScoreCursorProps {
@@ -184,14 +210,17 @@ export function ScoreView({
             if (!isLatest() || !ref.current) return;
             osmdRef.current = new OpenSheetMusicDisplay(ref.current, {
               autoResize: true,
-              newSystemFromXML: true,
+              newSystemFromXML: false, // 화면 폭과 무관하게 아래의 4마디 단위 배치를 사용
               backend: "svg",
               drawTitle: showHeader,
               drawComposer: showHeader,
               drawPartNames: false,
               drawingParameters: "compacttight",
               autoGenerateMultipleRestMeasuresFromRestMeasures: false, // 빈 마디를 "7" 식 다중쉼표로 합치지 않음 (8마디 미리보기)
+              stretchLastSystemLine: true, // 5~8마디와 마지막 줄도 종이 오른쪽 끝까지 채움
             });
+            osmdRef.current.EngravingRules.RenderXMeasuresPerLineAkaSystem = MEASURES_PER_LINE;
+            osmdRef.current.EngravingRules.NewPartAndSystemAfterFinalBarline = false;
           }
           const osmd = osmdRef.current;
           if (showHeader) {
@@ -207,7 +236,7 @@ export function ScoreView({
             if (!isLatest()) return;
           }
           osmd.zoom = zoom;
-          osmd.render();
+          renderFourMeasureLines(osmd, ref.current);
           setError(null);
           if (isLatest()) updateMarks();
         } catch (e) {

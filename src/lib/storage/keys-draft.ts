@@ -1,8 +1,9 @@
 import { z } from "zod";
-import { noteEventSchema } from "./score-schema";
+import { chordEventSchema, noteEventSchema } from "./score-schema";
 import { fifthsFor } from "../music/theory";
 import { PROGRESSIONS } from "../music/progressions";
-import type { KeyInfo, Meter, NoteEvent } from "../music/types";
+import { isValidChordSymbol } from "../music/edit";
+import type { ChordEvent, KeyInfo, Meter, NoteEvent } from "../music/types";
 
 /** 건반 입력 화면 초안 (음표 숫자와 설정만, 오디오 아님) */
 export interface KeysDraft {
@@ -12,6 +13,8 @@ export interface KeysDraft {
   key: KeyInfo;
   /** "auto" = 자동 추천, 그 외 PROGRESSIONS id */
   progressionId: string;
+  /** 사용자가 수정한 코드. 없으면 선택한 코드 진행 또는 자동 추천을 사용 */
+  chords?: ChordEvent[];
 }
 
 export const AUTO_PROGRESSION = "auto";
@@ -21,6 +24,7 @@ const METER_IDS: readonly Meter[] = ["3/4", "4/4", "6/8"];
 const BPM_MIN = 30;
 const BPM_MAX = 240;
 const notesSchema = z.array(noteEventSchema).max(6_000);
+const chordsSchema = z.array(chordEventSchema.refine((chord) => isValidChordSymbol(chord.symbol))).max(1_500);
 
 export function parseKeysDraft(raw: string | null): KeysDraft | null {
   if (!raw) return null;
@@ -63,6 +67,11 @@ export function parseKeysDraft(raw: string | null): KeysDraft | null {
       ? o.progressionId
       : AUTO_PROGRESSION;
 
+  if (o.chords !== undefined) {
+    const parsedChords = chordsSchema.safeParse(o.chords);
+    if (!parsedChords.success) return null;
+    return { notes: parsedNotes.data, bpm, meter, key, progressionId, chords: parsedChords.data };
+  }
   return { notes: parsedNotes.data, bpm, meter, key, progressionId };
 }
 

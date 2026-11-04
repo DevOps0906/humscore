@@ -24,7 +24,7 @@ export function CompositionDialog({ score, mode, onClose, onApply }: {
   score: Score;
   mode: CompositionMode;
   onClose: () => void;
-  onApply: (patch: Partial<Score>) => void;
+  onApply: (patch: Partial<Score>) => void | Promise<void>;
 }) {
   const [measures, setMeasures] = useState(8);
   const [progressionId, setProgressionId] = useState("pop4");
@@ -34,6 +34,8 @@ export function CompositionDialog({ score, mode, onClose, onApply }: {
   const [placement, setPlacement] = useState<CompositionPlacement>("append");
   const [preview, setPreview] = useState<{ score: Score; source: string } | null>(null);
   const [error, setError] = useState("");
+  const [saving, setSaving] = useState(false);
+  const applying = useRef(false);
   const playback = useRef<Playback | null>(null);
   const pendingPlayback = useRef<(() => void) | null>(null);
   const [playing, setPlaying] = useState(false);
@@ -95,17 +97,21 @@ export function CompositionDialog({ score, mode, onClose, onApply }: {
     startupTimer = setTimeout(() => { release(); setPlaying(false); setError("오디오가 대기 중이에요. 미리듣기를 다시 눌러 주세요."); }, 3000);
     pendingPlayback.current = release;
   }
-  function apply() {
-    if (!preview || !fresh) return;
+  async function apply(save = false) {
+    if (!preview || !fresh || applying.current) return;
+    applying.current = true;
+    setSaving(true);
     try {
       const patch = mode === "compose" ? applyComposedPhrase(score, preview.score, placement) : { chords: preview.score.chords };
-      stop(); onApply(patch);
-      toast.success(mode === "compose" ? "멜로디를 적용했어요" : "리하모니제이션을 적용했어요");
+      stop();
+      await onApply(patch);
+      toast.success(save ? "작곡한 악보를 저장했어요" : mode === "compose" ? "멜로디를 적용했어요" : "리하모니제이션을 적용했어요");
       onClose();
-    } catch (e) { setError(e instanceof Error ? e.message : "후보를 적용하지 못했어요."); }
+    } catch (e) { setError(e instanceof Error ? e.message : "후보를 저장하지 못했어요. 다시 시도해 주세요."); }
+    finally { applying.current = false; setSaving(false); }
   }
   return (
-    <Dialog open onOpenChange={(open) => { if (!open) onClose(); }}>
+    <Dialog open onOpenChange={(open) => { if (!open && !applying.current) onClose(); }}>
       <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-3xl">
         <DialogHeader>
           <DialogTitle>{mode === "compose" ? "작곡" : "고급 리하모니제이션"}</DialogTitle>
@@ -158,10 +164,12 @@ export function CompositionDialog({ score, mode, onClose, onApply }: {
           {mode === "compose" && <p className="break-words text-xs text-ink-soft">추천 음정: {preview.score.notes.slice(0, 24).map((n) => n.midi === null ? "쉼표" : midiToName(n.midi + score.transpose, shownKey.fifths < 0)).join(" · ")}{preview.score.notes.length > 24 ? " …" : ""}</p>}
         </div>}
         <DialogFooter className="gap-2">
-          <Button type="button" variant="outline" onClick={onClose} className="h-11">취소</Button>
-          <Button type="button" variant="outline" onClick={listen} disabled={!preview || !fresh} className="h-11">{playing ? "미리듣기 중지" : "후보 미리듣기"}</Button>
-          <Button type="button" onClick={apply} disabled={!preview || !fresh} className="h-11">{mode === "reharmonize" ? "리하모니 적용" : placement === "replace" && score.notes.length > 0 ? "기존 음표를 바꾸고 적용" : "멜로디 적용"}</Button>
+          <Button type="button" variant="outline" onClick={onClose} disabled={saving} className="h-11">취소</Button>
+          <Button type="button" variant="outline" onClick={listen} disabled={!preview || !fresh || saving} className="h-11">{playing ? "미리듣기 중지" : "후보 미리듣기"}</Button>
+          <Button type="button" onClick={() => void apply()} disabled={!preview || !fresh || saving} className="h-11">{mode === "reharmonize" ? "리하모니 적용" : placement === "replace" && score.notes.length > 0 ? "기존 음표를 바꾸고 적용" : "멜로디 적용"}</Button>
+          {mode === "compose" && <Button type="button" onClick={() => void apply(true)} disabled={!preview || !fresh || saving} className="h-11">{saving ? "저장 중…" : "저장하기"}</Button>}
         </DialogFooter>
+        {mode === "compose" && <p className="text-xs text-ink-soft">저장하기는 선택한 위치에 후보를 적용해 현재 악보에 저장합니다. 후보를 먼저 만든 뒤 저장해 주세요.</p>}
       </DialogContent>
     </Dialog>
   );

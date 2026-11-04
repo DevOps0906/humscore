@@ -61,6 +61,22 @@ describe("keys-draft", () => {
     expect(back).toEqual(d);
   });
 
+  it("수동 코드는 위치와 기호를 보존하며 구버전에는 수동 코드를 만들지 않는다", () => {
+    const d: KeysDraft = {
+      notes: [note], bpm: 90, meter: "4/4", key: { tonic: 0, mode: "major", fifths: 0 },
+      progressionId: "auto", chords: [{ startBeat: 0, symbol: "F" }, { startBeat: 4, symbol: "G7" }],
+    };
+    expect(parseKeysDraft(serializeKeysDraft(d))).toEqual(d);
+    expect(parseKeysDraft(JSON.stringify({ notes: [note] }))?.chords).toBeUndefined();
+    expect(parseKeysDraft(JSON.stringify({ ...d, chords: [] }))?.chords).toEqual([]);
+  });
+
+  it("손상된 수동 코드는 자동 추천으로 조용히 바꾸지 않고 초안 전체를 거부한다", () => {
+    for (const chords of [[{ startBeat: -1, symbol: "C" }], [{ startBeat: 0, symbol: "틀린 코드" }], "C", null]) {
+      expect(parseKeysDraft(JSON.stringify({ notes: [note], chords }))).toBeNull();
+    }
+  });
+
   it("잘못된 조/진행 id 는 기본값으로, fifths 는 다시 계산", () => {
     const r = parseKeysDraft(
       JSON.stringify({ notes: [], key: { tonic: 2, mode: "major", fifths: 99 }, progressionId: "nope" }),

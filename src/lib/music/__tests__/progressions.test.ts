@@ -12,9 +12,8 @@ const F: KeyInfo = { tonic: 5, mode: "major", fifths: -1 };
 const syms = (id: string, key: KeyInfo, n: number) => buildProgression(id, key, n, 4).map((c) => c.symbol);
 
 describe("progressions", () => {
-  it("정확히 10개, id 유일, 패턴 길이", () => {
-    expect(PROGRESSIONS).toHaveLength(10);
-    expect(new Set(PROGRESSIONS.map((p) => p.id)).size).toBe(10);
+  it("모든 진행의 id가 유일하고 각 패턴 길이를 지킨다", () => {
+    expect(new Set(PROGRESSIONS.map((p) => p.id)).size).toBe(PROGRESSIONS.length);
     for (const p of PROGRESSIONS) expect(buildProgression(p.id, C, p.length, 4)).toHaveLength(p.length);
     expect(PROGRESSIONS.find((p) => p.id === "canon")!.length).toBe(8);
     expect(PROGRESSIONS.find((p) => p.id === "blues12")!.length).toBe(12);
@@ -29,6 +28,13 @@ describe("progressions", () => {
     expect(syms("pop4", Am, 5)).toEqual(["Am", "F", "C", "G", "Am"]);
     expect(syms("jazz251", Am, 4)).toEqual(["Bdim", "E7", "Am7", "Fmaj7"]);
     expect(buildProgression("pop4", C, 3, 3).map((c) => c.startBeat)).toEqual([0, 3, 6]);
+  });
+  it("2-5-1은 으뜸화음을 두 마디 유지한 뒤 반복하며 장·단조와 전조를 따른다", () => {
+    expect(PROGRESSIONS.find((p) => p.id === "two-five-one")?.name).toContain("2-5-1");
+    expect(syms("two-five-one", C, 8)).toEqual(["Dm7", "G7", "Cmaj7", "Cmaj7", "Dm7", "G7", "Cmaj7", "Cmaj7"]);
+    expect(syms("two-five-one", { tonic: 0, mode: "minor", fifths: -3 }, 4)).toEqual(["Ddim", "G7", "Cm", "Cm"]);
+    expect(syms("two-five-one", F, 4)).toEqual(["Gm7", "C7", "Fmaj7", "Fmaj7"]);
+    expect(buildProgression("two-five-one", C, 4, 3).map((c) => c.startBeat)).toEqual([0, 3, 6, 9]);
   });
   it("플랫 조는 플랫 표기", () => {
     expect(syms("pop4", F, 4)).toEqual(["F", "C", "Dm", "Bb"]);

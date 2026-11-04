@@ -34,7 +34,7 @@ import { midiToName } from "@/lib/music/frequency";
 import { keyName, transposeKey } from "@/lib/music/theory";
 import { exportFile, isNativeApp, safeFileName } from "@/lib/platform/export-file";
 import { sheetToPdf } from "@/lib/platform/sheet-pdf";
-import { deleteScore } from "@/lib/storage/scores";
+import { deleteScore, getScore, saveScore } from "@/lib/storage/scores";
 import type { Score } from "@/lib/music/types";
 
 const compositionSignature = (score: Score) => JSON.stringify([score.notes, score.chords, score.marks, score.dynamics]);
@@ -367,10 +367,13 @@ export function ScoreClient({ id }: { id: string }) {
         score={score}
         mode={compositionMode}
         onClose={() => setCompositionMode(null)}
-        onApply={(patch) => {
+        onApply={async (patch) => {
           const before = { notes: score.notes, chords: score.chords, marks: score.marks, dynamics: score.dynamics };
+          const saved = await saveScore({ ...score, ...patch });
+          if (getScore(saved.id)?.updatedAt !== saved.updatedAt) {
+            throw new Error("악보를 저장하지 못했어요. 기기 저장 공간을 확인하고 다시 시도해 주세요.");
+          }
           setCompositionUndo({ patch: before, expected: compositionSignature({ ...score, ...patch }) });
-          persist(patch);
           setSelected(null); setToolbarOpen(false);
         }}
       />}

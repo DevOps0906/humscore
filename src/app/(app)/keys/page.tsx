@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { ConfirmDialog } from "@/components/confirm-dialog";
+import { ChordEditor } from "@/components/chord-editor";
 import { DurationPicker } from "@/components/note-editor";
 import { PianoKeyboard } from "@/components/piano-keyboard";
 import { BASS_CLEF_PATH, CLEF_UNITS_PER_SPACE, TREBLE_CLEF_PATH } from "@/components/clef-glyphs";
@@ -26,7 +27,7 @@ import { beatsPerMeasureOf, METERS } from "@/lib/music/meter";
 import { buildProgression, PROGRESSIONS } from "@/lib/music/progressions";
 import { scoreToMusicXML } from "@/lib/music/musicxml";
 import { fifthsFor, keyName, suggestChords } from "@/lib/music/theory";
-import type { KeyInfo, Meter, NoteEvent } from "@/lib/music/types";
+import type { ChordEvent, KeyInfo, Meter, NoteEvent } from "@/lib/music/types";
 import { AUTO_PROGRESSION, parseKeysDraft, serializeKeysDraft } from "@/lib/storage/keys-draft";
 import { saveScore } from "@/lib/storage/scores";
 import { loadScoreDefaults } from "@/lib/storage/preferences";
@@ -157,6 +158,8 @@ function KeysPageInner() {
   const [tonic, setTonic] = useState(0);
   const [mode, setMode] = useState<"major" | "minor">("major");
   const [progressionId, setProgressionId] = useState(AUTO_PROGRESSION);
+  const [customChords, setCustomChords] = useState<ChordEvent[] | undefined>();
+  const [chordEditorOpen, setChordEditorOpen] = useState(false);
   const [dur, setDur] = useState(1);
   const [loaded, setLoaded] = useState(false);
   const [confirmClear, setConfirmClear] = useState(false);
@@ -176,6 +179,7 @@ function KeysPageInner() {
         setTonic(d.key.tonic);
         setMode(d.key.mode);
         setProgressionId(d.progressionId);
+        setCustomChords(d.chords);
         // 복원한 악보는 마침줄과 함께 보여 주고, 편집 버튼으로 입력을 재개한다.
         setPhase("done");
       } else {
@@ -196,19 +200,24 @@ function KeysPageInner() {
       else {
         localStorage.setItem(
           DRAFT_KEY,
-          serializeKeysDraft({ notes, bpm, meter, key: { tonic, mode, fifths: fifthsFor(tonic, mode) }, progressionId }),
+          serializeKeysDraft({ notes, bpm, meter, key: { tonic, mode, fifths: fifthsFor(tonic, mode) }, progressionId, chords: customChords }),
         );
       }
     } catch {
       /* 저장 불가 환경 무시 */
     }
-  }, [notes, bpm, meter, tonic, mode, progressionId, loaded]);
+  }, [notes, bpm, meter, tonic, mode, progressionId, customChords, loaded]);
 
   // 조는 사용자가 고른 값 그대로 (음을 눌러도 조표가 바뀌지 않음)
   const draftScore = useMemo(() => {
     const key: KeyInfo = { tonic, mode, fifths: fifthsFor(tonic, mode) };
-    return { ...base, notes, bpm, meter, beatsPerMeasure: beatsPerMeasureOf(meter), key };
-  }, [base, notes, bpm, meter, tonic, mode]);
+    const score = { ...base, notes, bpm, meter, beatsPerMeasure: beats, key };
+    const measures = scoreMeasureCount(score);
+    const chords = customChords ?? (progressionId === AUTO_PROGRESSION
+      ? suggestChords(notes, key, beats, measures)
+      : buildProgression(progressionId, key, measures, beats));
+    return { ...score, chords };
+  }, [base, notes, bpm, meter, beats, tonic, mode, progressionId, customChords]);
   const xml = useMemo(
     () => (showScore ? scoreToMusicXML(draftScore, "lead", { minMeasures: keysPreviewMinMeasures(phase), measuresPerSystem: 4 }) : ""),
     [showScore, phase, draftScore],
@@ -278,13 +287,7 @@ function KeysPageInner() {
 
   async function save(result: { title: string; composer?: string; lyricist?: string; arranger?: string }) {
     if (notes.length === 0) return;
-    // 선택한 코드 진행, "자동 추천"이면 마디별 코드를 추천 (악보 화면에서 수정 가능)
-    const measures = scoreMeasureCount(draftScore);
-    const chords =
-      progressionId === AUTO_PROGRESSION
-        ? suggestChords(notes, draftScore.key, beats, measures)
-        : buildProgression(progressionId, draftScore.key, measures, beats);
-    const saved = await saveScore({ ...draftScore, chords, ...result });
+    const saved = await saveScore({ ...draftScore, ...result });
     try { localStorage.removeItem(DRAFT_KEY); } catch { /* 무시 */ }
     setTitleOpen(false); // 이동 전에 닫아 대화상자가 DOM 에 남지 않게 함
     router.push(`/scores/${saved.id}`);
@@ -295,11 +298,7 @@ function KeysPageInner() {
     setComposerOpening(true);
     setPhase("done");
     try {
-      const measures = scoreMeasureCount(draftScore);
-      const chords = notes.length === 0 ? [] : progressionId === AUTO_PROGRESSION
-        ? suggestChords(notes, draftScore.key, beats, measures)
-        : buildProgression(progressionId, draftScore.key, measures, beats);
-      const saved = await saveScore({ ...draftScore, chords });
+      const saved = await saveScore({ ...draftScore, chords: notes.length === 0 ? [] : draftScore.chords });
       try { localStorage.removeItem(DRAFT_KEY); } catch { /* 저장소 접근 불가 무시 */ }
       router.push(`/scores/${saved.id}?compose=1`);
     } catch {
@@ -314,7 +313,7 @@ function KeysPageInner() {
     <div className="flex flex-col gap-5">
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-medium">피아노 88건반 주파수</h1>
+          <h1 className="text-2xl font-medium">피아노 88건반으로 악보생성</h1>
           <p className="text-sm text-ink-soft">
             f = 440 × 2^((n − 49) / 12) · 건반을 누르거나 PC 키보드 A~K
           </p>
@@ -340,13 +339,14 @@ function KeysPageInner() {
           aria-pressed={phase === "input"}
           className={`h-11 rounded-full px-4 text-sm lg:h-9 ${phase === "input" ? "border-accent bg-accent/15 text-accent hover:bg-accent/20 hover:text-accent" : ""}`}
         >
-          악보 입력
+          악보생성
         </Button>
         <Button
           type="button"
           variant="outline"
           disabled={notes.length === 0}
-          onClick={() => setPhase("edit")}
+          onClick={() => { setPhase("edit"); setChordEditorOpen(true); }}
+          title="음표를 이어서 입력하고 마디별 코드를 수정해요"
           aria-pressed={phase === "edit"}
           className={`h-11 rounded-full px-4 text-sm lg:h-9 ${phase === "edit" ? "border-accent bg-accent/15 text-accent hover:bg-accent/20 hover:text-accent" : ""}`}
         >
@@ -398,7 +398,7 @@ function KeysPageInner() {
           </div>
           <p className="text-xs text-ink-soft">
             {phase === "edit"
-              ? "건반을 누르면 마지막 음 뒤에 추가돼요. 마디가 차면 다음 마디가 자동으로 늘어나요."
+              ? "건반을 누르면 마지막 음 뒤에 추가돼요. 마디가 차면 다음 마디가 자동으로 늘어나요. BPM 아래 코드수정하기에서 마디별 코드도 바꿀 수 있어요."
               : notes.length === 0
               ? "먼저 조를 고른 뒤 건반을 눌러 입력하세요. 음 길이를 고르면 악보에 추가돼요."
               : "음 길이를 고르고 건반을 누르면 악보에 추가돼요. 조를 바꿔도 음높이는 그대로예요."}
@@ -437,7 +437,12 @@ function KeysPageInner() {
                 key={m.id}
                 type="button"
                 variant="outline"
-                onClick={() => setMeter(m.id)}
+                onClick={() => {
+                  const nextBeats = beatsPerMeasureOf(m.id);
+                  // 마디별로 고친 코드는 박자 변경 뒤에도 같은 마디·상대 위치에 둔다.
+                  setCustomChords((chords) => chords?.map((chord) => ({ ...chord, startBeat: chord.startBeat / beats * nextBeats })));
+                  setMeter(m.id);
+                }}
                 aria-pressed={meter === m.id}
                 className={`h-11 rounded-full px-4 lg:h-9 ${meter === m.id ? "border-accent bg-accent/15 text-accent hover:bg-accent/20 hover:text-accent" : ""}`}
               >
@@ -446,12 +451,30 @@ function KeysPageInner() {
             ))}
             <span className="text-ink-soft">{notes.length}개 음표</span>
           </div>
+          <section className="grid min-w-0 gap-3" aria-label="코드수정하기">
+            <Button
+              type="button"
+              variant="outline"
+              className={`${btn} justify-self-start`}
+              aria-expanded={chordEditorOpen}
+              aria-controls="keys-chord-editor"
+              onClick={() => setChordEditorOpen((open) => !open)}
+            >
+              코드수정하기
+            </Button>
+            {chordEditorOpen && (
+              <div id="keys-chord-editor" className="min-w-0">
+                <ChordEditor score={draftScore} onChange={setCustomChords} />
+                <p className="mt-2 text-xs text-ink-soft">수정한 코드는 악보 미리보기와 저장에 반영돼요. 아래 코드 진행을 다시 선택하면 해당 진행으로 바뀌어요.</p>
+              </div>
+            )}
+          </section>
           <label className="flex flex-wrap items-center gap-2 text-sm">
             코드 진행
             <select
               aria-label="코드 진행"
               value={progressionId}
-              onChange={(e) => setProgressionId(e.target.value)}
+              onChange={(e) => { setProgressionId(e.target.value); setCustomChords(undefined); }}
               className={`${selectCls} min-w-0 max-w-full`}
             >
               <option value={AUTO_PROGRESSION}>자동 추천</option>
@@ -471,7 +494,7 @@ function KeysPageInner() {
         title="음표를 모두 지울까요?"
         description="작성 중인 음표가 모두 사라져요."
         confirmLabel="모두 지우기"
-        onConfirm={() => setNotes([])}
+        onConfirm={() => { setNotes([]); setCustomChords(undefined); }}
       />
 
       {/* 건반 */}
@@ -481,7 +504,7 @@ function KeysPageInner() {
       {showScore && <ScoreView xml={xml} />}
       {phase === "done" && (
         <p role="status" className="text-sm text-ink-soft">
-          입력을 마쳤어요. 남은 빈 마디를 정리하고 마지막 마디에 마침줄을 넣었어요. 악보 편집을 누르면 이어서 입력할 수 있어요.
+          입력을 마쳤어요. 남은 빈 마디를 정리하고 마지막 마디에 마침줄을 넣었어요. 악보 편집을 누르면 이어서 입력하고 코드도 수정할 수 있어요.
         </p>
       )}
 

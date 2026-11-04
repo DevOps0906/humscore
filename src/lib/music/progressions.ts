@@ -41,6 +41,10 @@ const PATTERNS: Record<string, { major: Step[]; minor: Step[] }> = {
     major: [[2, "m7"], [7, "7"], [0, "maj7"], [9, "m7"]],
     minor: [[2, "dim"], [7, "7"], [0, "m7"], [8, "maj7"]],
   },
+  "two-five-one": {
+    major: [[2, "m7"], [7, "7"], [0, "maj7"], [0, "maj7"]],
+    minor: [[2, "dim"], [7, "7"], [0, "m"], [0, "m"]],
+  },
   circle: {
     major: [[0, "maj7"], [9, "m7"], [2, "m7"], [7, "7"]],
     minor: [[0, "m7"], [5, "m7"], [10, "7"], [3, "maj7"]],
@@ -66,6 +70,7 @@ export const PROGRESSIONS: readonly ProgressionPreset[] = [
   { id: "cadence", name: "기본 카덴츠", roman: "I – IV – V – I", minorRoman: "i – iv – V – i", description: "가장 기본적인 마무리 진행. 동요나 찬송처럼 안정적이고 또렷한 곡에 알맞습니다.", length: 4 },
   { id: "plain", name: "밝은 4코드", roman: "I – IV – vi – V", minorRoman: "i – VII – VI – V", description: "경쾌하고 부드럽게 이어지는 흐름. 단조에서는 안달루시안 진행으로 어둡고 정열적입니다.", length: 4 },
   { id: "jazz251", name: "재즈 ii-V-I", roman: "ii – V – I – vi", minorRoman: "iidim – V – i – VI", description: "7th 코드로 세련되게 해결되는 재즈의 기본 흐름. 도회적이고 느긋한 분위기입니다.", length: 4 },
+  { id: "two-five-one", name: "2-5-1 진행", roman: "ii7 – V7 – Imaj7 – Imaj7", minorRoman: "iidim – V7 – i – i", description: "2도에서 5도를 거쳐 1도로 해결하고 으뜸화음을 한 마디 더 유지하는 4마디 구조입니다.", length: 4 },
   { id: "circle", name: "서클 진행", roman: "I – vi – ii – V", minorRoman: "i – iv – VII – III", description: "5도씩 내려가며 계속 이어지는 흐름. 풍성하고 부드러운 7th 화성이 특징입니다.", length: 4 },
   { id: "canon", name: "파헬벨 캐논(8마디)", roman: "I – V – vi – iii – IV – I – IV – V", minorRoman: "i – v – VI – III – iv – i – iv – V", description: "여덟 마디로 길게 흘러가는 우아한 진행. 서서히 쌓이는 감동의 곡에 어울립니다.", length: 8 },
   { id: "blues12", name: "12마디 블루스", roman: "I7×4 – IV7×2 – I7×2 – V7 – IV7 – I7 – V7", minorRoman: "i7×4 – iv7×2 – i7×2 – ♭VI7 – V7 – i7 – V7", description: "열두 마디가 한 바퀴를 이루는 블루스 형식. 즉흥 연주와 흥겨운 셔플에 좋습니다.", length: 12 },

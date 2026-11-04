@@ -23,7 +23,7 @@ export const test = base.extend<{ pageErrors: string[] }>({
 export { expect };
 
 /**
- * /keys 로 이동해 "악보 입력"을 켠다.
+ * /keys 로 이동해 "악보생성"을 켠다.
  * 모바일 세로 화면에서는 "가로로 돌려 주세요" 덮개(role=alert)가 비동기로 떠 클릭을 막으므로
  * "세로로 그냥 보기"를 눌러 닫는다(언제 떠도 처리되도록 locator handler 등록).
  * 주의: 같은 버튼을 직접 click 하지 말 것 — handler 가 먼저 닫아 버려 그 click 이 무한 대기한다.
@@ -31,7 +31,7 @@ export { expect };
 export async function openKeysInput(page: Page): Promise<void> {
   await page.addLocatorHandler(page.getByRole("button", { name: "세로로 그냥 보기" }), (b) => b.click());
   await page.goto("/keys");
-  const toggle = page.getByRole("button", { name: "악보 입력" });
+  const toggle = page.getByRole("button", { name: "악보생성", exact: true });
   // 하이드레이션 전 클릭 유실 대비: 눌린 상태가 될 때까지 재시도
   await expect(async () => {
     if ((await toggle.getAttribute("aria-pressed")) !== "true") await toggle.click();

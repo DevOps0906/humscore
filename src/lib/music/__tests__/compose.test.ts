@@ -8,6 +8,15 @@ const options = { measures: 8, progressionId: "pop4", style: "balanced" as const
 const pc = (midi: number) => ((midi % 12) + 12) % 12;
 
 describe("코드 진행을 바탕으로 새 멜로디 작곡", () => {
+  it("2-5-1 진행으로 8마디를 완성하고 강박은 해당 코드의 구성음으로 만든다", () => {
+    const result = composeMelody(makeScore([]), { ...options, progressionId: "two-five-one" });
+    expect(result.chords.map((chord) => chord.symbol)).toEqual(["Dm7", "G7", "Cmaj7", "Cmaj7", "Dm7", "G7", "Cmaj7", "Cmaj7"]);
+    expect(result.notes.at(-1)!.startBeat + result.notes.at(-1)!.durationBeats).toBe(32);
+    for (const note of result.notes.filter((n) => n.startBeat % 4 === 0)) {
+      const chord = result.chords.find((c) => c.startBeat === note.startBeat)!;
+      expect(chordToMidi(chord.symbol).map(pc)).toContain(pc(note.midi!));
+    }
+  });
   it.each<MelodyStyle>(["balanced", "lyrical", "rhythmic"])("%s는 선택한 마디만 빈틈없이 채우고 강박에 코드 음을 둔다", (style) => {
     const original = makeScore([{ midi: 58, startBeat: 0, durationBeats: 1, lyric: "기" }]);
     const before = structuredClone(original);

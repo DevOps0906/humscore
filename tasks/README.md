@@ -26,6 +26,8 @@
 | task-021 | 건반 악보 입력 마치기·저장 시 빈 마디 정리와 마침줄 표시, 악보 편집 재개 시 마디 자동 확장 | W2 | — | 보통 | builder → tester → codex-reviewer(code) | 완료(Vitest 707 통과·32 건너뜀, 기능 E2E 6·3구간 QA 2 통과, lint·tsc·코드 리뷰 통과) |
 | task-022 | 절별 가사(1~99)·선택 음표 위 코드·코드 진행과 마디 수에 따른 작곡·고급 리하모니제이션 ([명세](../docs/specs/task-022-composition.md)) | W2 | task-021 | 보통 | music-logic-coder → builder → tester → codex-reviewer(code) | 완료(Vitest 746 통과·32 건너뜀, 신규 E2E 10·기존 회귀 E2E 12 통과, 3구간 검수·lint·tsc·빌드 검증) |
 
+| task-023 | 88건반 악보생성 문구·코드수정하기, 작곡 2-5-1·저장하기, 악보 4마디 줄 배치·마지막 줄 채우기 | W2 | task-022 | 보통 | builder → tester → codex-reviewer(code) | 완료(단위 750 통과·32 건너뜀, 기능·회귀 E2E 24개 통과, 3구간 폭·정렬 검사 및 시각 검수) |
+
 상태: 대기 / 진행 / 완료 / 보류
 
 ## 발견한 문제 (범위 밖 — 나중 작업 후보)
