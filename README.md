@@ -176,24 +176,17 @@ sequenceDiagram
 
 코드: [`src/app/(marketing)/page.tsx`](<src/app/(marketing)/page.tsx>) · 스타일: [`landing.module.css`](src/components/landing/landing.module.css) · 문구: [`data.ts`](src/components/landing/data.ts)
 
-### 실제 디자인 미리보기
+### 랜딩페이지 전체 디자인
 
-2026-11-04 기준 현재 구현 화면입니다. 짙은 남색 배경과 라벤더 강조색, 오선·음표 장식, 노트북·휴대폰 악보 목업으로 구성합니다. 아래 이미지를 누르면 데스크톱 전체 페이지를 원본 크기로 볼 수 있습니다.
+2026-11-04 기준 현재 구현 화면입니다. 히어로부터 사용 방법·체험·에디터·기능·가격·FAQ·푸터까지 전체 랜딩페이지를 아래에 표시합니다. 짙은 남색 배경과 라벤더 강조색, 오선·음표 장식, 노트북·휴대폰 악보 목업으로 구성합니다. 이미지를 누르면 원본 크기로 볼 수 있습니다.
 
-[![HumScore 랜딩페이지 — 데스크톱 히어로와 악보 목업](docs/design/assets/landing-hero.png)](docs/design/assets/landing-desktop.png)
+[![HumScore 랜딩페이지 전체 디자인 — 히어로부터 사용 방법·체험·에디터·기능·가격·FAQ·푸터까지](docs/design/assets/landing-desktop.png)](docs/design/assets/landing-desktop.png)
 
 | 화면 | 캡처 폭 | 전체 디자인 |
 |---|---|---|
 | 데스크톱 | 1440px | [전체 페이지 이미지](docs/design/assets/landing-desktop.png) |
 | 태블릿 | 900px | [전체 페이지 이미지](docs/design/assets/landing-tablet.png) |
 | 모바일 | 390px | [전체 페이지 이미지](docs/design/assets/landing-mobile.png) |
-
-<details>
-<summary>데스크톱 랜딩페이지 전체 디자인 펼쳐 보기</summary>
-
-![HumScore 랜딩페이지 전체 디자인 — 히어로부터 사용 방법·에디터·기능·FAQ·푸터까지](docs/design/assets/landing-desktop.png)
-
-</details>
 
 ### 섹션 구성
 
