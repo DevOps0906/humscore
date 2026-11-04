@@ -78,7 +78,7 @@
 | 1 | 화면은 Next.js, 데이터는 Supabase(RLS) | 서버 코드는 Server Actions·Route Handler·proxy에만. 마이크 화면은 클라이언트 컴포넌트 |
 | 2 | 하나의 악보 모델(`Score`), 여러 뷰 | 모든 출력은 `Score` → MusicXML/MIDI 변환 |
 | 3 | 전조는 데이터를 바꾸지 않음 | `transpose` 값만 저장하고 출력 때 적용 → 원키로 언제든 복귀 |
-| 4 | 목소리는 저장·전송하지 않음 | 마이크 음성은 기기 안에서 음표 숫자로만 변환 |
+| 4 | 목소리는 저장·전송하지 않음 | 마이크 음성은 기기 안에서 처리. 음표 숫자와 사용자가 확인·적용한 가사 텍스트만 유지하며 음성 인식은 기기 내 처리(`processLocally`)만 사용 |
 | 5 | 라이선스 안전 스택만 | 새 의존성은 MIT·ISC·BSD·Apache-2.0만 |
 
 ## 2. 기술 스택
@@ -236,6 +236,8 @@ sequenceDiagram
 
 검증: Vitest **746 통과·32 건너뜀**, 새 기능 E2E **10개**와 기존 건반·가사·편집 회귀 E2E **12개 통과**(desktop·mobile). 390·900·1440px 화면을 검수했습니다.
 
+위 결과는 task-022 완료 시점의 검증 기록입니다. 현재 체크아웃의 검증은 [빠른 시작의 검사 명령](#검사-명령)으로 실행하며, 커밋별 CI 결과는 [GitHub Actions](https://github.com/DevOps0906/humscore/actions)에서 확인합니다.
+
 ### 건반 악보 완성과 편집 재개(task-021)
 
 - **악보 입력**: 처음에는 8마디를 표시합니다. **입력 마치기**를 누르거나 악보 입력을 끄면 입력한 음표·쉼표가 있는 마지막 마디까지만 남기고 마침줄을 표시합니다.
@@ -318,16 +320,45 @@ sequenceDiagram
 
 ## 7. 빠른 시작
 
+### 준비와 로컬 실행
+
+CI·Docker와 동일한 **Node.js 24와 npm**을 사용합니다. Docker 실행과 로컬 Supabase에는 Docker가 필요하며, 앱 개발에는 Android Studio 또는 macOS·Xcode가 필요합니다.
+
 ```bash
-npm install
+npm ci
 npm run dev          # http://localhost:3100  (마이크는 localhost 또는 https에서만 동작)
-npm test             # Vitest 단위 테스트
-npm run test:e2e     # Playwright E2E (로컬 프로덕션 빌드, desktop + mobile)
-E2E_BASE_URL=https://humscore.vercel.app npm run test:e2e   # 운영 배포본 대상
 ```
 
 환경변수(`.env.local`): `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` — 없으면 로컬 저장 모드로 동작.
 `vercel env pull`로 받을 수 있습니다. Supabase Auth Redirect URLs에 `<도메인>/auth/callback`을 등록하세요.
+
+### 검사 명령
+
+```bash
+npm run lint
+npx next typegen     # App Router 전역 타입 생성 — 처음 설치한 뒤 타입 검사 전에 실행
+npx tsc --noEmit
+npm test             # Vitest 단위 테스트
+npm run build        # 프로덕션 빌드
+npx playwright install chromium  # E2E 브라우저 최초 설치
+npm run test:e2e     # 로컬 프로덕션 빌드 후 http://localhost:3101에서 desktop·mobile 검사
+```
+
+개발 서버는 3100, E2E 서버는 3101, Docker는 3200 포트를 사용합니다. E2E의 마이크 입력은 Chromium의 가짜 장치이므로 실기기 음정·권한 검증은 [체크리스트](#11-실기기-테스트-체크리스트)로 별도 확인합니다.
+
+배포본 대상 E2E(Bash):
+
+```bash
+E2E_BASE_URL=https://humscore.vercel.app npm run test:e2e
+```
+
+Windows PowerShell에서는 환경변수를 다음과 같이 지정합니다.
+
+```powershell
+$env:E2E_BASE_URL = "https://humscore.vercel.app"
+npm run test:e2e
+Remove-Item Env:E2E_BASE_URL
+```
 
 ### Docker로 실행
 
@@ -349,6 +380,8 @@ npm run cap:android  # cap sync → Android Studio 열기
 npm run cap:ios      # cap sync → Xcode 열기 (macOS 필요)
 CAP_SERVER_URL=http://<PC IP>:3100 npx cap sync   # 실기기에서 개발 서버 라이브 리로드
 ```
+
+위 환경변수 지정은 Bash 기준입니다. PowerShell에서는 `$env:CAP_SERVER_URL = "http://<PC IP>:3100"`을 설정하고 `npx cap sync`를 실행한 뒤 `Remove-Item Env:CAP_SERVER_URL`로 해제합니다.
 
 앱은 `capacitor.config.ts`의 `server.url`(운영 도메인)을 불러오고, 연결 실패 시 `native-shell/index.html` 안내 페이지를 띄웁니다.
 앱 웹뷰에서는 Google OAuth가 차단되므로 이메일 6자리 코드 로그인을 사용합니다.
@@ -410,7 +443,7 @@ native-shell/                 # 앱 오프라인 안내 페이지
 | CI 워크플로 | [ci.yml](.github/workflows/ci.yml)(린트·타입·테스트·빌드) · [db-migrate.yml](.github/workflows/db-migrate.yml)(운영 DB 마이그레이션) |
 | 기획 | [01 PRD](docs/01_PRD.md) · [03 화면 기획](docs/03_SCREENS_UX.md) · [04 API](docs/04_API.md) · [05 데이터 모델](docs/05_DATA_MODEL.md) |
 | 조사 | [06 벤치마크](docs/06_BENCHMARK.md) · [07 경쟁 분석](docs/07_COMPETITORS.md) · [08 재디자인 벤치마크](docs/08_REDESIGN_BENCHMARK.md) |
-| 기능 명세 | [task-002 공연 모드](docs/specs/task-002-perform-boost.md) · [task-010 따라 치기](docs/specs/task-010-follow-along.md) · [task-019 공유 링크](docs/specs/task-019-share-link.md) · [task-020 찬양 콘티](docs/specs/task-020-setlist.md) · [task-004 음원 변환](docs/specs/task-004-audio-transcription.md) |
+| 기능 명세 | [task-002 공연 모드](docs/specs/task-002-perform-boost.md) · [task-010 따라 치기](docs/specs/task-010-follow-along.md) · [task-019 공유 링크](docs/specs/task-019-share-link.md) · [task-020 찬양 콘티](docs/specs/task-020-setlist.md) · [task-022 가사·코드·작곡](docs/specs/task-022-composition.md) · [task-004 음원 변환](docs/specs/task-004-audio-transcription.md) |
 | 실험 보고 | [task-004 1차·재개](docs/specs/task-004-spike-report.md) · [task-004 2단계](docs/specs/task-004-spike2-report.md) |
 | 결정 기록 | [ADR 0001 유튜브 탭 캡처](docs/adr/0001-youtube-tab-capture.md) |
 | DB | [마이그레이션](supabase/migrations/) |
@@ -432,7 +465,7 @@ native-shell/                 # 앱 오프라인 안내 페이지
 
 ## 12. Cursor AI 코드베이스 분석 (2026-11-03)
 
-> Cursor(Grok 4.6)가 레포·기획 문서·`Score` 타입·마이그레이션을 읽고 정리한 스냅샷. 수치·작업 상태는 [5장](#5-진행-현황-2026-11-03-기준)·[작업 표](tasks/README.md)가 정본이다.
+> Cursor(Grok 4.6)가 레포·기획 문서·`Score` 타입·마이그레이션을 읽고 정리한 스냅샷. 아래 내용은 당시 기록이며, 이후 변경된 수치·작업 상태는 [5장](#5-진행-현황-2026-11-04-기준)·[작업 표](tasks/README.md)를 따른다.
 
 **한 줄:** 목소리는 기기 안에서만 음표 숫자로 바꾸고, 모든 화면은 하나의 `Score`(`src/lib/music/types.ts`)를 본다.
 
