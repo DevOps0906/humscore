@@ -27,7 +27,7 @@ export function PerformClient({ id }: { id: string }) {
   const follow = useFollowAlong(score);
   const { end: endFollow } = follow;
   const [instrument] = useInstrument();
-  const playback = useScorePlayback(score, { instrument, disabled: following });
+  const playback = useScorePlayback(score, { instrument: score?.instrument ?? instrument, disabled: following });
   const scroller = useRef<HTMLDivElement>(null);
   const xml = useMemo(() => (score ? scoreToMusicXML(score, "lead", { externalHeader: true }) : ""), [score]);
 

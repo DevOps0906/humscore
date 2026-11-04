@@ -4,23 +4,9 @@ import { timeSignatureOf } from "./meter";
 import { DYNAMIC_VELOCITY, velocityAt } from "./dynamics";
 import { unrollScore } from "./form";
 import type { Score } from "./types";
+import { GM_INSTRUMENTS, type InstrumentId } from "./instrument-catalog";
 
-/** GM 악기 번호(0부터). 출력 시 멜로디 악기를 바꿔 "여러 악기의 MIDI"를 만듭니다. */
-export const GM_INSTRUMENTS = {
-  piano: 0,
-  strings: 48,
-  flute: 73,
-  violin: 40,
-  cello: 42,
-  trumpet: 56,
-  clarinet: 71,
-  classicalGuitar: 24,
-  acousticGuitar: 25,
-  electricGuitar: 27,
-  bassGuitar: 33,
-  choir: 52,
-} as const;
-export type InstrumentId = keyof typeof GM_INSTRUMENTS;
+export { GM_INSTRUMENTS, type InstrumentId } from "./instrument-catalog";
 
 export interface MidiExportOptions {
   melodyInstrument?: InstrumentId;
@@ -48,20 +34,21 @@ export function latin1AsUtf8(text: string): string {
 
 export function scoreToMidi(source: Score, opts: MidiExportOptions = {}): Uint8Array {
   const score = unrollScore(source); // 도돌이표·D.C./D.S. 를 펼친 타임라인
-  const { melodyInstrument = "piano", withChords = true, chordInstrument = "piano" } = opts;
+  const { melodyInstrument = score.instrument ?? "piano", withChords = true, chordInstrument = "piano" } = opts;
+  const drums = score.notation === "drums" || score.instrument === "drumKit" || melodyInstrument === "drumKit";
   const midi = new Midi();
   midi.header.setTempo(score.bpm);
   const ts = timeSignatureOf(score);
   midi.header.timeSignatures.push({ ticks: 0, timeSignature: [ts.beats, ts.beatType] });
   midi.header.name = utf8AsLatin1(score.title);
   const spb = 60 / score.bpm;
-  const tp = score.transpose;
+  const tp = drums ? 0 : score.transpose;
   const preferFlats = transposeKey(score.key, tp).fifths < 0;
 
   const melody = midi.addTrack();
-  melody.name = "Melody";
-  melody.channel = 0;
-  melody.instrument.number = GM_INSTRUMENTS[melodyInstrument];
+  melody.name = drums ? "Drums" : "Melody";
+  melody.channel = drums ? 9 : 0;
+  melody.instrument.number = GM_INSTRUMENTS[drums ? "drumKit" : melodyInstrument];
   const hasDynamics = (score.dynamics?.length ?? 0) > 0;
   for (const n of score.notes) {
     if (n.midi === null) continue;
@@ -70,7 +57,7 @@ export function scoreToMidi(source: Score, opts: MidiExportOptions = {}): Uint8A
     melody.addNote({ midi: n.midi + tp, time: n.startBeat * spb, duration: n.durationBeats * spb, velocity });
   }
 
-  if (withChords && score.chords.length) {
+  if (!drums && withChords && score.chords.length) {
     const comp = midi.addTrack();
     comp.name = "Chords";
     comp.channel = 1;

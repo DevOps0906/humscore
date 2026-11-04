@@ -18,7 +18,7 @@ export function GuitarFretboard({ instrument, active = null, onPress }: GuitarFr
   const frets = Array.from({ length: 7 }, (_, index) => firstFret + index);
 
   return (
-    <section aria-label={instrument === "bassGuitar" ? "베이스 기타 지판" : "기타 지판"} className="grid min-w-0 gap-3">
+    <section aria-label={instrument === "bassGuitar" || instrument === "bassGuitar5" ? "베이스 기타 지판" : "기타 지판"} className="grid min-w-0 gap-3">
       <div className="flex flex-wrap items-center gap-2">
         <Button type="button" variant="outline" disabled={firstFret === 0} onClick={() => setFirstFret((fret) => Math.max(0, fret - 6))} className="h-11 rounded-full px-4 text-sm">이전 프렛</Button>
         <span className="text-sm text-ink-soft">{firstFret}~{firstFret + 6}프렛 · {tuning.length}줄</span>

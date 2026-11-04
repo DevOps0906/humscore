@@ -1,3 +1,5 @@
+import type { CreationMode, InstrumentId } from "./instrument-catalog";
+
 /** 악보 내부 표현 — 모든 입력(허밍·파일·향후 GPU 채보)이 이 형식으로 모이고, 모든 출력이 여기서 갈라집니다. */
 
 export interface NoteEvent {
@@ -72,6 +74,10 @@ export type Meter = "3/4" | "4/4" | "6/8";
 export interface Score {
   id: string;
   title: string;
+  /** 생성·표기 방식. 생략한 기존 악보는 기존 선율 악보로 읽는다. */
+  notation?: CreationMode;
+  /** 생성할 때 고른 실제 재생 음색. 오디오 원본은 저장하지 않는다. */
+  instrument?: InstrumentId;
   /** 작곡자 (자유 입력, 없거나 빈 문자열 가능). 예전 데이터는 작곡·편곡을 함께 적었음 */
   composer?: string;
   /** 작사자 */

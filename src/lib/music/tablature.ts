@@ -1,6 +1,6 @@
 import type { Score } from "./types";
 
-export type GuitarInstrumentId = "classicalGuitar" | "acousticGuitar" | "electricGuitar" | "bassGuitar";
+export type GuitarInstrumentId = "classicalGuitar" | "acousticGuitar" | "electricGuitar" | "bassGuitar" | "bassGuitar5";
 
 /** 1번 줄(가장 높은 줄)부터의 표준 조율. 값은 실제 울리는 MIDI 음높이다. */
 export const GUITAR_TUNINGS: Record<GuitarInstrumentId, readonly number[]> = {
@@ -8,6 +8,7 @@ export const GUITAR_TUNINGS: Record<GuitarInstrumentId, readonly number[]> = {
   acousticGuitar: [64, 59, 55, 50, 45, 40],
   electricGuitar: [64, 59, 55, 50, 45, 40],
   bassGuitar: [43, 38, 33, 28],
+  bassGuitar5: [43, 38, 33, 28, 23],
 };
 
 export function isGuitarInstrument(value: unknown): value is GuitarInstrumentId {

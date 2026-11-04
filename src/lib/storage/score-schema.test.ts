@@ -9,6 +9,20 @@ const base = (): Score => ({
 });
 
 describe("score-schema", () => {
+  it("생성 방식·음색과 드럼 동시 타격은 JSON 저장·서버 검증 후에도 보존된다", () => {
+    const score: Score = { ...base(), notation: "drums", instrument: "drumKit", notes: [
+      { midi: 36, startBeat: 0, durationBeats: 0.5 },
+      { midi: 42, startBeat: 0, durationBeats: 0.5 },
+    ] };
+    expect(parseScore(JSON.parse(JSON.stringify(score)))).toEqual(score);
+    expect(parseScore({ ...base(), notation: "guitarTab", instrument: "bassGuitar5", notes: [{ midi: 23, startBeat: 0, durationBeats: 1 }] })?.instrument).toBe("bassGuitar5");
+  });
+  it("새 음색은 검증하고 기존 악보에는 생성 방식과 음색을 강제로 붙이지 않는다", () => {
+    expect(parseScore({ ...base(), instrument: "epRhodes", notation: "piano" })?.instrument).toBe("epRhodes");
+    expect(parseScore({ ...base(), instrument: "없는 음색" })).toBeNull();
+    expect(parseScore({ ...base(), notation: "알 수 없는 방식" })).toBeNull();
+    expect(parseScore(base())).toEqual(base());
+  });
   it("절별 가사 1~99와 기존 1절은 서버 검증 후에도 보존된다", () => {
     const s = { ...base(), notes: [{ midi: 60, startBeat: 0, durationBeats: 1, lyric: "가", lyrics: { "1": "가", "2": "나", "99": "다" } }] };
     expect(parseScore(JSON.parse(JSON.stringify(s)))).toEqual(s);

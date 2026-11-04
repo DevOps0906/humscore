@@ -10,7 +10,7 @@ const TABS = [
   { href: "/", label: "홈", icon: House },
   { href: "/library", label: "내 악보", icon: Library },
   { href: "/record", label: "녹음", icon: Mic },
-  { href: "/keys", label: "88건반", icon: Piano },
+  { href: "/keys", label: "악보생성", icon: Piano },
   { href: "/settings", label: "설정", icon: Settings },
 ] as const;
 

@@ -9,6 +9,7 @@ import { ConfirmDialog } from "@/components/confirm-dialog";
 import { LyricsDialog } from "@/components/lyrics-dialog";
 import { CompositionDialog, type CompositionMode } from "@/components/composition-dialog";
 import { NoteChordEditor } from "@/components/note-chord-editor";
+import { DrumEditor } from "@/components/drum-editor";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -54,7 +55,13 @@ export function ScoreClient({ id }: { id: string }) {
   const [layout, setLayout] = useState<ScoreLayout>("lead");
   const [showTab, setShowTab] = useState(false);
   const [chordEditingBeat, setChordEditingBeat] = useState<number | null>(null);
-  const [instrument, setInstrument] = useInstrument();
+  const [preferredInstrument, setPreferredInstrument] = useInstrument();
+  const isDrums = score?.notation === "drums" || score?.instrument === "drumKit";
+  const instrument = isDrums ? "drumKit" : score?.instrument ?? preferredInstrument;
+  function setInstrument(value: typeof preferredInstrument) {
+    setPreferredInstrument(value);
+    update({ instrument: value });
+  }
   const [editNotes, setEditNotes] = useState(false);
   const [selectedRaw, setSelected] = useState<number | null>(null);
   const [toolbarOpen, setToolbarOpen] = useState(false);
@@ -100,7 +107,7 @@ export function ScoreClient({ id }: { id: string }) {
   const selected = selectedRaw !== null && selectedRaw < noteCount ? selectedRaw : null;
 
   useScoreEditKeys({
-    enabled: editNotes && !lyricsOpen && !audioOpen && compositionMode === null,
+    enabled: !isDrums && editNotes && !lyricsOpen && !audioOpen && compositionMode === null,
     notes: score?.notes ?? [],
     selected,
     transpose: score?.transpose ?? 0,
@@ -268,7 +275,7 @@ export function ScoreClient({ id }: { id: string }) {
       </div>
 
       <div className="no-print flex flex-wrap items-center gap-2 text-sm">
-        {(["lead", "piano"] as const).map((l) => (
+        {!isDrums && (["lead", "piano"] as const).map((l) => (
           <Button
             key={l}
             type="button"
@@ -280,10 +287,10 @@ export function ScoreClient({ id }: { id: string }) {
             {l === "lead" ? "코드 악보" : "피아노"}
           </Button>
         ))}
-        <Button type="button" variant="outline" aria-pressed={showTab} onClick={() => setShowTab(true)} className={`h-11 rounded-full px-4 lg:h-9 ${showTab ? "border-accent bg-accent/15 text-accent" : ""}`}>TAB</Button>
-        {showTab && <label className="flex min-w-0 items-center gap-2">TAB 악기
+        {!isDrums && <Button type="button" variant="outline" aria-pressed={showTab} onClick={() => setShowTab(true)} className={`h-11 rounded-full px-4 lg:h-9 ${showTab ? "border-accent bg-accent/15 text-accent" : ""}`}>TAB</Button>}
+        {!isDrums && showTab && <label className="flex min-w-0 items-center gap-2">TAB 악기
           <select aria-label="TAB 악기" value={tabInstrument} onChange={(event) => { if (isGuitarInstrument(event.target.value)) setInstrument(event.target.value); }} className="h-11 min-w-0 rounded-md border border-input bg-surface px-3 text-sm">
-            {(["classicalGuitar", "acousticGuitar", "electricGuitar", "bassGuitar"] as const).map((id) => <option key={id} value={id}>{INSTRUMENT_LABELS[id]}</option>)}
+            {(["classicalGuitar", "acousticGuitar", "electricGuitar", "bassGuitar", "bassGuitar5"] as const).map((id) => <option key={id} value={id}>{INSTRUMENT_LABELS[id]}</option>)}
           </select>
         </label>}
         <span className="ml-auto text-ink-soft">
@@ -299,9 +306,9 @@ export function ScoreClient({ id }: { id: string }) {
         showHeader={false}
         header={header}
         xml={xml}
-        chordEditor={editNotes ? { chords: score.chords, onSelect: (startBeat) => { setChordEditingBeat(startBeat); setToolbarOpen(false); } } : undefined}
+        chordEditor={!isDrums && editNotes ? { chords: score.chords, onSelect: (startBeat) => { setChordEditingBeat(startBeat); setToolbarOpen(false); } } : undefined}
         cursor={
-          editNotes
+          !isDrums && editNotes
             ? {
                 notes: score.notes,
                 beatsPerMeasure: score.beatsPerMeasure,
@@ -348,7 +355,7 @@ export function ScoreClient({ id }: { id: string }) {
         }
       />
 
-      {showTab && <TabScoreView score={score} instrument={tabInstrument} />}
+      {!isDrums && showTab && <TabScoreView score={score} instrument={tabInstrument} />}
       <Dialog open={chordEditingBeat !== null} onOpenChange={(open) => { if (!open) setChordEditingBeat(null); }}>
         <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-lg">
           <DialogHeader><DialogTitle>코드 변경</DialogTitle><DialogDescription>선택한 위치의 코드 근음과 종류를 고르고 적용해 주세요.</DialogDescription></DialogHeader>
@@ -357,10 +364,10 @@ export function ScoreClient({ id }: { id: string }) {
       </Dialog>
 
       <div className="no-print flex flex-wrap gap-2">
-        <Button type="button" variant="outline" onClick={() => { clearPlayback(); setPlaying(false); setCompositionMode("compose"); }} className="h-11 rounded-full px-4 text-sm lg:h-9">
+        <Button type="button" variant="outline" disabled={isDrums} onClick={() => { clearPlayback(); setPlaying(false); setCompositionMode("compose"); }} className="h-11 rounded-full px-4 text-sm lg:h-9">
           작곡
         </Button>
-        <Button type="button" variant="outline" onClick={() => { clearPlayback(); setPlaying(false); setCompositionMode("reharmonize"); }} className="h-11 rounded-full px-4 text-sm lg:h-9">
+        <Button type="button" variant="outline" disabled={isDrums} onClick={() => { clearPlayback(); setPlaying(false); setCompositionMode("reharmonize"); }} className="h-11 rounded-full px-4 text-sm lg:h-9">
           고급 리하모니제이션
         </Button>
         {compositionUndo && <Button type="button" variant="outline" disabled={compositionSignature(score) !== compositionUndo.expected} onClick={() => {
@@ -377,10 +384,10 @@ export function ScoreClient({ id }: { id: string }) {
         >
           음표 편집
         </Button>
-        <Button type="button" variant="outline" onClick={() => setLyricsOpen(true)} className="h-11 rounded-full px-4 text-sm lg:h-9">
+        <Button type="button" variant="outline" disabled={isDrums} onClick={() => setLyricsOpen(true)} className="h-11 rounded-full px-4 text-sm lg:h-9">
           <Type aria-hidden /> 가사 등록
         </Button>
-        <Button type="button" variant="outline" onClick={() => setAudioOpen(true)} className="h-11 rounded-full px-4 text-sm lg:h-9">
+        <Button type="button" variant="outline" disabled={isDrums} onClick={() => setAudioOpen(true)} className="h-11 rounded-full px-4 text-sm lg:h-9">
           <AudioLines aria-hidden /> 음원 등록
         </Button>
       </div>
@@ -425,14 +432,15 @@ export function ScoreClient({ id }: { id: string }) {
           update(patch);
         }}
       />
-      {editNotes && (
+      {editNotes && !isDrums && (
         <>
           <NoteEditor score={score} onChange={(notes) => update({ notes })} selected={selected} onSelect={setSelected} sound={sound} />
           {!toolbarOpen && <NoteChordEditor score={score} selected={selected} onChange={(chords) => update({ chords })} />}
         </>
       )}
 
-      <ChordEditor score={score} onChange={(chords) => update({ chords })} />
+      {isDrums && editNotes && <DrumEditor score={score} onChange={(notes) => update({ notes })} onPreview={(midi) => sound.playNote(midi)} />}
+      {!isDrums && <ChordEditor score={score} onChange={(chords) => update({ chords })} />}
 
       {/* 내보내기 */}
       <Card className="no-print gap-3 p-4">
@@ -459,7 +467,7 @@ export function ScoreClient({ id }: { id: string }) {
               className="h-11 rounded-md bg-transparent text-sm outline-none focus-visible:ring-3 focus-visible:ring-ring/60 lg:h-9 [&>option]:bg-surface"
               aria-label="MIDI 멜로디 악기"
             >
-              {INSTRUMENT_ORDER.map((id) => (
+              {INSTRUMENT_ORDER.filter((id) => isDrums ? id === "drumKit" : id !== "drumKit").map((id) => (
                 <option key={id} value={id}>{INSTRUMENT_LABELS[id]}</option>
               ))}
             </select>
@@ -512,11 +520,11 @@ export function ScoreClient({ id }: { id: string }) {
               className="h-11 w-full rounded-md border border-input bg-surface px-2 text-sm outline-none focus-visible:ring-3 focus-visible:ring-ring/60 lg:h-9"
               aria-label="재생 악기"
             >
-              {INSTRUMENT_ORDER.map((id) => (
+              {INSTRUMENT_ORDER.filter((id) => isDrums ? id === "drumKit" : id !== "drumKit").map((id) => (
                 <option key={id} value={id}>{INSTRUMENT_LABELS[id]}</option>
               ))}
             </select>
-            <TransposeBar originalKey={score.key} transpose={score.transpose} onChange={(t) => update({ transpose: t })} />
+            {isDrums ? <p className="text-xs text-ink-soft">드럼은 전조 없이 재생합니다.</p> : <TransposeBar originalKey={score.key} transpose={score.transpose} onChange={(t) => update({ transpose: t })} />}
           </div>
         </div>
       </div>

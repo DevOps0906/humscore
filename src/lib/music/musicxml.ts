@@ -6,6 +6,7 @@ import { timeSignatureOf } from "./meter";
 import { hasUnmatchedRepeatStart } from "./form";
 import { lyricForVerse, lyricText, syllabicOf, type Syllabic } from "./lyrics";
 import type { MeasureMarkKind, Score } from "./types";
+import { DRUM_PIECES, drumPiece } from "./drums";
 
 /**
  * Score → MusicXML 4.0
@@ -164,6 +165,8 @@ function noteXml(p: NotationPiece, pitch: SpelledPitch | null, accidental: Accid
 }
 
 export interface MusicXmlOptions {
+  /** 음높이와 무관하게 선택한 음자리표를 사용한다. 베이스 악보는 항상 낮은음자리표다. */
+  clef?: "bass" | "treble";
   /** 최소 마디 수 — 모자라면 뒤를 온쉼표 마디로 채움(출력 전용). 기본 1 */
   minMeasures?: number;
   /** N마디마다 줄바꿈(<print new-system="yes"/>). 기본 4, 0이면 끔 */
@@ -172,7 +175,63 @@ export interface MusicXmlOptions {
   externalHeader?: boolean;
 }
 
+/** 서로 다른 드럼은 독립 성부로 출력하여 같은 박의 타격을 유지한다. */
+function drumMusicXML(score: Score, opts: MusicXmlOptions): string {
+  const beats = score.beatsPerMeasure;
+  const ts = timeSignatureOf(score);
+  const measures = Math.max(scoreMeasureCount(score), opts.minMeasures ?? 1);
+  const perSystem = opts.measuresPerSystem ?? 4;
+  const external = opts.externalHeader === true;
+  const midis = [...new Set(score.notes.flatMap((note) => note.midi === null ? [] : [note.midi]))].sort((a, b) => a - b);
+  if (!midis.length) midis.push(DRUM_PIECES[0].midi);
+  const lanes = midis.map((midi) => {
+    const notes = score.notes.filter((note) => note.midi === midi).slice().sort((a, b) => a.startBeat - b.startBeat);
+    // 같은 북의 재타격은 이전 소리의 끝을 잘라 표기하되 타격 시점을 뒤로 밀지 않는다.
+    const unique = notes.filter((note, index) => index === 0 || Math.abs(note.startBeat - notes[index - 1].startBeat) > 1e-6);
+    const clipped = unique.map((note, index) => ({ ...note, durationBeats: Math.min(note.durationBeats, (unique[index + 1]?.startBeat ?? Infinity) - note.startBeat) }));
+    return { midi, pieces: splitForNotation(clipped, { beatsPerMeasure: beats, measures }) };
+  });
+  const dirs = directionsByMeasure(score, beats, measures);
+  const unmatchedStart = hasUnmatchedRepeatStart(score);
+  const body: string[] = [];
+  for (let measure = 0; measure < measures; measure++) {
+    const elements: string[] = [];
+    const marks = (score.marks ?? []).filter((mark) => mark.measure === measure).map((mark) => mark.kind);
+    if (perSystem > 0 && measure > 0 && measure % perSystem === 0) elements.push(`<print new-system="yes"/>`);
+    if (measure === 0) {
+      elements.push(`<attributes><divisions>${DIVISIONS}</divisions><time><beats>${ts.beats}</beats><beat-type>${ts.beatType}</beat-type></time><clef><sign>percussion</sign></clef></attributes>`);
+      if (!external) elements.push(`<direction><direction-type><metronome><beat-unit>quarter</beat-unit><per-minute>${score.bpm}</per-minute></metronome></direction-type><sound tempo="${score.bpm}"/></direction>`);
+    }
+    if (marks.includes("repeatStart")) elements.push(`<barline location="left"><repeat direction="forward"/></barline>`);
+    for (const mark of marks) if (mark !== "repeatStart" && mark !== "repeatEnd") elements.push(markDirectionXml(mark));
+    for (const direction of dirs.inside[measure]) elements.push(direction.make(Math.round((direction.beat - measure * beats) * DIVISIONS)));
+    const silentMeasure = !score.notes.some((note) => note.midi !== null && note.startBeat < (measure + 1) * beats && note.startBeat + note.durationBeats > measure * beats);
+    lanes.forEach((lane, index) => {
+      if (index > 0) elements.push(`<backup><duration>${beats * DIVISIONS}</duration></backup>`);
+      const piece = drumPiece(lane.midi);
+      for (const note of lane.pieces.filter((note) => note.measure === measure)) {
+        const rest = note.midi === null;
+        const hiddenRest = rest && !(index === 0 && silentMeasure);
+        const head = rest ? `<rest${note.measureRest ? ` measure="yes"` : ""}/>` : `<unpitched><display-step>${piece?.staffStep ?? "C"}</display-step><display-octave>${piece?.staffOctave ?? 5}</display-octave></unpitched>`;
+        const ties = (note.tieStop ? `<tie type="stop"/>` : "") + (note.tieStart ? `<tie type="start"/>` : "");
+        const tied = (note.tieStop ? `<tied type="stop"/>` : "") + (note.tieStart ? `<tied type="start"/>` : "");
+        const instrument = rest ? "" : `<instrument id="D${lane.midi}"/>`;
+        elements.push(`<note${hiddenRest ? ` print-object="no"` : ""}>${head}<duration>${Math.round(note.durationBeats * DIVISIONS)}</duration>${ties}${instrument}<voice>${index + 1}</voice>${note.measureRest ? "" : `<type>${note.type}</type>${note.dots ? "<dot/>" : ""}`}${!rest && piece?.head === "x" ? "<notehead>x</notehead>" : ""}${tied ? `<notations>${tied}</notations>` : ""}</note>`);
+      }
+    });
+    for (const direction of dirs.ends[measure]) elements.push(direction.make(0));
+    const repeatEnd = marks.includes("repeatEnd") || measure === measures - 1 && unmatchedStart;
+    if (repeatEnd || measure === measures - 1) elements.push(`<barline location="right"><bar-style>light-heavy</bar-style>${repeatEnd ? `<repeat direction="backward"/>` : ""}</barline>`);
+    body.push(`<measure number="${measure + 1}">${elements.join("")}</measure>`);
+  }
+  const instruments = midis.map((midi) => `<score-instrument id="D${midi}"><instrument-name>${esc(drumPiece(midi)?.label ?? `드럼 ${midi}`)}</instrument-name></score-instrument>`).join("");
+  const midi = midis.map((midi) => `<midi-instrument id="D${midi}"><midi-channel>10</midi-channel><midi-unpitched>${midi + 1}</midi-unpitched></midi-instrument>`).join("");
+  const creators = external ? "" : (["composer", "lyricist", "arranger"] as const).map((kind) => score[kind]?.trim() ? `<creator type="${kind}">${esc(score[kind]!)}</creator>` : "").join("");
+  return `<?xml version="1.0" encoding="UTF-8"?>\n<score-partwise version="4.0">${external ? "" : `<work><work-title>${esc(score.title)}</work-title></work>`}<identification>${creators}<encoding><software>HumScore</software></encoding></identification><part-list><score-part id="P1"><part-name>드럼</part-name>${instruments}${midi}</score-part></part-list><part id="P1">${body.join("")}</part></score-partwise>`;
+}
+
 export function scoreToMusicXML(score: Score, layout: ScoreLayout = "lead", opts: MusicXmlOptions = {}): string {
+  if (score.notation === "drums" || score.instrument === "drumKit") return drumMusicXML(score, opts);
   const tp = score.transpose;
   const key = transposeKey(score.key, tp);
   const preferFlats = key.fifths < 0;
@@ -221,7 +280,8 @@ export function scoreToMusicXML(score: Score, layout: ScoreLayout = "lead", opts
   // 남성 음역(가온 도 아래 중심)이면 옥타브 낮춘 높은음자리표(테너 표기)
   const sung = notes.filter((n) => n.midi !== null).map((n) => n.midi!).sort((a, b) => a - b);
   const medianMidi = sung.length ? sung[sung.length >> 1] : 67;
-  const trebleClef = medianMidi < 57
+  const bass = score.instrument === "bassGuitar" || score.instrument === "bassGuitar5" || opts.clef === "bass";
+  const trebleClef = bass ? `<clef number="1"><sign>F</sign><line>4</line></clef>` : opts.clef === "treble" ? `<clef number="1"><sign>G</sign><line>2</line></clef>` : medianMidi < 57
     ? `<clef number="1"><sign>G</sign><line>2</line><clef-octave-change>-1</clef-octave-change></clef>`
     : `<clef number="1"><sign>G</sign><line>2</line></clef>`;
 

@@ -1,5 +1,6 @@
 import { z } from "zod";
 import type { Score } from "../music/types";
+import { isInstrumentId } from "../music/instrument-catalog";
 
 /** Score 와 동일한 형태의 입력 검증 스키마 (서버 경계용). 음표 숫자 데이터만 허용 — 오디오 없음. */
 const isoDate = z.iso.datetime({ offset: true });
@@ -47,6 +48,8 @@ export const measureMarkSchema = z.object({
 export const scoreSchema = z.object({
   id: z.uuid(),
   title: z.string().max(200),
+  notation: z.enum(["piano", "guitarTab", "drums", "orchestra"]).optional(),
+  instrument: z.custom<NonNullable<Score["instrument"]>>(isInstrumentId, "알 수 없는 악기 음색입니다").optional(),
   composer: z.string().max(200).optional(),
   lyricist: z.string().max(200).optional(),
   arranger: z.string().max(200).optional(),

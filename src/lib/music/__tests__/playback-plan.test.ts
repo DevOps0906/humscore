@@ -33,6 +33,15 @@ const n = (midi: number | null, startBeat: number, durationBeats = 1): NoteEvent
 const threeBars = () => Array.from({ length: 12 }, (_, i) => n(60 + i, i));
 
 describe("buildPlaybackPlan — 구간 없음 (A1)", () => {
+  it("드럼·선택 음색을 공연 재생 계획에도 보존한다", () => {
+    const score = mk([n(36, 0, 0.5), n(42, 0, 0.5), n(38, 4, 0.5)], { notation: "drums", instrument: "drumKit" });
+    for (const plan of [buildPlaybackPlan(score), buildPlaybackPlan(score, { startMeasure: 1, endMeasure: 2 })]) {
+      expect(plan.notation).toBe("drums");
+      expect(plan.instrument).toBe("drumKit");
+      expect(plan.notes.filter((note) => note.startBeat === 0).map((note) => note.midi)).toEqual([36, 42]);
+    }
+    expect(buildPlaybackPlan(mk([n(60, 0)]))).not.toHaveProperty("instrument");
+  });
   it("음 시작 박·길이·MIDI 가 unrollScore 와 같다 (도돌이표 포함)", () => {
     const s = mk(threeBars(), { marks: [{ measure: 0, kind: "repeatStart" }, { measure: 1, kind: "repeatEnd" }] });
     const plan = buildPlaybackPlan(s);
