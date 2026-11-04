@@ -3,6 +3,7 @@ import { Suspense } from "react";
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -160,6 +161,7 @@ function KeysPageInner() {
   const [loaded, setLoaded] = useState(false);
   const [confirmClear, setConfirmClear] = useState(false);
   const [titleOpen, setTitleOpen] = useState(false);
+  const [composerOpening, setComposerOpening] = useState(false);
   const [defaultTitle, setDefaultTitle] = useState("");
   const [base] = useState(() => createBlankScore());
 
@@ -288,6 +290,24 @@ function KeysPageInner() {
     router.push(`/scores/${saved.id}`);
   }
 
+  async function openComposer() {
+    if (composerOpening) return;
+    setComposerOpening(true);
+    setPhase("done");
+    try {
+      const measures = scoreMeasureCount(draftScore);
+      const chords = notes.length === 0 ? [] : progressionId === AUTO_PROGRESSION
+        ? suggestChords(notes, draftScore.key, beats, measures)
+        : buildProgression(progressionId, draftScore.key, measures, beats);
+      const saved = await saveScore({ ...draftScore, chords });
+      try { localStorage.removeItem(DRAFT_KEY); } catch { /* 저장소 접근 불가 무시 */ }
+      router.push(`/scores/${saved.id}?compose=1`);
+    } catch {
+      toast.error("작곡 도구를 열지 못했어요. 다시 시도해 주세요.");
+      setComposerOpening(false);
+    }
+  }
+
   const btn = "h-11 rounded-full px-4 text-sm lg:h-9";
 
   return (
@@ -299,7 +319,7 @@ function KeysPageInner() {
             f = 440 × 2^((n − 49) / 12) · 건반을 누르거나 PC 키보드 A~K
           </p>
         </div>
-        <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+        <div className="flex w-full min-w-0 max-w-full flex-wrap items-center justify-end gap-2 sm:w-auto">
         <label className="flex items-center gap-2 text-sm">
           <span className="text-ink-soft">악기</span>
           <select
@@ -331,6 +351,9 @@ function KeysPageInner() {
           className={`h-11 rounded-full px-4 text-sm lg:h-9 ${phase === "edit" ? "border-accent bg-accent/15 text-accent hover:bg-accent/20 hover:text-accent" : ""}`}
         >
           악보 편집
+        </Button>
+        <Button type="button" variant="outline" disabled={!loaded || composerOpening} onClick={() => void openComposer()} title="현재 입력을 저장하고 작곡 도구 열기" className="h-11 rounded-full px-4 text-sm lg:h-9">
+          {composerOpening ? "작곡 여는 중…" : "작곡"}
         </Button>
         </div>
       </header>

@@ -9,6 +9,18 @@ const base = (): Score => ({
 });
 
 describe("score-schema", () => {
+  it("절별 가사 1~99와 기존 1절은 서버 검증 후에도 보존된다", () => {
+    const s = { ...base(), notes: [{ midi: 60, startBeat: 0, durationBeats: 1, lyric: "가", lyrics: { "1": "가", "2": "나", "99": "다" } }] };
+    expect(parseScore(JSON.parse(JSON.stringify(s)))).toEqual(s);
+  });
+  it.each(["0", "100", "01", "1.5"])("잘못된 가사 절 번호 %s는 거부한다", (verse) => {
+    expect(parseScore({ ...base(), notes: [{ midi: 60, startBeat: 0, durationBeats: 1, lyrics: { [verse]: "가" } }] })).toBeNull();
+  });
+  it("절별 가사도 40자 상한과 빈 문자열 금지를 따른다", () => {
+    for (const text of ["", "가".repeat(41)]) {
+      expect(parseScore({ ...base(), notes: [{ midi: 60, startBeat: 0, durationBeats: 1, lyrics: { "2": text } }] })).toBeNull();
+    }
+  });
   it("정상 Score 통과, ISO 가 아닌 날짜는 거부", () => {
     expect(parseScore(base())).not.toBeNull();
     expect(parseScore({ ...base(), updatedAt: "Jan 1 2026" })).toBeNull();

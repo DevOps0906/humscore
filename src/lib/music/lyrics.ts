@@ -36,12 +36,36 @@ export interface ApplyLyricsResult {
   rest: string[];
 }
 
+function checkVerse(verse: number): void {
+  if (!Number.isInteger(verse) || verse < 1 || verse > 99) throw new RangeError("가사 절은 1~99 사이의 정수여야 합니다");
+}
+
+/** 절별 가사를 우선하고, 기존 lyric 필드는 1절로 읽는다. */
+export function lyricForVerse(note: NoteEvent, verse = 1): string | undefined {
+  checkVerse(verse);
+  return note.lyrics?.[String(verse)] ?? (verse === 1 ? note.lyric : undefined);
+}
+
+/** 선택한 절만 불변 갱신. 1절은 구버전 호환 필드도 함께 갱신한다. */
+export function setLyricForVerse(note: NoteEvent, text: string | undefined, verse = 1): NoteEvent {
+  checkVerse(verse);
+  const lyrics = { ...note.lyrics };
+  if (text) lyrics[String(verse)] = text;
+  else delete lyrics[String(verse)];
+  return {
+    ...note,
+    ...(verse === 1 ? { lyric: text || undefined } : {}),
+    lyrics: Object.keys(lyrics).length ? lyrics : undefined,
+  };
+}
+
 /** fromIndex 번째 음표부터 쉼표를 건너뛰며 음절을 하나씩 배정. 원본 배열·음표는 바꾸지 않음 */
-export function applyLyrics(notes: NoteEvent[], syllables: string[], fromIndex = 0): ApplyLyricsResult {
+export function applyLyrics(notes: NoteEvent[], syllables: string[], fromIndex = 0, verse = 1): ApplyLyricsResult {
+  checkVerse(verse);
   let k = 0;
   const out = notes.map((n, i) => {
     if (i < fromIndex || n.midi === null || k >= syllables.length) return n;
-    return { ...n, lyric: syllables[k++] };
+    return setLyricForVerse(n, syllables[k++], verse);
   });
   return { notes: out, rest: syllables.slice(k) };
 }

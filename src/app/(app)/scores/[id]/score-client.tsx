@@ -7,6 +7,8 @@ import { toast } from "sonner";
 import { AudioImportDialog } from "@/components/audio-import-dialog";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { LyricsDialog } from "@/components/lyrics-dialog";
+import { CompositionDialog, type CompositionMode } from "@/components/composition-dialog";
+import { NoteChordEditor } from "@/components/note-chord-editor";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ChordEditor } from "@/components/chord-editor";
@@ -33,10 +35,19 @@ import { keyName, transposeKey } from "@/lib/music/theory";
 import { exportFile, isNativeApp, safeFileName } from "@/lib/platform/export-file";
 import { sheetToPdf } from "@/lib/platform/sheet-pdf";
 import { deleteScore } from "@/lib/storage/scores";
+import type { Score } from "@/lib/music/types";
+
+const compositionSignature = (score: Score) => JSON.stringify([score.notes, score.chords, score.marks, score.dynamics]);
 
 export function ScoreClient({ id }: { id: string }) {
   const router = useRouter();
-  const { score, update } = useScore(id);
+  const { score, update: persist } = useScore(id);
+  const [compositionMode, setCompositionMode] = useState<CompositionMode | null>(null);
+  const [compositionUndo, setCompositionUndo] = useState<{ patch: Partial<Score>; expected: string } | null>(null);
+  function update(patch: Partial<Score>) {
+    setCompositionUndo(null);
+    persist(patch);
+  }
   const [layout, setLayout] = useState<ScoreLayout>("lead");
   const [instrument, setInstrument] = useInstrument();
   const [editNotes, setEditNotes] = useState(false);
@@ -51,10 +62,14 @@ export function ScoreClient({ id }: { id: string }) {
   // '내 악보 → 음원 파일'로 들어오면(?import=audio) 음원 등록 창을 바로 연다. 적용 없이 닫으면 빈 악보는 지운다
   const fromImport = useRef(false);
   useEffect(() => {
+    if (new URLSearchParams(window.location.search).get("compose") === "1") {
+      setCompositionMode("compose"); // eslint-disable-line react-hooks/set-state-in-effect -- 작곡 진입 주소를 마운트 후 읽는다
+      window.history.replaceState(null, "", window.location.pathname);
+    }
     if (new URLSearchParams(window.location.search).get("import") !== "audio") return;
     fromImport.current = true;
     window.history.replaceState(null, "", window.location.pathname);
-    setAudioOpen(true); // eslint-disable-line react-hooks/set-state-in-effect -- 주소 파라미터는 마운트 후에만 읽을 수 있다
+    setAudioOpen(true);
   }, []);
   const viewHandle = useRef<ScoreViewHandle | null>(null);
   const playback = useRef<Playback | null>(null);
@@ -80,7 +95,7 @@ export function ScoreClient({ id }: { id: string }) {
   const selected = selectedRaw !== null && selectedRaw < noteCount ? selectedRaw : null;
 
   useScoreEditKeys({
-    enabled: editNotes,
+    enabled: editNotes && !lyricsOpen && !audioOpen && compositionMode === null,
     notes: score?.notes ?? [],
     selected,
     transpose: score?.transpose ?? 0,
@@ -320,6 +335,17 @@ export function ScoreClient({ id }: { id: string }) {
       />
 
       <div className="no-print flex flex-wrap gap-2">
+        <Button type="button" variant="outline" onClick={() => { clearPlayback(); setPlaying(false); setCompositionMode("compose"); }} className="h-11 rounded-full px-4 text-sm lg:h-9">
+          작곡
+        </Button>
+        <Button type="button" variant="outline" onClick={() => { clearPlayback(); setPlaying(false); setCompositionMode("reharmonize"); }} className="h-11 rounded-full px-4 text-sm lg:h-9">
+          고급 리하모니제이션
+        </Button>
+        {compositionUndo && <Button type="button" variant="outline" disabled={compositionSignature(score) !== compositionUndo.expected} onClick={() => {
+          clearPlayback(); setPlaying(false);
+          persist(compositionUndo.patch); setCompositionUndo(null); setSelected(null);
+          toast.success("작곡·리하모니 적용 전으로 되돌렸어요");
+        }} className="h-11 rounded-full px-4 text-sm lg:h-9">작곡·리하모니 되돌리기</Button>}
         <Button
           type="button"
           variant="outline"
@@ -336,6 +362,18 @@ export function ScoreClient({ id }: { id: string }) {
           <AudioLines aria-hidden /> 음원 등록
         </Button>
       </div>
+      {compositionMode !== null && <CompositionDialog
+        key={compositionMode}
+        score={score}
+        mode={compositionMode}
+        onClose={() => setCompositionMode(null)}
+        onApply={(patch) => {
+          const before = { notes: score.notes, chords: score.chords, marks: score.marks, dynamics: score.dynamics };
+          setCompositionUndo({ patch: before, expected: compositionSignature({ ...score, ...patch }) });
+          persist(patch);
+          setSelected(null); setToolbarOpen(false);
+        }}
+      />}
       <LyricsDialog
         open={lyricsOpen}
         onOpenChange={setLyricsOpen}
@@ -362,7 +400,10 @@ export function ScoreClient({ id }: { id: string }) {
         }}
       />
       {editNotes && (
-        <NoteEditor score={score} onChange={(notes) => update({ notes })} selected={selected} onSelect={setSelected} sound={sound} />
+        <>
+          <NoteEditor score={score} onChange={(notes) => update({ notes })} selected={selected} onSelect={setSelected} sound={sound} />
+          <NoteChordEditor score={score} selected={selected} onChange={(chords) => update({ chords })} />
+        </>
       )}
 
       <ChordEditor score={score} onChange={(chords) => update({ chords })} />

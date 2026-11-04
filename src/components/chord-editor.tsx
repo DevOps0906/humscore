@@ -128,7 +128,7 @@ export function ChordEditor({ score, onChange }: { score: Score; onChange: (chor
         confirmLabel="적용"
         onConfirm={applyProgression}
       />
-      <p className="mb-2 text-xs text-ink-soft">마디를 눌러 코드 추가·수정 (마디당 1개)</p>
+      <p className="mb-2 text-xs text-ink-soft">마디를 눌러 첫 박의 코드를 추가·수정해요. 마디 중간 코드는 음표 편집에서 해당 음표를 선택해 입력할 수 있어요.</p>
       <div className="flex flex-wrap gap-2">
         {Array.from({ length: count }, (_, m) => {
           const s = shownAt(m);

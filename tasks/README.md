@@ -24,6 +24,7 @@
 | task-019 | 읽기 전용 공유 링크 (S01·S02) — 로그인 없이 보기·편집 불가·회수 가능, 찬양 콘티 선행 | W2 | task-003 | 높음 | planner → challenger → builder → reviewer(security) → tester | 완료(PGlite 통합 32/32, 로컬 Supabase 통합 테스트는 Docker 환경에서 추가 확인) |
 | task-020 | 찬양 콘티(세트리스트) — C01 목록·C02 편집·C03 보기·공유·인쇄, share_links에 setlist_id (명세 `docs/specs/task-020-setlist.md`) | W2 | task-019 | 높음 | planner → challenger → builder → reviewer(security) | 완료(화면·서버·로컬 RLS·비로그인 E2E 검증, 운영 migration 대기) |
 | task-021 | 건반 악보 입력 마치기·저장 시 빈 마디 정리와 마침줄 표시, 악보 편집 재개 시 마디 자동 확장 | W2 | — | 보통 | builder → tester → codex-reviewer(code) | 완료(Vitest 707 통과·32 건너뜀, 기능 E2E 6·3구간 QA 2 통과, lint·tsc·코드 리뷰 통과) |
+| task-022 | 절별 가사(1~99)·선택 음표 위 코드·코드 진행과 마디 수에 따른 작곡·고급 리하모니제이션 ([명세](../docs/specs/task-022-composition.md)) | W2 | task-021 | 보통 | music-logic-coder → builder → tester → codex-reviewer(code) | 완료(Vitest 746 통과·32 건너뜀, 신규 E2E 10·기존 회귀 E2E 12 통과, 3구간 검수·lint·tsc·빌드 검증) |
 
 상태: 대기 / 진행 / 완료 / 보류
 

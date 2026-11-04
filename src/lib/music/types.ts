@@ -9,6 +9,8 @@ export interface NoteEvent {
   durationBeats: number;
   /** 가사 한 음절. 끝이 "-" 이면 다음 음절과 이어지는 단어(예: "hap-" → "py") */
   lyric?: string;
+  /** 절별 가사(1~99). 기존 lyric은 1절 호환용이며 새 입력 시 함께 유지한다. */
+  lyrics?: Record<string, string>;
 }
 
 export interface ChordEvent {

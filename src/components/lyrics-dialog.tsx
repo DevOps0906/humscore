@@ -1,12 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Mic, Square } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useLocalSpeech } from "@/hooks/use-local-speech";
-import { applyLyrics, lyricText, splitLyrics } from "@/lib/music/lyrics";
+import { applyLyrics, lyricForVerse, lyricText, setLyricForVerse, splitLyrics } from "@/lib/music/lyrics";
 import { MAX_LYRIC_LENGTH } from "@/lib/storage/score-schema";
 import type { NoteEvent } from "@/lib/music/types";
 
@@ -20,35 +20,49 @@ interface LyricsDialogProps {
 }
 
 /** 지금 달린 가사를 편집용 텍스트로 (이어지는 음절은 하이픈 유지) */
-function currentLyricsText(notes: NoteEvent[]): string {
+function currentLyricsText(notes: NoteEvent[], verse: number): string {
   return notes
-    .filter((n) => n.lyric)
-    .map((n) => n.lyric!)
+    .map((n) => lyricForVerse(n, verse))
+    .filter((lyric): lyric is string => Boolean(lyric))
     .reduce((s, l, i, arr) => s + l + (l.endsWith("-") || i === arr.length - 1 ? "" : " "), "");
 }
 
-function LyricsForm({ notes, fromIndex, onApply, onClose }: Omit<LyricsDialogProps, "open" | "onOpenChange"> & { onClose: () => void }) {
+type LyricsFormProps = Omit<LyricsDialogProps, "open" | "onOpenChange"> & { onClose: () => void };
+
+function VerseLyricsForm({ notes, fromIndex, onApply, onClose, verse, initialText, onDraftChange }: LyricsFormProps & {
+  verse: number;
+  initialText: string;
+  onDraftChange: (text: string) => void;
+}) {
   // 적용은 fromIndex 부터 다시 배정하므로, 초기 텍스트도 그 이후 가사만 (앞 가사 복제 방지)
-  const [text, setText] = useState(() => currentLyricsText(notes.slice(fromIndex)));
-  const speech = useLocalSpeech(true, (t) => t && setText((prev) => (prev.trim() ? `${prev.trimEnd()} ${t}` : t)));
+  const [text, setText] = useState(initialText);
+  const textRef = useRef(initialText);
+  function changeText(value: string) {
+    textRef.current = value;
+    setText(value);
+    onDraftChange(value);
+  }
+  const speech = useLocalSpeech(true, (t) => {
+    if (t) changeText(textRef.current.trim() ? `${textRef.current.trimEnd()} ${t}` : t);
+  });
   const syllables = splitLyrics(text);
   const slots = notes.slice(fromIndex).filter((n) => n.midi !== null).length;
-  const hasAny = notes.some((n) => n.lyric);
+  const hasAny = notes.some((n) => lyricForVerse(n, verse));
   const tooLong = syllables.some((s) => s.length > MAX_LYRIC_LENGTH);
 
   function apply() {
-    // 시작 음표부터 기존 가사를 지우고 새로 배정
-    const cleared = notes.map((n, i) => (i >= fromIndex && n.lyric ? { ...n, lyric: undefined } : n));
-    const r = applyLyrics(cleared, syllables, fromIndex);
+    // 선택한 절만 지운 뒤 새로 배정하고 다른 절은 보존한다.
+    const cleared = notes.map((n, i) => (i >= fromIndex ? setLyricForVerse(n, undefined, verse) : n));
+    const r = applyLyrics(cleared, syllables, fromIndex, verse);
     onApply(r.notes);
     if (r.rest.length) toast.warning(`음표가 모자라 ${r.rest.length}음절이 남았어요: ${r.rest.map(lyricText).join(" ")}`);
-    else toast.success("가사를 붙였어요");
+    else toast.success(`(${verse}절) 가사를 붙였어요`);
     onClose();
   }
 
   function clearAll() {
-    onApply(notes.map((n) => (n.lyric ? { ...n, lyric: undefined } : n)));
-    toast.success("가사를 지웠어요");
+    onApply(notes.map((n) => setLyricForVerse(n, undefined, verse)));
+    toast.success(`(${verse}절) 가사를 지웠어요`);
     onClose();
   }
 
@@ -90,7 +104,7 @@ function LyricsForm({ notes, fromIndex, onApply, onClose }: Omit<LyricsDialogPro
         <span className="text-ink-soft">가사 (한글은 글자마다, 영어는 단어마다 음표 하나 · 하이픈으로 음절 나눔)</span>
         <textarea
           value={text}
-          onChange={(e) => setText(e.target.value)}
+          onChange={(e) => changeText(e.target.value)}
           rows={4}
           maxLength={2000}
           placeholder="예: 반짝 반짝 작은 별"
@@ -98,14 +112,14 @@ function LyricsForm({ notes, fromIndex, onApply, onClose }: Omit<LyricsDialogPro
         />
       </label>
       <p className="text-xs text-ink-soft" aria-live="polite">
-        {fromIndex + 1}번째 음표부터 · {syllables.length}음절 / 붙일 수 있는 음표 {slots}개
+        ({verse}절) · {fromIndex + 1}번째 음표부터 · {syllables.length}음절 / 붙일 수 있는 음표 {slots}개
         {syllables.length > slots ? ` · ${syllables.length - slots}음절이 남아요` : ""}
       </p>
       {tooLong && <p className="text-sm text-tune-bad" role="alert">음표 하나에 붙는 가사는 {MAX_LYRIC_LENGTH}자까지예요. 긴 단어는 하이픈(-)으로 나눠 주세요.</p>}
       <DialogFooter className="gap-2">
         {hasAny && (
           <Button type="button" variant="outline" onClick={clearAll} className="h-11 px-4 text-sm sm:mr-auto">
-            가사 지우기
+            ({verse}절) 가사 지우기
           </Button>
         )}
         <Button type="button" variant="outline" onClick={onClose} className="h-11 px-4 text-sm">
@@ -115,6 +129,37 @@ function LyricsForm({ notes, fromIndex, onApply, onClose }: Omit<LyricsDialogPro
           적용
         </Button>
       </DialogFooter>
+    </div>
+  );
+}
+
+function LyricsForm(props: LyricsFormProps) {
+  const [verse, setVerse] = useState(1);
+  const [drafts, setDrafts] = useState<Record<number, string>>({});
+  return (
+    <div className="grid gap-4">
+      <label className="grid gap-1.5 text-sm">
+        <span className="text-ink-soft">가사 절</span>
+        <select
+          aria-label="가사 절"
+          value={verse}
+          onChange={(event) => setVerse(Number(event.target.value))}
+          className="h-11 w-full rounded-md border border-input bg-surface px-3 text-base outline-none focus-visible:ring-3 focus-visible:ring-ring/60"
+        >
+          {Array.from({ length: 99 }, (_, i) => i + 1).map((number) => (
+            <option key={number} value={number}>({number}절)</option>
+          ))}
+        </select>
+      </label>
+      <p className="text-xs text-ink-soft">선택한 절에만 가사를 붙여요. 다른 절의 가사는 그대로 유지돼요.</p>
+      {/* 절 전환 시 이전 음성 인식기를 종료해 다른 절의 입력과 섞이지 않게 한다. */}
+      <VerseLyricsForm
+        key={verse}
+        {...props}
+        verse={verse}
+        initialText={drafts[verse] ?? currentLyricsText(props.notes.slice(props.fromIndex), verse)}
+        onDraftChange={(text) => setDrafts((previous) => ({ ...previous, [verse]: text }))}
+      />
     </div>
   );
 }

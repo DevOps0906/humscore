@@ -95,6 +95,49 @@ describe("scoreToMusicXML", () => {
     expect(xml).toContain("<root-step>A</root-step>");
     expect(xml).toContain("minor-seventh");
   });
+  it("선택 음표 위치의 마디 중간 코드를 전조하고 정확한 offset으로 출력한다", () => {
+    const score = makeScore([n(60, 0, 1), n(62, 1, 1), n(64, 2, 2)], {
+      transpose: 2,
+      chords: [{ startBeat: 2, symbol: "G7" }, { startBeat: 0, symbol: "C" }, { startBeat: 1, symbol: "Dm" }],
+    });
+    const before = structuredClone(score);
+    const xml = scoreToMusicXML(score);
+    const harmonies = [...xml.matchAll(/<harmony[^>]*>(.*?)<\/harmony>/g)].map((match) => match[1]);
+    expect(harmonies).toHaveLength(3);
+    expect(harmonies[0]).toContain("<root-step>D</root-step>");
+    expect(harmonies[0]).not.toContain("<offset>");
+    expect(harmonies[1]).toContain("<root-step>E</root-step>");
+    expect(harmonies[1]).toContain("<offset>4</offset>");
+    expect(harmonies[2]).toContain("<root-step>A</root-step>");
+    expect(harmonies[2]).toContain("<offset>8</offset>");
+    expect(score).toEqual(before);
+  });
+  it("피아노 반주는 마디 중간 코드 변경과 앞 마디에서 유지되는 코드를 연주한다", () => {
+    const score = makeScore([n(60, 0, 8)], { chords: [{ startBeat: 0, symbol: "C" }, { startBeat: 2, symbol: "G" }] });
+    const low = scoreToMusicXML(score, "piano").split('<part id="P2">')[1];
+    const measures = low.split("<measure ").slice(1);
+    expect(measures).toHaveLength(2);
+    const leadNotes = (measure: string) => [...measure.matchAll(/<note>(.*?)<\/note>/g)].map((match) => match[1]).filter((note) => !note.includes("<chord/>"));
+    expect(leadNotes(measures[0]).map((note) => Number(/<duration>(\d+)<\/duration>/.exec(note)![1]))).toEqual([8, 8]);
+    expect(leadNotes(measures[1]).map((note) => Number(/<duration>(\d+)<\/duration>/.exec(note)![1]))).toEqual([16]);
+    expect(leadNotes(measures[0])[0]).toContain("<step>C</step>");
+    expect(leadNotes(measures[0])[1]).toContain("<step>G</step>");
+    expect(leadNotes(measures[1])[0]).toContain("<step>G</step>");
+  });
+  it("마디 중간 첫 코드 앞은 부분 쉼표로 채우고 반주 마디 길이를 지킨다", () => {
+    const low = scoreToMusicXML(makeScore([n(60, 0, 4)], { chords: [{ startBeat: 1, symbol: "F" }] }), "piano").split('<part id="P2">')[1];
+    const notes = [...low.matchAll(/<note>(.*?)<\/note>/g)].map((match) => match[1]).filter((note) => !note.includes("<chord/>"));
+    expect(notes[0]).toContain("<rest/>");
+    expect(notes[0]).toContain("<duration>4</duration>");
+    expect(notes.slice(1).some((note) => note.includes("<step>F</step>"))).toBe(true);
+    expect(notes.reduce((sum, note) => sum + Number(/<duration>(\d+)<\/duration>/.exec(note)![1]), 0)).toBe(16);
+  });
+  it("선택 음표 위치의 분수 코드 베이스도 전조하여 표기한다", () => {
+    const xml = scoreToMusicXML(makeScore([n(60, 0, 4)], { transpose: 2, chords: [{ startBeat: 1, symbol: "G/B" }] }));
+    expect(xml).toContain("<root-step>A</root-step>");
+    expect(xml).toContain("<bass><bass-step>C</bass-step><bass-alter>1</bass-alter></bass>");
+    expect(xml).toContain("<offset>4</offset>");
+  });
   it("코드 #/b 근음 alter", () => {
     const sharp = scoreToMusicXML(makeScore([n(60, 0, 4)], { chords: [{ startBeat: 0, symbol: "F#m" }] }));
     expect(sharp).toContain("<root-alter>1</root-alter>");

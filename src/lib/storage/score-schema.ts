@@ -16,6 +16,7 @@ export const noteEventSchema = z.object({
   durationBeats: z.number().finite().min(0).max(100_000),
   /** 사용자가 확인·적용한 가사 음절 (텍스트만, 음성 아님) */
   lyric: z.string().min(1).max(MAX_LYRIC_LENGTH).optional(),
+  lyrics: z.record(z.string().regex(/^[1-9]\d?$/), z.string().min(1).max(MAX_LYRIC_LENGTH)).optional(),
 });
 
 export const chordEventSchema = z.object({

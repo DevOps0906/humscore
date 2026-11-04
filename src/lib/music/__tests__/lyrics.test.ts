@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { applyLyrics, splitLyrics, syllabicOf } from "../lyrics";
+import { applyLyrics, lyricForVerse, setLyricForVerse, splitLyrics, syllabicOf } from "../lyrics";
 import { scoreToMusicXML } from "../musicxml";
 import { makeScore } from "./helpers";
 import type { NoteEvent } from "../types";
@@ -32,6 +32,31 @@ describe("applyLyrics", () => {
     expect(r.notes.map((x) => x.lyric)).toEqual(["x", "가", "나"]);
     expect(r.rest).toEqual([]);
   });
+  it("2절 적용은 기존 1절·다른 절을 보존하며 쉼표를 건너뛴다", () => {
+    const notes = [{ ...n(60, 0, 1, "옛"), lyrics: { "3": "셋" } }, n(null, 1), n(62, 2, 1, "말")];
+    const before = structuredClone(notes);
+    const r = applyLyrics(notes, ["새", "글", "남"], 0, 2);
+    expect(r.notes.map((note) => lyricForVerse(note, 1))).toEqual(["옛", undefined, "말"]);
+    expect(r.notes.map((note) => lyricForVerse(note, 2))).toEqual(["새", undefined, "글"]);
+    expect(lyricForVerse(r.notes[0], 3)).toBe("셋");
+    expect(r.rest).toEqual(["남"]);
+    expect(notes).toEqual(before);
+  });
+  it("선택한 절만 지우고 1절은 구버전 필드와 동기화한다", () => {
+    const first = setLyricForVerse(n(60, 0), "하", 1);
+    const both = setLyricForVerse(first, "늘", 2);
+    const withoutFirst = setLyricForVerse(both, undefined, 1);
+    expect(first.lyric).toBe("하");
+    expect(first.lyrics).toEqual({ "1": "하" });
+    expect(withoutFirst.lyric).toBeUndefined();
+    expect(withoutFirst.lyrics).toEqual({ "2": "늘" });
+    expect(setLyricForVerse(withoutFirst, undefined, 2).lyrics).toBeUndefined();
+    expect(both.lyrics).toEqual({ "1": "하", "2": "늘" });
+  });
+  it("99절까지 지원하고 잘못된 절 번호는 거부한다", () => {
+    expect(lyricForVerse(setLyricForVerse(n(60, 0), "끝", 99), 99)).toBe("끝");
+    for (const verse of [0, 100, 1.5, NaN]) expect(() => applyLyrics([], [], 0, verse)).toThrow(RangeError);
+  });
 });
 
 describe("MusicXML lyric", () => {
@@ -51,5 +76,27 @@ describe("MusicXML lyric", () => {
   it("붙임줄로 나뉜 음은 첫 조각에만 가사", () => {
     const xml = scoreToMusicXML(makeScore([n(60, 3, 2, "길")]));
     expect((xml.match(/<lyric /g) ?? []).length).toBe(1);
+  });
+  it("절별 가사를 중복 없이 나란히 출력하고 각 절의 음절 연결을 독립 계산한다", () => {
+    const notes: NoteEvent[] = [
+      { ...n(60, 0, 1, "옛"), lyrics: { "1": "hap-", "2": "둘" } },
+      { ...n(62, 1), lyrics: { "1": "py", "2": "째-" } },
+      { ...n(64, 2), lyrics: { "2": "절" } },
+    ];
+    const before = structuredClone(notes);
+    const xml = scoreToMusicXML(makeScore(notes));
+    expect(xml).toContain('<lyric number="1" name="1절"><syllabic>begin</syllabic><text>(1절) hap</text></lyric>');
+    expect(xml).toContain('<lyric number="2" name="2절"><syllabic>single</syllabic><text>(2절) 둘</text></lyric>');
+    expect(xml).toContain('<lyric number="1" name="1절"><syllabic>end</syllabic><text>py</text></lyric>');
+    expect(xml).toContain('<lyric number="2" name="2절"><syllabic>begin</syllabic><text>째</text></lyric>');
+    expect(xml.match(/<lyric /g)).toHaveLength(5);
+    expect(xml).not.toContain("옛");
+    expect(notes).toEqual(before);
+  });
+  it("여러 절도 붙임줄 첫 조각에만 출력하고 XML 문자를 이스케이프한다", () => {
+    const xml = scoreToMusicXML(makeScore([{ ...n(60, 3, 2), lyrics: { "1": "<&", "12": "열둘" } }]));
+    expect(xml.match(/<lyric /g)).toHaveLength(2);
+    expect(xml).toContain("(1절) &lt;&amp;");
+    expect(xml).toContain('number="12" name="12절"');
   });
 });

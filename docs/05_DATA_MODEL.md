@@ -19,6 +19,8 @@
 ## Score 타입 변경 여부
 `src/lib/music/types.ts`의 `Score`: **변경 없음**(폴더·태그·공유·출처는 별도 테이블/컬럼). 단, `scores.folder_id` 컬럼 추가는 DB 변경 — 클라이언트 동기화 코드 영향 여부는 **팀장 결정 필요**.
 
+task-022에서는 팀장 결정으로 `Score.notes`의 `NoteEvent`에 선택적 `lyrics: Record<string, string>`을 추가했다. 키는 절 번호 `1`~`99`, 값은 최대 40자 음절이며 기존 `lyric`은 1절 호환용으로 유지한다. 코드의 음표별 위치는 기존 `ChordEvent.startBeat`를 사용한다. 기존 JSONB 저장·RLS를 유지하며 DB 마이그레이션은 없다. 동작·호환·검증 기준은 [task-022 명세](specs/task-022-composition.md)를 따른다.
+
 ## folders
 | 컬럼 | 타입 | 비고 |
 |---|---|---|

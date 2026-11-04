@@ -4,7 +4,7 @@ import { splitForNotation, type NotationPiece } from "./notation";
 import { AccidentalTracker, spellPitch, type AccidentalName, type SpelledPitch } from "./spelling";
 import { timeSignatureOf } from "./meter";
 import { hasUnmatchedRepeatStart } from "./form";
-import { lyricText, syllabicOf, type Syllabic } from "./lyrics";
+import { lyricForVerse, lyricText, syllabicOf, type Syllabic } from "./lyrics";
 import type { MeasureMarkKind, Score } from "./types";
 
 /**
@@ -56,13 +56,16 @@ const KIND_MAP: [RegExp, string, string][] = [
   [/^$/, "major", ""],
 ];
 
-function harmonyXml(symbol: string): string {
-  const [main] = symbol.split("/");
+function harmonyXml(symbol: string, offsetDivs = 0): string {
+  const [main, bass] = symbol.split("/");
   const m = /^([A-G])([#b]?)(.*)$/.exec(main);
   if (!m) return "";
   const alter = m[2] === "#" ? 1 : m[2] === "b" ? -1 : 0;
   const kind = KIND_MAP.find(([re]) => re.test(m[3])) ?? [/./, "major", m[3]];
-  return `<harmony placement="above"><root><root-step>${m[1]}</root-step>${alter ? `<root-alter>${alter}</root-alter>` : ""}</root><kind text="${esc(kind[2])}">${kind[1]}</kind></harmony>`;
+  const bassPitch = /^([A-G])([#b]?)$/.exec(bass ?? "");
+  const bassAlter = bassPitch?.[2] === "#" ? 1 : bassPitch?.[2] === "b" ? -1 : 0;
+  const bassXml = bassPitch ? `<bass><bass-step>${bassPitch[1]}</bass-step>${bassAlter ? `<bass-alter>${bassAlter}</bass-alter>` : ""}</bass>` : "";
+  return `<harmony placement="above"><root><root-step>${m[1]}</root-step>${alter ? `<root-alter>${alter}</root-alter>` : ""}</root><kind text="${esc(kind[2]).replace(/"/g, "&quot;")}">${kind[1]}</kind>${bassXml}${offsetDivs ? `<offset>${offsetDivs}</offset>` : ""}</harmony>`;
 }
 
 const MARK_WORDS: Partial<Record<MeasureMarkKind, string>> = {
@@ -141,11 +144,18 @@ function directionsByMeasure(score: Score, bpm: number, measures: number) {
   return { inside, ends };
 }
 
-function lyricXml(lyric?: { text: string; syllabic: Syllabic }): string {
-  return lyric ? `<lyric number="1"><syllabic>${lyric.syllabic}</syllabic><text>${esc(lyric.text)}</text></lyric>` : "";
+interface LyricNotation {
+  verse: number;
+  named: boolean;
+  text: string;
+  syllabic: Syllabic;
 }
 
-function noteXml(p: NotationPiece, pitch: SpelledPitch | null, accidental: AccidentalName | null, staff: number, voice: number, lyric?: { text: string; syllabic: Syllabic }): string {
+function lyricXml(lyrics?: LyricNotation[]): string {
+  return (lyrics ?? []).map((lyric) => `<lyric number="${lyric.verse}"${lyric.named ? ` name="${lyric.verse}절"` : ""}><syllabic>${lyric.syllabic}</syllabic><text>${esc(lyric.text)}</text></lyric>`).join("");
+}
+
+function noteXml(p: NotationPiece, pitch: SpelledPitch | null, accidental: AccidentalName | null, staff: number, voice: number, lyric?: LyricNotation[]): string {
   const ties = (p.tieStop ? `<tie type="stop"/>` : "") + (p.tieStart ? `<tie type="start"/>` : "");
   const tied = (p.tieStop ? `<tied type="stop"/>` : "") + (p.tieStart ? `<tied type="start"/>` : "");
   const head = pitch === null ? "<rest/>" : pitchXml(pitch);
@@ -181,18 +191,26 @@ export function scoreToMusicXML(score: Score, layout: ScoreLayout = "lead", opts
         : spellPitch(notes[idx].midi!, key, { next: nextIdx === undefined ? null : notes[nextIdx].midi }),
     );
   });
-  // 가사: 연주 순서대로 앞 음절과 이어지는지로 syllabic 결정
-  const lyrics = new Map<number, { text: string; syllabic: Syllabic }>();
-  let prevLyric: string | undefined;
+  // 절별로 음절 연결을 독립 계산한다. 기존 lyric만 있는 악보의 출력은 그대로 유지한다.
+  const lyrics = new Map<number, LyricNotation[]>();
+  const prevLyrics = new Map<number, string>();
+  const namedLyrics = notes.some((n) => Object.keys(n.lyrics ?? {}).length > 0);
   for (const idx of order) {
-    const l = notes[idx].lyric;
-    if (!l || !lyricText(l)) continue;
-    lyrics.set(idx, { text: lyricText(l), syllabic: syllabicOf(prevLyric, l) });
-    prevLyric = l;
+    const note = notes[idx];
+    const verses = new Set([...(note.lyric ? [1] : []), ...Object.keys(note.lyrics ?? {}).filter((v) => /^[1-9]\d?$/.test(v)).map(Number)]);
+    const entries: LyricNotation[] = [];
+    for (const verse of [...verses].sort((a, b) => a - b)) {
+      const l = lyricForVerse(note, verse);
+      if (!l || !lyricText(l)) continue;
+      const first = !prevLyrics.has(verse);
+      entries.push({ verse, named: namedLyrics, text: `${namedLyrics && first ? `(${verse}절) ` : ""}${lyricText(l)}`, syllabic: syllabicOf(prevLyrics.get(verse), l) });
+      prevLyrics.set(verse, l);
+    }
+    if (entries.length) lyrics.set(idx, entries);
   }
   const tracker = new AccidentalTracker(key.fifths);
   const handTracker = new AccidentalTracker(key.fifths);
-  const chords = score.chords.map((c) => ({ ...c, symbol: transposeChordSymbol(c.symbol, tp, preferFlats) }));
+  const chords = score.chords.map((c) => ({ ...c, symbol: transposeChordSymbol(c.symbol, tp, preferFlats) })).sort((a, b) => a.startBeat - b.startBeat);
   const bpm = score.beatsPerMeasure;
   const ts = timeSignatureOf(score);
   const external = opts.externalHeader === true;
@@ -239,8 +257,10 @@ export function scoreToMusicXML(score: Score, layout: ScoreLayout = "lead", opts
       }
     }
     for (const k of kinds) if (k === "segno" || k === "coda") parts.push(markDirectionXml(k));
-    const chord = chords.find((c) => Math.abs(c.startBeat - m * bpm) < 1e-6);
-    if (chord) parts.push(harmonyXml(chord.symbol));
+    const measureStart = m * bpm;
+    const measureEnd = (m + 1) * bpm;
+    const measureChords = chords.filter((c) => c.startBeat >= measureStart - 1e-6 && c.startBeat < measureEnd - 1e-6);
+    for (const chord of measureChords) parts.push(harmonyXml(chord.symbol, Math.round((chord.startBeat - measureStart) * DIVISIONS)));
     tracker.reset();
     handTracker.reset();
     // 이 마디 안의 셈여림은 그 박을 포함하는 음표 앞에 두고, 음표 시작과 다르면 <offset> 으로 정확한 박에 놓는다
@@ -272,13 +292,26 @@ export function scoreToMusicXML(score: Score, layout: ScoreLayout = "lead", opts
     for (const k of kinds) if (k !== "repeatStart" && k !== "repeatEnd" && k !== "segno" && k !== "coda") parts.push(markDirectionXml(k));
 
     if (piano) {
-      const tones = chord ? chordToMidi(chord.symbol, 3) : [];
-      if (tones.length === 0) {
-        lower.push(`<note><rest measure="yes"/><duration>${measureDivs}</duration><voice>1</voice><staff>1</staff></note>`);
-      } else {
-        // 마디 길이가 한 음가로 안 되는 박자(6/4 등)는 여러 음가로 나누고 붙임줄로 연결
-        const spans = decompose(measureDivs);
+      // 앞 마디에서 이어진 코드도 유지하고, 마디 안 코드 변경 지점마다 반주를 나눈다.
+      const boundaries = [...new Set([measureStart, ...measureChords.filter((c) => c.startBeat > measureStart + 1e-6).map((c) => c.startBeat), measureEnd])];
+      for (let segment = 0; segment < boundaries.length - 1; segment++) {
+        const start = boundaries[segment];
+        const end = boundaries[segment + 1];
+        const chord = chords.filter((c) => c.startBeat <= start + 1e-6).at(-1);
+        const tones = chord ? chordToMidi(chord.symbol, 3) : [];
+        const divs = Math.round((end - start) * DIVISIONS);
+        if (divs <= 0) continue;
+        if (tones.length === 0 && divs === measureDivs) {
+          lower.push(`<note><rest measure="yes"/><duration>${measureDivs}</duration><voice>1</voice><staff>1</staff></note>`);
+          continue;
+        }
+        // 마디 또는 코드 구간 길이를 표기 가능한 음가로 나누고 같은 코드 안에서만 붙임줄 연결.
+        const spans = decompose(divs);
         spans.forEach(([d, type, dotted], si) => {
+          if (!tones.length) {
+            lower.push(`<note><rest/><duration>${d}</duration><voice>1</voice><type>${type}</type>${dotted ? "<dot/>" : ""}<staff>1</staff></note>`);
+            return;
+          }
           const tie = (si > 0 ? `<tie type="stop"/>` : "") + (si < spans.length - 1 ? `<tie type="start"/>` : "");
           const tied = (si > 0 ? `<tied type="stop"/>` : "") + (si < spans.length - 1 ? `<tied type="start"/>` : "");
           tones.forEach((midi, i) => {
