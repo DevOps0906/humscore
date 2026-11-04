@@ -20,6 +20,7 @@ import { getAudioContext } from "@/lib/audio/context";
 import { INSTRUMENT_LABELS, INSTRUMENT_ORDER, isInstrumentId } from "@/lib/audio/instruments";
 import { appendNote, createBlankScore, deleteNote, scoreMeasureCount } from "@/lib/music/edit";
 import { PIANO_KEYS } from "@/lib/music/frequency";
+import { keysCanAppend, keysPreviewMinMeasures, keysShowsScore, keysToggleInput, type KeysScorePhase } from "@/lib/music/keys-entry";
 import { beatsPerMeasureOf, METERS } from "@/lib/music/meter";
 import { buildProgression, PROGRESSIONS } from "@/lib/music/progressions";
 import { scoreToMusicXML } from "@/lib/music/musicxml";
@@ -145,7 +146,9 @@ function KeysPageInner() {
   const [active, setActive] = useState(69);
   const [pressed, setPressed] = useState<Set<number>>(new Set());
 
-  const [entry, setEntry] = useState(false);
+  const [phase, setPhase] = useState<KeysScorePhase>("idle");
+  const showScore = keysShowsScore(phase);
+  const canAppend = keysCanAppend(phase);
   const [notes, setNotes] = useState<NoteEvent[]>([]);
   const [bpm, setBpm] = useState(90);
   const [meter, setMeter] = useState<Meter>("4/4");
@@ -171,14 +174,15 @@ function KeysPageInner() {
         setTonic(d.key.tonic);
         setMode(d.key.mode);
         setProgressionId(d.progressionId);
-        setEntry(true);
+        // 복원한 악보는 마침줄과 함께 보여 주고, 편집 버튼으로 입력을 재개한다.
+        setPhase("done");
       } else {
         // 초안이 없으면 설정의 새 악보 기본 템포·박자 (BPM 입력 범위 30~240 안)
         const p = loadScoreDefaults();
         setBpm(p.bpm);
         setMeter(p.meter);
       }
-      if (new URLSearchParams(window.location.search).get("entry") === "1") setEntry(true);
+      if (new URLSearchParams(window.location.search).get("entry") === "1") setPhase("input");
       setLoaded(true);
     }, 0);
     return () => clearTimeout(t);
@@ -204,8 +208,8 @@ function KeysPageInner() {
     return { ...base, notes, bpm, meter, beatsPerMeasure: beatsPerMeasureOf(meter), key };
   }, [base, notes, bpm, meter, tonic, mode]);
   const xml = useMemo(
-    () => (entry ? scoreToMusicXML(draftScore, "lead", { minMeasures: 8, measuresPerSystem: 4 }) : ""),
-    [entry, draftScore],
+    () => (showScore ? scoreToMusicXML(draftScore, "lead", { minMeasures: keysPreviewMinMeasures(phase), measuresPerSystem: 4 }) : ""),
+    [showScore, phase, draftScore],
   );
 
   // PC 키보드/건반 핸들러가 최신 상태를 보도록 ref 사용
@@ -214,7 +218,7 @@ function KeysPageInner() {
     handler.current = (midi: number) => {
       setActive(midi);
       playNote(midi);
-      if (entry) setNotes((n) => appendNote(n, midi, dur));
+      if (canAppend && !titleOpen) setNotes((n) => appendNote(n, midi, dur));
     };
   });
 
@@ -265,6 +269,7 @@ function KeysPageInner() {
 
   function openTitleDialog() {
     if (notes.length === 0) return;
+    setPhase("done");
     setDefaultTitle(`건반 입력 ${new Date().toLocaleString("ko-KR")}`);
     setTitleOpen(true);
   }
@@ -311,11 +316,21 @@ function KeysPageInner() {
         <Button
           type="button"
           variant="outline"
-          onClick={() => setEntry((v) => !v)}
-          aria-pressed={entry}
-          className={`h-11 rounded-full px-4 text-sm lg:h-9 ${entry ? "border-accent bg-accent/15 text-accent hover:bg-accent/20 hover:text-accent" : ""}`}
+          onClick={() => setPhase(keysToggleInput)}
+          aria-pressed={phase === "input"}
+          className={`h-11 rounded-full px-4 text-sm lg:h-9 ${phase === "input" ? "border-accent bg-accent/15 text-accent hover:bg-accent/20 hover:text-accent" : ""}`}
         >
           악보 입력
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          disabled={notes.length === 0}
+          onClick={() => setPhase("edit")}
+          aria-pressed={phase === "edit"}
+          className={`h-11 rounded-full px-4 text-sm lg:h-9 ${phase === "edit" ? "border-accent bg-accent/15 text-accent hover:bg-accent/20 hover:text-accent" : ""}`}
+        >
+          악보 편집
         </Button>
         </div>
       </header>
@@ -328,7 +343,7 @@ function KeysPageInner() {
       />
 
       {/* 입력 도구 */}
-      {entry && (
+      {canAppend && (
         <Card className="gap-3 p-4">
           <div className="flex flex-wrap items-center gap-2 text-sm">
             <label className="flex items-center gap-2">
@@ -359,7 +374,9 @@ function KeysPageInner() {
             <span className="text-ink-soft">{keyName(draftScore.key)} · 조표 {Math.abs(draftScore.key.fifths)}{draftScore.key.fifths < 0 ? "♭" : draftScore.key.fifths > 0 ? "♯" : ""}</span>
           </div>
           <p className="text-xs text-ink-soft">
-            {notes.length === 0
+            {phase === "edit"
+              ? "건반을 누르면 마지막 음 뒤에 추가돼요. 마디가 차면 다음 마디가 자동으로 늘어나요."
+              : notes.length === 0
               ? "먼저 조를 고른 뒤 건반을 눌러 입력하세요. 음 길이를 고르면 악보에 추가돼요."
               : "음 길이를 고르고 건반을 누르면 악보에 추가돼요. 조를 바꿔도 음높이는 그대로예요."}
           </p>
@@ -367,6 +384,9 @@ function KeysPageInner() {
           <div className="flex flex-wrap items-center gap-2 text-sm">
             <Button type="button" variant="outline" className={btn} onClick={() => setNotes((n) => appendNote(n, null, dur))}>쉼표 추가</Button>
             <Button type="button" variant="outline" className={btn} disabled={notes.length === 0} onClick={() => setNotes((n) => deleteNote(n, n.length - 1))}>되돌리기</Button>
+            <Button type="button" variant="outline" className={btn} onClick={() => setPhase("done")}>
+              {phase === "edit" ? "편집 마치기" : "입력 마치기"}
+            </Button>
             <Button
               type="button"
               variant="destructive"
@@ -435,7 +455,12 @@ function KeysPageInner() {
       <PianoKeyboard active={active} pressed={pressed} onPress={(m) => handler.current(m)} />
 
       {/* 악보 미리보기 (건반 바로 아래) */}
-      {entry && <ScoreView xml={xml} />}
+      {showScore && <ScoreView xml={xml} />}
+      {phase === "done" && (
+        <p role="status" className="text-sm text-ink-soft">
+          입력을 마쳤어요. 남은 빈 마디를 정리하고 마지막 마디에 마침줄을 넣었어요. 악보 편집을 누르면 이어서 입력할 수 있어요.
+        </p>
+      )}
 
       {/* 오선지 + 정보 카드 */}
       <Card className="flex-row items-center gap-4 p-4">
@@ -458,7 +483,7 @@ function KeysPageInner() {
         서스테인 페달 (감쇠 2.5배){instrument !== "piano" && " · 피아노에서만 사용"}
       </label>
 
-      {entry && (
+      {showScore && (
         <Button type="button" disabled={notes.length === 0} onClick={openTitleDialog} className="h-11 w-full text-sm">
           악보로 저장
         </Button>
