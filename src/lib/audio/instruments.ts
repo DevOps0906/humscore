@@ -1,7 +1,9 @@
 import { midiToFreq } from "../music/frequency";
-import type { InstrumentId } from "../music/midi";
+import type { InstrumentId } from "../music/instrument-catalog";
 import type { GuitarInstrumentId } from "../music/tablature";
 import { playPianoNote, type PlayNoteOptions } from "./piano-synth";
+import { playExtendedInstrumentNote } from "./extended-instruments";
+import { playDrumNote } from "./percussion";
 
 /**
  * Web Audio 합성 악기 (샘플·음원 파일·외부 라이브러리 0개).
@@ -11,45 +13,13 @@ import { playPianoNote, type PlayNoteOptions } from "./piano-synth";
 
 export type { InstrumentId, PlayNoteOptions };
 
-export const INSTRUMENT_ORDER: readonly InstrumentId[] = [
-  "piano",
-  "strings",
-  "flute",
-  "violin",
-  "cello",
-  "trumpet",
-  "clarinet",
-  "acousticGuitar",
-  "classicalGuitar",
-  "electricGuitar",
-  "bassGuitar",
-  "choir",
-];
-
-export const INSTRUMENT_LABELS: Record<InstrumentId, string> = {
-  piano: "피아노",
-  strings: "스트링 합주",
-  flute: "플루트",
-  violin: "바이올린",
-  cello: "첼로",
-  trumpet: "트럼펫",
-  clarinet: "클라리넷",
-  acousticGuitar: "통기타",
-  classicalGuitar: "클래식 기타",
-  electricGuitar: "일렉기타",
-  bassGuitar: "베이스기타",
-  choir: "합창",
-};
-
-export function isInstrumentId(v: unknown): v is InstrumentId {
-  return typeof v === "string" && (INSTRUMENT_ORDER as readonly string[]).includes(v);
-}
+export { INSTRUMENT_ORDER, INSTRUMENT_LABELS, isInstrumentId } from "../music/instrument-catalog";
 
 /** 기본 서스테인(건반 미리듣기 등 duration 이 없을 때) */
 const DEFAULT_HOLD = 0.8;
 
 /** 악기별 출력 레벨 (velocity 1 기준 목표 피크 ≈ 0.3, 오프라인 렌더로 보정) */
-const LEVEL: Record<Exclude<InstrumentId, "piano">, number> = {
+const LEVEL = {
   strings: 0.38,
   flute: 0.2,
   violin: 0.3,
@@ -60,6 +30,7 @@ const LEVEL: Record<Exclude<InstrumentId, "piano">, number> = {
   classicalGuitar: 0.25,
   electricGuitar: 0.18,
   bassGuitar: 0.3,
+  bassGuitar5: 0.3,
   choir: 0.36,
 };
 
@@ -107,7 +78,8 @@ interface VoiceSpec {
   breath?: { gain: number; q: number; mult: number };
 }
 
-const SPECS: Record<Exclude<InstrumentId, "piano" | GuitarInstrumentId>, VoiceSpec> = {
+type SustainedInstrument = "strings" | "flute" | "violin" | "cello" | "trumpet" | "clarinet" | "choir";
+const SPECS: Record<SustainedInstrument, VoiceSpec> = {
   flute: {
     waves: [{ type: "custom", harmonics: [1, 0.12, 0.04], cents: 0, gain: 1 }],
     attack: 0.06,
@@ -256,7 +228,7 @@ function playSustained(
     lfo.start(t0);
     lfo.stop(tStop);
     sources.push(lfo);
-    nodes.push(lfoGain);
+    nodes.push(lfo, lfoGain);
   }
 
   for (const w of spec.waves) {
@@ -282,7 +254,7 @@ function playSustained(
     osc.start(t0);
     osc.stop(tStop);
     sources.push(osc);
-    nodes.push(g);
+    nodes.push(osc, g);
   }
 
   // 숨소리: 어택에 강하고 이후 약하게 유지
@@ -305,7 +277,7 @@ function playSustained(
     src.start(t0);
     src.stop(tStop);
     sources.push(src);
-    nodes.push(bp, g);
+    nodes.push(src, bp, g);
   }
 
   // 정리: 가장 마지막에 끝나는 소스가 끝나면 그래프 해제
@@ -321,6 +293,7 @@ const GUITAR_VOICES: Record<GuitarInstrumentId, { harmonics: number; brightness:
   acousticGuitar: { harmonics: 8, brightness: 1.15, decay: 2.5, attack: 0.004, pluck: 0.18 },
   electricGuitar: { harmonics: 12, brightness: 0.95, decay: 3.2, attack: 0.003, pluck: 0.06 },
   bassGuitar: { harmonics: 6, brightness: 2.1, decay: 2.8, attack: 0.006, pluck: 0.035 },
+  bassGuitar5: { harmonics: 7, brightness: 2.3, decay: 3.1, attack: 0.008, pluck: 0.03 },
 };
 
 function playGuitar(ctx: AudioContext, instrument: GuitarInstrumentId, midi: number, when: number, opts: PlayNoteOptions): void {
@@ -363,7 +336,7 @@ function playGuitar(ctx: AudioContext, instrument: GuitarInstrumentId, midi: num
     g.connect(master);
     osc.start(t0);
     osc.stop(tStop);
-    nodes.push(g);
+    nodes.push(osc, g);
     last = osc;
   }
 
@@ -383,7 +356,7 @@ function playGuitar(ctx: AudioContext, instrument: GuitarInstrumentId, midi: num
   ng.connect(master);
   src.start(t0);
   src.stop(t0 + 0.06);
-  nodes.push(bp, ng);
+  nodes.push(src, bp, ng);
 
   const end = last ?? src;
   end.onended = () => {
@@ -410,10 +383,27 @@ export function playInstrumentNote(
     case "classicalGuitar":
     case "electricGuitar":
     case "bassGuitar":
+    case "bassGuitar5":
       playGuitar(ctx, instrument, midi, when, opts);
       return;
+    case "drumKit":
+      playDrumNote(ctx, midi, when, opts);
+      return;
+    case "orchestralSnare":
+      playDrumNote(ctx, 38, when, opts);
+      return;
+    case "orchestralBassDrum":
+      playDrumNote(ctx, 36, when, opts);
+      return;
+    case "orchestralCymbal":
+      playDrumNote(ctx, 49, when, opts);
+      return;
+    case "triangle":
+      playDrumNote(ctx, 81, when, opts);
+      return;
     default: {
-      const spec = SPECS[instrument];
+      if (playExtendedInstrumentNote(ctx, instrument, midi, when, opts)) return;
+      const spec = Object.prototype.hasOwnProperty.call(SPECS, instrument) ? SPECS[instrument as SustainedInstrument] : undefined;
       if (!spec) {
         playPianoNote(ctx, midi, when, opts);
         return;

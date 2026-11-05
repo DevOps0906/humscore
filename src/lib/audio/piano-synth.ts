@@ -1,4 +1,5 @@
 import { midiToFreq } from "../music/frequency";
+import { ORCHESTRAL_DRUM_NOTES } from "../music/instrument-catalog";
 import { DYNAMIC_VELOCITY, velocityAt } from "../music/dynamics";
 import { unrollScore } from "../music/form";
 import { chordToMidi, transposeChordSymbol, transposeKey } from "../music/theory";
@@ -110,12 +111,13 @@ export function playScore(
   opts: { withChords?: boolean; instrument?: InstrumentId } = {},
 ): Playback {
   const score = unrollScore(source);
-  const instrument = opts.instrument ?? "piano";
+  const instrument = opts.instrument ?? score.instrument ?? (score.notation === "drums" ? "drumKit" : "piano");
+  const percussion = instrument === "drumKit" || ORCHESTRAL_DRUM_NOTES[instrument] !== undefined;
   const spb = 60 / score.bpm;
   const start = ctx.currentTime + 0.1;
   const bus = ctx.createGain();
   bus.connect(ctx.destination);
-  const tp = score.transpose;
+  const tp = percussion ? 0 : score.transpose;
   const preferFlats = transposeKey(score.key, tp).fifths < 0;
 
   for (const n of score.notes) {
@@ -126,7 +128,7 @@ export function playScore(
       destination: bus,
     });
   }
-  if (opts.withChords ?? true) {
+  if (!percussion && (opts.withChords ?? true)) {
     score.chords.forEach((c, i) => {
       const end = score.chords[i + 1]?.startBeat ?? c.startBeat + score.beatsPerMeasure;
       for (const m of chordToMidi(transposeChordSymbol(c.symbol, tp, preferFlats), 3)) {
@@ -165,7 +167,8 @@ export function playPlan(
   plan: PlaybackPlan,
   opts: { rate?: number; fromBeat?: number; at?: number; withChords?: boolean; instrument?: InstrumentId } = {},
 ): PlanPlayback {
-  const instrument = opts.instrument ?? "piano";
+  const instrument = opts.instrument ?? plan.instrument ?? (plan.notation === "drums" ? "drumKit" : "piano");
+  const percussion = instrument === "drumKit" || ORCHESTRAL_DRUM_NOTES[instrument] !== undefined;
   const spb = secondsPerBeat(plan.bpm, opts.rate ?? 1);
   const total = plan.totalBeats;
   const from = Math.min(Math.max(0, opts.fromBeat ?? 0), total);
@@ -174,7 +177,7 @@ export function playPlan(
   const EPS = 1e-6;
   const bus = ctx.createGain();
   bus.connect(ctx.destination);
-  const tp = plan.transpose;
+  const tp = percussion ? 0 : plan.transpose;
   const preferFlats = transposeKey(plan.key, tp).fifths < 0;
 
   for (const n of plan.notes) {
@@ -186,7 +189,7 @@ export function playPlan(
       destination: bus,
     });
   }
-  if (opts.withChords ?? true) {
+  if (!percussion && (opts.withChords ?? true)) {
     plan.chords.forEach((c, i) => {
       const end = Math.min(total, plan.chords[i + 1]?.startBeat ?? total);
       const on = Math.max(from, c.startBeat);

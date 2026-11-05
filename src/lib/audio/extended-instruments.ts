@@ -79,6 +79,7 @@ function playVoice(ctx: AudioContext, patch: Patch, midi: number, when: number, 
   const end = start + length;
   const stop = end + 0.02;
   const peak = patch.level * finite(opts.velocity, 0.8, 0, 1);
+  if (peak === 0) return;
   const nodes: AudioNode[] = [];
   const sources: AudioScheduledSourceNode[] = [];
   const output = ctx.createGain();
@@ -90,12 +91,17 @@ function playVoice(ctx: AudioContext, patch: Patch, midi: number, when: number, 
     output.gain.setValueAtTime(peak, start + hold);
     output.gain.linearRampToValueAtTime(0, end);
   }
+  // 음량 엔벨롭 앞에 별도 트레몰로를 두어 릴리즈 뒤 소리가 다시 커지지 않게 한다.
+  const amplitude = ctx.createGain();
+  amplitude.gain.setValueAtTime(patch.tremolo ? 1 - patch.tremolo.depth : 1, start);
+  amplitude.connect(output);
   output.connect(opts.destination ?? ctx.destination);
+  nodes.push(amplitude);
   const filter = ctx.createBiquadFilter();
   filter.type = "lowpass";
   filter.Q.value = 0.7;
   filter.frequency.setValueAtTime(Math.min(nyquist * 0.9, Math.max(frequency * 2, patch.cutoff)), start);
-  filter.connect(output);
+  filter.connect(amplitude);
   nodes.push(filter);
   const cents = patch.detune ? [-patch.detune, 0, patch.detune] : [0];
   for (const detune of cents) {
@@ -136,9 +142,9 @@ function playVoice(ctx: AudioContext, patch: Patch, midi: number, when: number, 
     const lfo = ctx.createOscillator();
     lfo.frequency.setValueAtTime(patch.tremolo.rate, start);
     const depth = ctx.createGain();
-    depth.gain.setValueAtTime(peak * patch.tremolo.depth, start);
+    depth.gain.setValueAtTime(patch.tremolo.depth, start);
     lfo.connect(depth);
-    depth.connect(output.gain);
+    depth.connect(amplitude.gain);
     lfo.start(start);
     lfo.stop(stop);
     nodes.push(lfo, depth);
@@ -157,7 +163,7 @@ export function playExtendedInstrumentNote(ctx: AudioContext, instrument: Instru
   if (!patch.pattern) { playVoice(ctx, patch, midi, when, opts); return true; }
   const rate = patch.rate ?? 0.16;
   const duration = finite(opts.duration, 0.8, 0.05, 60);
-  const count = Math.min(32, Math.ceil(duration / rate));
+  const count = Math.ceil(duration / rate);
   for (let index = 0; index < count; index++) {
     const remaining = duration - index * rate;
     playVoice(ctx, patch, midi + patch.pattern[index % patch.pattern.length], when + index * rate, { ...opts, duration: Math.min(rate, remaining) });

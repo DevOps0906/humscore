@@ -4,6 +4,35 @@ import { parseKeysDraft, serializeKeysDraft, type KeysDraft } from "../keys-draf
 const note = { midi: 60, startBeat: 0, durationBeats: 1 };
 
 describe("keys-draft", () => {
+  it("5현 베이스와 오케스트라 악기 설정을 수동 코드 유무에 관계없이 왕복 복원한다", () => {
+    const variants = [
+      { notation: "guitarTab", instrument: "bassGuitar5" },
+      { notation: "orchestra", instrument: "triangle" },
+      { notation: "drums", instrument: "drumKit" },
+      { notation: "piano", instrument: "epRhodes" },
+    ] as const;
+    for (const settings of variants) {
+      for (const chords of [undefined, [{ startBeat: 0, symbol: "C" }]]) {
+        const draft: KeysDraft = {
+          notes: [note], bpm: 90, meter: "4/4", key: { tonic: 0, mode: "major", fifths: 0 },
+          progressionId: "auto", ...settings, ...(chords ? { chords } : {}),
+        };
+        expect(parseKeysDraft(serializeKeysDraft(draft))).toEqual(draft);
+      }
+    }
+  });
+
+  it("구버전·손상된 악기 설정은 생략하여 기존 기본값 복원을 유지한다", () => {
+    for (const settings of [{}, { notation: "unknown", instrument: "unknown" }, { notation: 1, instrument: null }, { notation: "toString", instrument: "toString" }]) {
+      const draft = parseKeysDraft(JSON.stringify({ notes: [note], ...settings }));
+      expect(draft).not.toBeNull();
+      expect(draft?.notation).toBeUndefined();
+      expect(draft?.instrument).toBeUndefined();
+    }
+    expect(parseKeysDraft(JSON.stringify({ notes: [note], notation: "orchestra", instrument: "unknown" }))?.notation).toBe("orchestra");
+    expect(parseKeysDraft(JSON.stringify({ notes: [note], notation: "unknown", instrument: "bassGuitar5" }))?.instrument).toBe("bassGuitar5");
+  });
+
   it("작곡한 악보 식별자를 복원하고 잘못된 식별자는 저장 대상으로 쓰지 않는다", () => {
     const scoreId = "a5400aa8-7afd-4d28-a0f2-9ce2d5f069fb";
     const draft: KeysDraft = { notes: [note], bpm: 90, meter: "4/4", key: { tonic: 0, mode: "major", fifths: 0 }, progressionId: "auto", scoreId };

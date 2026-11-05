@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { INSTRUMENT_LABELS, INSTRUMENT_ORDER, isInstrumentId, playInstrumentNote } from "../instruments";
+import { INSTRUMENT_ORDER as CATALOG_ORDER } from "../../music/instrument-catalog";
 
 /** 노드 생성·스케줄 호출을 기록하는 가짜 AudioContext */
 class FakeParam {
@@ -44,7 +45,8 @@ class FakeNode {
     this.targets.push(t);
     return t;
   }
-  disconnect() {}
+  disconnected = false;
+  disconnect() { this.disconnected = true; }
   start(t: number) {
     this.starts.push(t);
   }
@@ -80,9 +82,9 @@ const GAIN_LIMIT = 1; // 엔벨롭·믹스 단계 개별 gain 목표값 상한
 const OUTPUT_LIMIT = 0.5; // destination 직전 gain 상한
 
 describe("instruments", () => {
-  it("피아노와 기타 4종을 포함해 모든 악기 라벨이 존재", () => {
-    expect(INSTRUMENT_ORDER).toHaveLength(12);
-    expect(INSTRUMENT_ORDER).toEqual(expect.arrayContaining(["classicalGuitar", "acousticGuitar", "electricGuitar", "bassGuitar"]));
+  it("카탈로그 전체와 기타 5종의 재생 악기 라벨이 일치", () => {
+    expect(INSTRUMENT_ORDER).toEqual(CATALOG_ORDER);
+    expect(INSTRUMENT_ORDER).toEqual(expect.arrayContaining(["classicalGuitar", "acousticGuitar", "electricGuitar", "bassGuitar", "bassGuitar5"]));
     for (const id of INSTRUMENT_ORDER) {
       expect(INSTRUMENT_LABELS[id]).toBeTruthy();
       expect(isInstrumentId(id)).toBe(true);
@@ -91,7 +93,7 @@ describe("instruments", () => {
   });
 
   for (const inst of INSTRUMENT_ORDER.filter((i) => i !== "piano")) {
-    for (const midi of [48, 60, 69, 84]) {
+    for (const midi of inst === "drumKit" ? [36, 38, 42, 49] : [48, 60, 69, 84]) {
       for (const duration of [undefined, 0.3, 2]) {
         it(`${inst} midi ${midi} duration ${duration ?? "none"}`, () => {
           const { ctx, nodes, destination } = makeCtx();
@@ -137,6 +139,32 @@ describe("instruments", () => {
     for (const inst of INSTRUMENT_ORDER) {
       expect(() => playInstrumentNote(ctx, inst, 135, 0)).not.toThrow();
     }
+  });
+
+  it("확장 음색은 피아노 대체음 없이 각각 다른 합성 설정을 사용한다", () => {
+    const signatures = new Set<string>();
+    for (const instrument of ["epRhodes", "epBell", "warmPad", "oboe", "harp", "marimba"] as const) {
+      const { ctx, nodes } = makeCtx();
+      playInstrumentNote(ctx, instrument, 60, 0, { duration: 0.8 });
+      signatures.add(JSON.stringify(nodes.map((node) => ({ kind: node.kind, type: node.type, gain: node.gain.events, frequency: node.frequency.events, stop: node.stops }))));
+      for (const source of nodes.filter((node) => node.starts.length)) source.onended?.();
+      expect(nodes.every((node) => node.disconnected)).toBe(true);
+    }
+    expect(signatures.size).toBe(6);
+  });
+
+  it("팀파니 롤은 긴 음의 끝까지 타격을 예약한다", () => {
+    const { ctx, nodes } = makeCtx();
+    playInstrumentNote(ctx, "timpaniRoll", 48, 0, { duration: 8 });
+    const starts = nodes.flatMap((node) => node.starts);
+    expect(Math.max(...starts)).toBeGreaterThan(7.9);
+    expect(Math.max(...starts)).toBeLessThan(8);
+  });
+
+  it("확장 음색의 velocity 0은 노드를 만들지 않는다", () => {
+    const { ctx, nodes } = makeCtx();
+    playInstrumentNote(ctx, "epRhodes", 60, 0, { velocity: 0 });
+    expect(nodes).toHaveLength(0);
   });
 
   it("기타 4종은 같은 음높이를 유지하면서 서로 다른 배음과 엔벨롭을 쓴다", () => {

@@ -20,6 +20,7 @@ export const GM_INSTRUMENTS = {
   timpani: 47, timpaniRoll: 47, harp: 46, celesta: 8,
   glockenspiel: 9, xylophone: 13, marimba: 12, vibraphone: 11,
   choir: 52, drumKit: 0,
+  orchestralSnare: 0, orchestralBassDrum: 0, orchestralCymbal: 0, triangle: 0,
 } as const;
 export type InstrumentId = keyof typeof GM_INSTRUMENTS;
 
@@ -36,19 +37,24 @@ export const INSTRUMENT_LABELS: Record<InstrumentId, string> = {
   frenchHorn: "호른", trumpet: "트럼펫", trombone: "트롬본", bassTrombone: "베이스 트롬본", tuba: "튜바",
   timpani: "팀파니", timpaniRoll: "팀파니 롤", harp: "하프", celesta: "첼레스타",
   glockenspiel: "글로켄슈필", xylophone: "실로폰", marimba: "마림바", vibraphone: "비브라폰", choir: "합창", drumKit: "드럼 키트",
+  orchestralSnare: "스네어 드럼", orchestralBassDrum: "베이스드럼", orchestralCymbal: "심벌", triangle: "트라이앵글",
 };
 
 export const ACOUSTIC_PIANOS = ["piano", "feltPiano", "uprightPiano"] as const;
 export const ELECTRIC_PIANOS = ["epRhodes", "epBright", "epBell", "epSuitcase", "epStage", "epTine", "epWurli", "epCP", "epFM", "epChorus"] as const;
 export const SYNTH_INSTRUMENTS = ["warmPad", "ambientPad", "shimmerPad", "analogPad", "orchestralPad", "b3Organ", "churchOrgan", "synthPluck", "synthBell", "synthLead", "synthArp", "synthBass", "voxPad", "texturePad"] as const;
-export const GUITAR_INSTRUMENTS = ["classicalGuitar", "acousticGuitar", "electricGuitar", "bassGuitar", "bassGuitar5"] as const;
+export const GUITAR_INSTRUMENTS = ["acousticGuitar", "electricGuitar", "classicalGuitar", "bassGuitar", "bassGuitar5"] as const;
+/** 무음정 타악기의 실제 GM 드럼 음번호. program 번호와 구분한다. */
+export const ORCHESTRAL_DRUM_NOTES: Partial<Record<InstrumentId, number>> = {
+  orchestralSnare: 38, orchestralBassDrum: 36, orchestralCymbal: 49, triangle: 81,
+};
 export const ORCHESTRA_GROUPS = [
   { id: "strings", label: "현악", instruments: ["violin", "violinII", "viola", "cello", "doubleBass", "strings"] },
   { id: "woodwinds", label: "목관", instruments: ["flute", "piccolo", "oboe", "englishHorn", "clarinet", "bassoon"] },
   { id: "brass", label: "금관", instruments: ["frenchHorn", "trumpet", "trombone", "bassTrombone", "tuba"] },
   { id: "timpani", label: "팀파니", instruments: ["timpani", "timpaniRoll"] },
-  { id: "harp", label: "하프·건반", instruments: ["harp", "celesta", "churchOrgan"] },
-  { id: "percussion", label: "타악", instruments: ["glockenspiel", "xylophone", "marimba", "vibraphone"] },
+  { id: "percussion", label: "타악기", instruments: ["orchestralSnare", "orchestralBassDrum", "orchestralCymbal", "triangle", "glockenspiel", "xylophone", "marimba", "vibraphone", "celesta"] },
+  { id: "harp", label: "하프", instruments: ["harp"] },
 ] as const satisfies readonly { id: string; label: string; instruments: readonly InstrumentId[] }[];
 
 export const INSTRUMENT_ORDER = Object.keys(GM_INSTRUMENTS) as InstrumentId[];

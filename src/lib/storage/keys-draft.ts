@@ -4,11 +4,15 @@ import { fifthsFor } from "../music/theory";
 import { PROGRESSIONS } from "../music/progressions";
 import { isValidChordSymbol } from "../music/edit";
 import type { ChordEvent, KeyInfo, Meter, NoteEvent } from "../music/types";
+import { isCreationMode, isInstrumentId, type CreationMode, type InstrumentId } from "../music/instrument-catalog";
 
 /** 건반 입력 화면 초안 (음표 숫자와 설정만, 오디오 아님) */
 export interface KeysDraft {
   /** 작곡 도구로 저장한 악보를 다시 열 때 같은 악보에 이어서 저장한다. */
   scoreId?: string;
+  /** 악보 입력 방식과 재생 음색. 구버전 초안은 두 필드가 없을 수 있다. */
+  notation?: CreationMode;
+  instrument?: InstrumentId;
   notes: NoteEvent[];
   bpm: number;
   meter: Meter;
@@ -40,6 +44,10 @@ export function parseKeysDraft(raw: string | null): KeysDraft | null {
   const o = d as Record<string, unknown>;
   const scoreId = typeof o.scoreId === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(o.scoreId)
     ? o.scoreId : undefined;
+  const settings = {
+    ...(isCreationMode(o.notation) ? { notation: o.notation } : {}),
+    ...(isInstrumentId(o.instrument) ? { instrument: o.instrument } : {}),
+  };
   if (!Array.isArray(o.notes)) return null;
 
   // 원소 하나라도 검증 실패하면 초안 전체 폐기: 일부만 살리면 박/음이 빠진 채 조용히
@@ -74,9 +82,9 @@ export function parseKeysDraft(raw: string | null): KeysDraft | null {
   if (o.chords !== undefined) {
     const parsedChords = chordsSchema.safeParse(o.chords);
     if (!parsedChords.success) return null;
-    return { notes: parsedNotes.data, bpm, meter, key, progressionId, chords: parsedChords.data, ...(scoreId ? { scoreId } : {}) };
+    return { notes: parsedNotes.data, bpm, meter, key, progressionId, chords: parsedChords.data, ...settings, ...(scoreId ? { scoreId } : {}) };
   }
-  return { notes: parsedNotes.data, bpm, meter, key, progressionId, ...(scoreId ? { scoreId } : {}) };
+  return { notes: parsedNotes.data, bpm, meter, key, progressionId, ...settings, ...(scoreId ? { scoreId } : {}) };
 }
 
 export function serializeKeysDraft(d: KeysDraft): string {
