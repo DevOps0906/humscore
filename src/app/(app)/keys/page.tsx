@@ -4,7 +4,11 @@ import { ScorePartsPanel } from "@/components/score-parts-panel";
 import { ScoreTemplateDialog } from "@/components/score-template-dialog";
 import { ScoreArrangementTabs } from "@/components/score-arrangement-tabs";
 import { ScoreHeader, HeaderSettings } from "@/components/score-header";
-import { scoreTypography } from "@/lib/music/header-fonts";
+import { resolveTextSizes, scoreTypography } from "@/lib/music/header-fonts";
+import { toast } from "sonner";
+import { exportFile, isNativeApp, safeFileName } from "@/lib/platform/export-file";
+import { sheetToPdf } from "@/lib/platform/sheet-pdf";
+import { formatCreditLines } from "@/components/score-header-logic";
 import { MAIN_PART_ID, getScoreParts, scoreForPart, updateScorePart, addScorePart, removeScorePart, mergeScoreParts } from "@/lib/music/parts";
 
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -29,7 +33,7 @@ import { SustainSlider } from "@/components/sustain-slider";
 import { LyricsDialog } from "@/components/lyrics-dialog";
 import { PianoKeyboard } from "@/components/piano-keyboard";
 import { BASS_CLEF_PATH, CLEF_UNITS_PER_SPACE, TREBLE_CLEF_PATH } from "@/components/clef-glyphs";
-import { ScoreView } from "@/components/score-view";
+import { ScoreView, type ScoreViewHandle } from "@/components/score-view";
 import { TitleDialog } from "@/components/title-dialog";
 import { MidiConnectButton } from "@/components/midi-connect-button";
 import { usePianoSound } from "@/hooks/use-piano-sound";
@@ -454,6 +458,8 @@ function KeysPageInner() {
     setPhase("input");
   }
   const [lyricsOpen, setLyricsOpen] = useState(false);
+  const [printing, setPrinting] = useState(false);
+  const viewHandle = useRef<ScoreViewHandle | null>(null);
   /** 같은 악기 종류 안에서 음색만 바꾼다(새 악기 추가가 아님). 재생 중이면 새 음색으로 다시 시작하도록 멈추고, 고른 음색을 바로 들려준다. */
   function changeTimbre(next: InstrumentId) {
     if (playing) stopPlayback();
@@ -487,6 +493,34 @@ function KeysPageInner() {
     try { localStorage.removeItem(DRAFT_KEY); } catch { /* 무시 */ }
     setTitleOpen(false); // 이동 전에 닫아 대화상자가 DOM 에 남지 않게 함
     router.push(`/scores/${saved.id}`);
+  }
+
+  /** 웹은 브라우저 인쇄(악보 카드만 출력), 앱은 PDF를 만들어 공유 시트로 보낸다. */
+  async function printScore() {
+    const view = viewHandle.current;
+    if (!view || printing) return;
+    setPrinting(true);
+    const loading = toast.loading("악보를 준비하는 중…");
+    try {
+      const deadline = Date.now() + 15_000;
+      while (view.container.getAttribute("aria-busy") === "true" && Date.now() < deadline) await new Promise((resolve) => setTimeout(resolve, 50));
+      if (view.container.getAttribute("aria-busy") === "true") throw new Error("악보를 그리는 중이에요. 잠시 후 다시 시도해 주세요.");
+      if (!isNativeApp()) {
+        document.body.dataset.printScore = "1";
+        window.addEventListener("afterprint", () => { delete document.body.dataset.printScore; }, { once: true });
+        window.print();
+        return;
+      }
+      const sizes = resolveTextSizes(rootDraft);
+      const bytes = await sheetToPdf(view.container, view.drawsTitle ? [] : [rootDraft.title, ...formatCreditLines(rootDraft)], view.systemSpans(), { titleSize: sizes.title, creditSize: sizes.credit });
+      await exportFile(`${safeFileName(rootDraft.title)}.pdf`, bytes, "application/pdf");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "";
+      if (!/cancel/i.test(message)) toast.error(message || "악보를 출력하지 못했어요");
+    } finally {
+      toast.dismiss(loading);
+      setPrinting(false);
+    }
   }
 
   function openComposer() {
@@ -693,8 +727,8 @@ function KeysPageInner() {
         </div>
       )}
       {!drums && (
-        <div className="flex flex-wrap items-center justify-center gap-3">
-          <Button type="button" onClick={togglePlayback} disabled={notes.length === 0} aria-pressed={playing} aria-label={playing ? "재생 중지" : "재생"} className="h-11 gap-2 rounded-full px-6 text-sm">
+        <div className="mx-auto flex w-full max-w-xl items-center gap-2">
+          <Button type="button" onClick={togglePlayback} disabled={notes.length === 0} aria-pressed={playing} aria-label={playing ? "재생 중지" : "재생"} className="h-11 shrink-0 gap-2 rounded-full px-4 text-sm sm:px-6">
             {playing ? <Square className="size-4" aria-hidden /> : <Play className="size-4" aria-hidden />}
             {playing ? "재생 중지" : "재생"}
           </Button>
@@ -712,7 +746,7 @@ function KeysPageInner() {
         </div>}
         <div data-testid="score-card" className="min-w-0 rounded-xl bg-score-paper p-2 shadow-md">
         <ScoreHeader score={draftScore} />
-        {(!guitar || showGuitarStaff) && <ScoreView flat typography={scoreTypography(draftScore)} xml={xml} chordEditor={phase === "edit" && !drums ? {
+        {(!guitar || showGuitarStaff) && <ScoreView flat onHandle={(handle) => { viewHandle.current = handle; }} typography={scoreTypography(draftScore)} xml={xml} chordEditor={phase === "edit" && !drums ? {
           chords: draftScore.chords,
           onSelect: (startBeat) => {
             setSelectedChordBeat(startBeat);
@@ -733,8 +767,8 @@ function KeysPageInner() {
         </div>
         </section>
       </ScoreArrangementTabs>}
-      {/* 악보 바로 아래 작업 막대: 템플릿 · 악보생성 · 악보 편집 · 가사 편집 · 작곡하기 */}
-      <section aria-label="악보 작업" className="grid grid-cols-2 gap-2 sm:grid-cols-5">
+      {/* 악보 바로 아래 작업 막대: 템플릿 · 악보생성 · 악보 편집 · 가사 편집 · 작곡하기 · 악보 출력하기 */}
+      <section aria-label="악보 작업" className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
         <Button type="button" variant="outline" onClick={() => setTemplateOpen(true)} className="h-11 w-full min-w-0 rounded-full px-2 text-sm lg:h-9">템플릿으로 시작하기</Button>
         <Button
           type="button"
@@ -768,6 +802,9 @@ function KeysPageInner() {
         </Button>
         <Button type="button" variant="outline" disabled={!loaded || drums} onClick={openComposer} title={drums ? "드럼은 아래 리듬 격자에서 직접 입력하세요" : "현재 악보로 작곡 도구 열기"} className="h-11 w-full min-w-0 rounded-full px-2 text-sm lg:h-9">
           작곡하기
+        </Button>
+        <Button type="button" variant="outline" disabled={!showScore || !hasContent || printing} onClick={() => void printScore()} title="지금 악보를 인쇄하거나 PDF로 저장해요" className="h-11 w-full min-w-0 rounded-full px-2 text-sm lg:h-9">
+          악보 출력하기
         </Button>
       </section>
       {phase === "done" && !drums && (

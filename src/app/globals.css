@@ -361,3 +361,22 @@ h3 {
   border-radius: 0;
   padding: 0;
 }
+
+/* 악보생성 화면의 '악보 출력하기': 악보 카드(제목+악보)만 인쇄한다. */
+@media print {
+  body[data-print-score] * {
+    visibility: hidden !important;
+  }
+  body[data-print-score] [data-testid="score-card"],
+  body[data-print-score] [data-testid="score-card"] * {
+    visibility: visible !important;
+  }
+  body[data-print-score] [data-testid="score-card"] {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    box-shadow: none;
+    border-radius: 0;
+  }
+}
