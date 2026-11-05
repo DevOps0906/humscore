@@ -72,10 +72,10 @@ for (const width of [390, 900, 1440]) {
       await panel.getByRole("textbox", { name: label, exact: true }).fill(value);
       await panel.getByRole("textbox", { name: label, exact: true }).press("Enter");
     }
-    await expect(page.getByTestId("score-header-credits")).toHaveText("작사 테스트 작사 · 작곡 테스트 작곡 · 편곡 테스트 편곡");
+    await expect(page.getByTestId("score-credit-line")).toHaveText(["작사 테스트 작사", "작곡 테스트 작곡", "편곡 테스트 편곡"]);
     await panel.getByRole("textbox", { name: "작곡자", exact: true }).fill("");
     await panel.getByRole("textbox", { name: "작곡자", exact: true }).press("Enter");
-    await expect(page.getByTestId("score-header-credits")).toHaveText("작사 테스트 작사 · 편곡 테스트 편곡");
+    await expect(page.getByTestId("score-credit-line")).toHaveText(["작사 테스트 작사", "편곡 테스트 편곡"]);
     await panel.getByRole("button", { name: "음표 편집", exact: true }).click();
     await expect(panel.getByRole("button", { name: "음표 편집", exact: true })).toHaveAttribute("aria-pressed", "true");
     await edit.click();
@@ -87,7 +87,7 @@ for (const width of [390, 900, 1440]) {
     await capture(page, width, "editor");
     await page.getByRole("group", { name: "악보 편집 적용과 저장", exact: true }).getByRole("button", { name: "저장", exact: true }).click();
     await page.reload();
-    await expect(page.getByTestId("score-header-credits")).toHaveText("작사 테스트 작사 · 편곡 테스트 편곡");
+    await expect(page.getByTestId("score-credit-line")).toHaveText(["작사 테스트 작사", "편곡 테스트 편곡"]);
     await edit.click();
     for (const label of ["작사자", "편곡자"]) {
       await panel.getByRole("textbox", { name: label, exact: true }).fill("   ");

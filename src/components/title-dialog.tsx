@@ -16,17 +16,18 @@ interface TitleDialogProps {
   open: boolean;
   /** 입력칸 초기값이자 비워 두거나 건너뛸 때 쓰는 제목 */
   defaultTitle: string;
+  defaultCredits?: { lyricist?: string; composer?: string; arranger?: string };
   /** 확정된 제목(trim 적용, 빈 값이면 defaultTitle). 저장이 끝날 때까지 기다림 */
   onConfirm: (result: { title: string; composer?: string; lyricist?: string; arranger?: string }) => void | Promise<void>;
   /** Esc / 닫기 버튼 / 바깥 클릭 — 저장하지 않음 */
   onCancel: () => void;
 }
 
-function TitleForm({ defaultTitle, onConfirm }: Pick<TitleDialogProps, "defaultTitle" | "onConfirm">) {
+function TitleForm({ defaultTitle, defaultCredits, onConfirm }: Pick<TitleDialogProps, "defaultTitle" | "defaultCredits" | "onConfirm">) {
   const [value, setValue] = useState(defaultTitle);
-  const [lyricist, setLyricist] = useState("");
-  const [composer, setComposer] = useState("");
-  const [arranger, setArranger] = useState("");
+  const [lyricist, setLyricist] = useState(defaultCredits?.lyricist ?? "");
+  const [composer, setComposer] = useState(defaultCredits?.composer ?? "");
+  const [arranger, setArranger] = useState(defaultCredits?.arranger ?? "");
   const [busy, setBusy] = useState(false);
 
   async function submit(title: string) {
@@ -97,7 +98,7 @@ function TitleForm({ defaultTitle, onConfirm }: Pick<TitleDialogProps, "defaultT
   );
 }
 
-export function TitleDialog({ open, defaultTitle, onConfirm, onCancel }: TitleDialogProps) {
+export function TitleDialog({ open, defaultTitle, defaultCredits, onConfirm, onCancel }: TitleDialogProps) {
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o) onCancel(); }}>
       <DialogContent>
@@ -106,7 +107,7 @@ export function TitleDialog({ open, defaultTitle, onConfirm, onCancel }: TitleDi
           <DialogDescription>악보에 붙일 제목을 입력해 주세요.</DialogDescription>
         </DialogHeader>
         {/* 열릴 때마다 새로 마운트되어 입력값이 기본 제목으로 초기화됨 */}
-        <TitleForm defaultTitle={defaultTitle} onConfirm={onConfirm} />
+        <TitleForm defaultTitle={defaultTitle} defaultCredits={defaultCredits} onConfirm={onConfirm} />
       </DialogContent>
     </Dialog>
   );

@@ -5,9 +5,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ScoreView } from "./score-view";
+import { ScoreHeader } from "./score-header";
+import { TabScoreView } from "./tab-score-view";
 import { buildScoreTemplate, SCORE_TEMPLATES, type ScoreTemplateId } from "@/lib/music/score-templates";
 import { INSTRUMENT_LABELS, ACOUSTIC_PIANOS, ELECTRIC_PIANOS, SYNTH_INSTRUMENTS, GUITAR_INSTRUMENTS, ORCHESTRA_GROUPS, type InstrumentId } from "@/lib/music/instrument-catalog";
 import { scoreToMusicXML } from "@/lib/music/musicxml";
+import { isGuitarInstrument } from "@/lib/music/tablature";
 import type { Meter, Score } from "@/lib/music/types";
 
 const groups: { label: string; instruments: readonly InstrumentId[] }[] = [
@@ -27,19 +30,35 @@ export function ScoreTemplateDialog({ onClose, onCreate, replacing }: { onClose:
   const [meter, setMeter] = useState<Meter>("4/4");
   const [measures, setMeasures] = useState(8);
   const [tonic, setTonic] = useState(0);
-  const preview = useMemo(() => buildScoreTemplate({ template, instruments, title, bpm, meter, measures, tonic }), [template, instruments, title, bpm, meter, measures, tonic]);
-  const xml = useMemo(() => step === 3 ? scoreToMusicXML(preview, "piano", { measuresPerSystem: 4 }) : "", [step, preview]);
+  const [lyricist, setLyricist] = useState("");
+  const [composer, setComposer] = useState("");
+  const [arranger, setArranger] = useState("");
+  const preview = useMemo(() => buildScoreTemplate({ template, instruments, title, bpm, meter, measures, tonic, lyricist, composer, arranger }), [template, instruments, title, bpm, meter, measures, tonic, lyricist, composer, arranger]);
+  const sample = useMemo(() => buildScoreTemplate({ template, instruments, title, bpm, meter, measures: 4, tonic, lyricist, composer, arranger, previewSample: true }), [template, instruments, title, bpm, meter, tonic, lyricist, composer, arranger]);
+  const visibleScore = step === 1 ? sample : preview;
+  const tabInstrument = instruments.length === 1 && isGuitarInstrument(instruments[0]) ? instruments[0] : null;
+  const xml = useMemo(() => scoreToMusicXML(visibleScore, "piano", { measuresPerSystem: 4 }), [visibleScore]);
+  const scorePreview = <div className="min-w-0 overflow-hidden rounded-xl border border-line bg-score-paper p-2">
+    <ScoreHeader score={visibleScore} />
+    {tabInstrument ? <TabScoreView score={visibleScore} instrument={tabInstrument} /> : <ScoreView xml={xml} />}
+  </div>;
   return <Dialog open onOpenChange={(open) => { if (!open) onClose(); }}>
-    <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-4xl">
-      <DialogHeader><DialogTitle>템플릿으로 시작하기</DialogTitle><DialogDescription>악보 설정 마법사: 형식 선택 → 악기 편성 → 조성·박자·빠르기와 미리보기. 참고 자료의 구성을 재현한 악보를 직접 편집할 수 있어요.</DialogDescription></DialogHeader>
+    <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-6xl">
+      <DialogHeader><DialogTitle>템플릿으로 시작하기</DialogTitle><DialogDescription>악보 형식과 악기 편성을 선택하고 조성·박자·빠르기를 설정하세요. 예시를 확인한 뒤 빈 악보로 시작합니다.</DialogDescription></DialogHeader>
       <ol className="grid grid-cols-3 gap-2 text-center text-xs" aria-label="템플릿 생성 단계">{["악보 형식", "악기 선택", "생성하기"].map((label, index) => <li key={label} aria-current={step === index + 1 ? "step" : undefined} className={`rounded-lg border p-2 ${step === index + 1 ? "border-accent bg-accent/15 text-accent" : "border-line text-ink-soft"}`}>{index + 1}. {label}</li>)}</ol>
-      {step === 1 && <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+      {step === 1 && <div className="grid min-w-0 grid-cols-[minmax(0,2fr)_minmax(0,3fr)] items-start gap-2 md:grid-cols-[minmax(0,1fr)_minmax(0,2fr)] md:gap-4">
+        <section aria-label="악보 형식 선택" className="grid min-w-0 gap-2">
         {SCORE_TEMPLATES.map((entry) => <Button key={entry.id} type="button" variant="outline" aria-pressed={entry.id === template} onClick={() => {
           setTemplate(entry.id); setInstruments([...entry.instruments]); setTitle(entry.title); setBpm(entry.bpm); setMeter(entry.meter);
-        }} className={`h-auto min-w-0 flex-col items-start gap-2 whitespace-normal p-4 text-left ${entry.id === template ? "border-accent bg-accent/15 text-accent" : ""}`}>
-          <span className="font-semibold">{entry.title}</span><span className="text-xs text-ink-soft">{entry.detail}</span>
-          <svg viewBox="0 0 240 45" className="h-9 w-full" aria-hidden="true">{[8, 15, 22, 29, 36].map((y) => <line key={y} x1="2" x2="238" y1={y} y2={y} stroke="currentColor" opacity="0.3" />)}{[40, 80, 120, 160, 200].map((x, i) => <g key={x}><ellipse cx={x} cy={29 - i % 3 * 7} rx="5" ry="3.5" fill="currentColor" /><path d={`M${x + 4} ${29 - i % 3 * 7}v-20`} stroke="currentColor" /></g>)}</svg>
+        }} className={`h-auto min-h-11 min-w-0 flex-col items-start gap-2 whitespace-normal p-2 text-left md:p-4 ${entry.id === template ? "border-accent bg-accent/15 text-accent" : ""}`}>
+          <span className="text-xs font-semibold md:text-sm">{entry.title}</span><span className="hidden text-xs text-ink-soft md:block">{entry.detail}</span>
         </Button>)}
+        </section>
+        <section aria-label="템플릿 미리보기" className="sticky top-0 grid min-w-0 gap-2">
+          <h2 className="text-sm font-semibold">{preset.title} · 예시 미리보기</h2>
+          <p className="text-xs text-ink-soft">{preset.detail} 예시 음표는 생성되는 악보에 포함되지 않습니다.</p>
+          <div className="max-h-[60dvh] min-w-0 overflow-auto">{scorePreview}</div>
+        </section>
       </div>}
       {step === 2 && <div className="grid min-w-0 gap-3">
         <p role="status" className="text-sm">{instruments.length}개 악기 선택 · 각 악기에 독립된 악보가 생깁니다.</p>
@@ -56,8 +75,15 @@ export function ScoreTemplateDialog({ onClose, onCreate, replacing }: { onClose:
           <label className="grid gap-1 text-sm">마디 수<select aria-label="템플릿 마디 수" value={measures} onChange={(event) => setMeasures(Number(event.target.value))} className={field}>{[4, 8, 16, 32].map((value) => <option key={value} value={value}>{value}마디</option>)}</select></label>
           <label className="grid gap-1 text-sm">조성<select aria-label="템플릿 조성" value={tonic} onChange={(event) => setTonic(Number(event.target.value))} className={field}>{["C", "Db", "D", "Eb", "E", "F", "Gb", "G", "Ab", "A", "Bb", "B"].map((value, index) => <option key={value} value={index}>{value}장조</option>)}</select></label>
         </div>
+        <fieldset className="grid min-w-0 gap-3">
+          <legend className="mb-2 text-sm font-semibold">제작자</legend>
+          <label className="grid gap-1 text-sm">작사자<Input aria-label="템플릿 작사자" value={lyricist} maxLength={100} onChange={(event) => setLyricist(event.target.value)} className="h-11" /></label>
+          <label className="grid gap-1 text-sm">작곡자<Input aria-label="템플릿 작곡자" value={composer} maxLength={100} onChange={(event) => setComposer(event.target.value)} className="h-11" /></label>
+          <label className="grid gap-1 text-sm">편곡자<Input aria-label="템플릿 편곡자" value={arranger} maxLength={100} onChange={(event) => setArranger(event.target.value)} className="h-11" /></label>
+        </fieldset>
         <p className="text-xs text-ink-soft">참고한 구성: {preset.reference}</p>
-        <ScoreView xml={xml} />
+        <p role="status" className="text-sm text-ink-soft">선택한 악기 편성과 마디 수를 갖춘 빈 악보로 생성합니다. 아래에서 시작할 악보를 확인하세요.</p>
+        {scorePreview}
         {replacing && <p role="status" className="text-sm text-ink-soft">생성하면 현재 입력 중인 초안이 이 템플릿으로 바뀝니다. 내 악보에 저장한 곡은 유지됩니다.</p>}
       </div>}
       <div className="flex flex-wrap justify-between gap-2">

@@ -93,7 +93,7 @@ for (const width of [390, 900, 1440]) test(`${width}px 템플릿 설정 마법�
 
 test("관현악 총보를 A4 비율로 인쇄하며 모든 악기와 마디를 포함한다", async ({ page }, testInfo) => {
   const instruments = [...SCORE_TEMPLATES.find((entry) => entry.id === "orchestra")!.instruments];
-  const score = buildScoreTemplate({ template: "orchestra", instruments, title: "관현악 출력 검수", bpm: 96, meter: "4/4", measures: 8, tonic: 7 });
+  const score = buildScoreTemplate({ template: "orchestra", instruments, title: "관현악 출력 검수", bpm: 96, meter: "4/4", measures: 8, tonic: 7, previewSample: true });
   await page.goto("/library");
   await page.evaluate((score) => localStorage.setItem("humscore.scores.v1", JSON.stringify([score])), score);
   await page.goto(`/scores/${score.id}`);

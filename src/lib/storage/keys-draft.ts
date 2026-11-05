@@ -9,6 +9,10 @@ import { isArpeggioPatternId, type AccompanimentSettings } from "../music/accomp
 
 /** 건반 입력 화면 초안 (음표 숫자와 설정만, 오디오 아님) */
 export interface KeysDraft {
+  measureCount?: number;
+  lyricist?: string;
+  composer?: string;
+  arranger?: string;
   title?: string;
   parts?: ScorePart[];
   activePartId?: string;
@@ -53,6 +57,8 @@ export function parseKeysDraft(raw: string | null): KeysDraft | null {
   if (parsedParts && !parsedParts.success) return null;
   const parts = parsedParts?.success ? parsedParts.data : undefined;
   const settings = {
+    ...(typeof o.measureCount === "number" && Number.isInteger(o.measureCount) && o.measureCount >= 1 && o.measureCount <= 128 ? { measureCount: o.measureCount } : {}),
+    ...Object.fromEntries((["lyricist", "composer", "arranger"] as const).flatMap((field) => typeof o[field] === "string" && o[field].length <= 200 ? [[field, o[field]]] : [])),
     ...(typeof o.title === "string" && o.title.length <= 200 ? { title: o.title } : {}),
     ...(parts ? { parts } : {}),
     ...(typeof o.activePartId === "string" && (o.activePartId === "main" || parts?.some((part) => part.id === o.activePartId)) ? { activePartId: o.activePartId } : {}),

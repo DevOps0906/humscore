@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ensureFontStylesheet, formatCredits, formatTempo, type StyleDocLike } from "./score-header-logic";
+import { ensureFontStylesheet, formatCreditLines, formatCredits, formatTempo, type StyleDocLike } from "./score-header-logic";
 import { headerFontById } from "@/lib/music/header-fonts";
 
 function fakeDoc(): StyleDocLike & { added: { id: string; href: string }[] } {
@@ -13,13 +13,14 @@ function fakeDoc(): StyleDocLike & { added: { id: string; href: string }[] } {
 }
 
 describe("formatCredits", () => {
-  it("값이 있는 것만 · 로 잇는다", () => {
-    expect(formatCredits({ lyricist: "A", composer: "B", arranger: "C" })).toBe("작사 A · 작곡 B · 편곡 C");
+  it("값이 있는 항목을 각각 한 줄로 표시한다", () => {
+    expect(formatCredits({ lyricist: "A", composer: "B", arranger: "C" })).toBe("작사 A\n작곡 B\n편곡 C");
     expect(formatCredits({ composer: "B" })).toBe("작곡 B");
     expect(formatCredits({ lyricist: " ", composer: "B", arranger: "" })).toBe("작곡 B");
     expect(formatCredits({})).toBe("");
+    expect(formatCreditLines({ lyricist: "A", composer: "B", arranger: "C" })).toEqual(["작사 A", "작곡 B", "편곡 C"]);
     expect(formatCredits({ lyricist: " \t ", composer: "\n", arranger: "  " })).toBe("");
-    expect(formatCredits({ lyricist: " 첫째 ", composer: " 둘째 ", arranger: " 셋째 " })).toBe("작사 첫째 · 작곡 둘째 · 편곡 셋째");
+    expect(formatCredits({ lyricist: " 첫째 ", composer: " 둘째 ", arranger: " 셋째 " })).toBe("작사 첫째\n작곡 둘째\n편곡 셋째");
   });
 });
 

@@ -115,10 +115,13 @@ describe("붙임줄·이음줄", () => {
 
 describe("참고 자료 기반 템플릿", () => {
   for (const preset of SCORE_TEMPLATES) it(`${preset.title}은 편성·음표·마디가 있는 편집 가능한 악보다`, () => {
-    const score = buildScoreTemplate({ template: preset.id, instruments: [...preset.instruments], title: preset.title, bpm: preset.bpm, meter: preset.meter, measures: 8, tonic: 2 });
+    const score = buildScoreTemplate({ template: preset.id, instruments: [...preset.instruments], title: preset.title, bpm: preset.bpm, meter: preset.meter, measures: 8, tonic: 2, previewSample: true });
     expect(parseScore(score)).not.toBeNull();
     expect(getScoreParts(score).map((part) => part.instrument)).toEqual(preset.instruments);
-    for (const part of getScoreParts(score)) expect(Math.max(...part.notes.map((note) => note.startBeat + note.durationBeats))).toBeLessThanOrEqual(score.beatsPerMeasure * 8);
+    for (const part of getScoreParts(score)) {
+      expect(part.notes.length).toBeGreaterThan(0);
+      expect(Math.max(...part.notes.map((note) => note.startBeat + note.durationBeats))).toBeLessThanOrEqual(score.beatsPerMeasure * 8);
+    }
     expect(scoreToMusicXML(score, "piano")).toContain("<measure number=\"8\">");
     expect(new Midi(scoreToMidi(score))).toBeDefined();
   });

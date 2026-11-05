@@ -34,7 +34,7 @@ export function TabScoreView({ score, instrument, minMeasures = 1 }: { score: Sc
       </div>
       <p className="text-xs text-ink-soft">위 악보와 같은 음표·박자·전조를 사용합니다. 각 숫자 아래에는 음 길이를 박 단위로 표시합니다.</p>
       <div className="overflow-x-auto rounded-xl bg-score-paper p-2 text-[var(--shadow-ink)]">
-        <svg viewBox={`0 0 ${width} ${systems * systemHeight}`} className="min-w-160 w-full" role="img" aria-labelledby={titleId}>
+        <svg viewBox={`0 0 ${width} ${systems * systemHeight}`} className="mx-auto block h-auto max-h-[74dvh] w-full" role="img" aria-labelledby={titleId}>
           <title id={titleId}>{`${score.title} · ${LABELS[instrument]} TAB 악보 · ${measures}마디`}</title>
           {Array.from({ length: systems }, (_, system) => {
             const top = system * systemHeight + 40;

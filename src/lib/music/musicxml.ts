@@ -226,7 +226,8 @@ function drumMusicXML(score: Score, opts: MusicXmlOptions): string {
         const ties = (note.tieStop ? `<tie type="stop"/>` : "") + (note.tieStart ? `<tie type="start"/>` : "");
         const tied = (note.tieStop ? `<tied type="stop"/>` : "") + (note.tieStart ? `<tied type="start"/>` : "");
         const instrument = rest ? "" : `<instrument id="D${lane.midi}"/>`;
-        elements.push(`<note${hiddenRest ? ` print-object="no"` : ""}>${head}<duration>${Math.round(note.durationBeats * DIVISIONS)}</duration>${ties}${instrument}<voice>${index + 1}</voice>${note.measureRest ? "" : `<type>${note.type}</type>${note.dots ? "<dot/>" : ""}`}${!rest && piece?.head === "x" ? "<notehead>x</notehead>" : ""}${tied ? `<notations>${tied}</notations>` : ""}</note>`);
+        const stem = !rest && [42, 46, 44].includes(lane.midi) ? "<stem>up</stem>" : "";
+        elements.push(`<note${hiddenRest ? ` print-object="no"` : ""}>${head}<duration>${Math.round(note.durationBeats * DIVISIONS)}</duration>${ties}${instrument}<voice>${index + 1}</voice>${note.measureRest ? "" : `<type>${note.type}</type>${note.dots ? "<dot/>" : ""}`}${stem}${!rest && piece?.head === "x" ? "<notehead>x</notehead>" : ""}${tied ? `<notations>${tied}</notations>` : ""}</note>`);
       }
     });
     for (const direction of dirs.ends[measure]) elements.push(direction.make(0));

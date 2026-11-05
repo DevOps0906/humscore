@@ -48,6 +48,7 @@ test("악보 커서 편집: → ↑ 2 키로 선택·음높이·길이 변경", 
     await sheet.evaluate((el) => (el.scrollLeft = 0));
     await sheet.scrollIntoViewIfNeeded();
     const head = sheet.locator(".vf-stavenote .vf-notehead").first();
+    await head.evaluate((element) => element.scrollIntoView({ block: "center", inline: "nearest" }));
     if (isMobile) await head.tap(); else await head.click();
     await expect(live).toContainText("1번째 음표", { timeout: 1500 });
   }).toPass({ timeout: 15_000 });

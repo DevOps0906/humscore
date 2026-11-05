@@ -24,6 +24,11 @@ export interface TemplateOptions {
   meter: Meter;
   measures: number;
   tonic: number;
+  /** 선택 화면에서만 예시 음표를 채운다. 실제 생성은 기본적으로 빈 악보다. */
+  previewSample?: boolean;
+  lyricist?: string;
+  composer?: string;
+  arranger?: string;
 }
 
 /** 제공 자료의 편성과 표기 구조를 기초로 만든 편집 가능한 시작 악보. */
@@ -46,7 +51,7 @@ export function buildScoreTemplate(options: TemplateOptions): Score {
     const notes: NoteEvent[] = [];
     const bass = ["bassGuitar", "bassGuitar5", "doubleBass", "cello", "bassoon", "tuba", "trombone", "bassTrombone", "synthBass"].includes(instrument);
     const percussion = instrumentMode(instrument) === "drums" || ["orchestralSnare", "orchestralBassDrum", "orchestralCymbal", "triangle"].includes(instrument);
-    for (let m = 0; m < measures; m++) {
+    for (let m = 0; options.previewSample && m < measures; m++) {
       const start = m * beats;
       const root = (bass ? instrument === "bassGuitar5" ? 28 : 36 : instrument === "viola" || instrument === "frenchHorn" ? 48 : 60) + tonic + intervals[m % 8];
       if (percussion && instrument !== "drumKit") {
@@ -74,11 +79,15 @@ export function buildScoreTemplate(options: TemplateOptions): Score {
       const syllables = ["새", "로", "운", "노", "래", "를", "함", "께"];
       notes.forEach((note, i) => { if (!notes[i - 1]?.tieToNext) note.lyric = syllables[i % syllables.length]; });
     }
-    return { id: `template-${index}`, instrument, notation: instrumentMode(instrument), notes, chords: percussion ? [] : chords.map((chord) => ({ ...chord })),
+    return { id: `template-${index}`, instrument, notation: instrumentMode(instrument), notes, chords: !options.previewSample || percussion ? [] : chords.map((chord) => ({ ...chord })),
       ...(instrumentMode(instrument) === "piano" ? { accompaniment: { mode: "arpeggio" as const, pattern: options.meter === "3/4" ? "waltz" : "alberti" } } : {}),
     };
   });
   const [first, ...additional] = parts;
-  return { ...createBlankScore(), ...first, id: createBlankScore().id, title: options.title.trim() || preset.title, bpm: Math.min(240, Math.max(30, options.bpm)), meter: options.meter,
+  const credits = Object.fromEntries((["lyricist", "composer", "arranger"] as const).flatMap((field) => {
+    const value = options[field]?.trim();
+    return value ? [[field, value]] : [];
+  }));
+  return { ...createBlankScore(), ...first, ...credits, id: createBlankScore().id, title: options.title.trim() || preset.title, bpm: Math.min(240, Math.max(30, options.bpm)), meter: options.meter, measureCount: measures,
     beatsPerMeasure: beats, key: { tonic, mode: "major", fifths: fifthsFor(tonic, "major") }, parts: additional.length ? additional : undefined };
 }

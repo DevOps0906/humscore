@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { ChevronDown, Minus, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { ensureFontStylesheet, formatCredits, formatTempo } from "@/components/score-header-logic";
+import { ensureFontStylesheet, formatCreditLines, formatTempo } from "@/components/score-header-logic";
 import {
   DEFAULT_HEADER_FONT_ID,
   DEFAULT_HEADER_FONT_SIZE,
@@ -31,7 +31,7 @@ export function ScoreHeader({ score }: { score: HeaderScore }) {
   }, [font]);
 
   const ts = timeSignatureOf(score);
-  const credits = formatCredits(score);
+  const credits = formatCreditLines(score);
 
   return (
     <header
@@ -49,10 +49,10 @@ export function ScoreHeader({ score }: { score: HeaderScore }) {
             {ts.beats}/{ts.beatType}
           </span>
         </p>
-        {credits && (
-          <p data-testid="score-header-credits" className="ml-auto text-right">
-            {credits}
-          </p>
+        {credits.length > 0 && (
+          <div data-testid="score-header-credits" className="ml-auto grid gap-1 text-right">
+            {credits.map((credit) => <p key={credit} data-testid="score-credit-line">{credit}</p>)}
+          </div>
         )}
       </div>
     </header>

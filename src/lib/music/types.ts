@@ -88,6 +88,8 @@ export interface ScorePart {
 }
 
 export interface Score {
+  /** 빈 악보의 마디 수를 보존한다. 음표가 더 길면 자동으로 늘어난다. */
+  measureCount?: number;
   /** 첫 파트는 기존 최상위 notes/chords를 사용한다. 추가 파트는 별도 보관한다. */
   parts?: ScorePart[];
   /** 반주 표현과 재생. 생략한 기존 악보는 동시에 누르는 화음 반주를 유지한다. */

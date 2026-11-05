@@ -14,8 +14,9 @@ async function enterEditMode(page: Page) {
 
 /** n번째(0부터) 음표 머리의 화면 중심 */
 async function noteCenter(page: Page, n: number) {
-  await page.evaluate(() => window.scrollTo(0, 0));
-  const head = (await page.locator(".score-sheet .vf-stavenote .vf-notehead").nth(n).boundingBox())!;
+  const note = page.locator(".score-sheet:visible .vf-stavenote .vf-notehead").nth(n);
+  await note.evaluate((element) => element.scrollIntoView({ block: "center", inline: "nearest" }));
+  const head = (await note.boundingBox())!;
   return { x: head.x + head.width / 2, y: head.y + head.height / 2 };
 }
 
@@ -31,6 +32,7 @@ test("터치/클릭: 음표를 누르면 도구 모음이 뜨고 반음·음가�
       if (isMobile) await page.touchscreen.tap(c.x, c.y);
       else await page.mouse.click(c.x, c.y);
       await expect(live).toContainText(`${n + 1}번째 음표`, { timeout: 1500 });
+      await expect(toolbar).toBeVisible({ timeout: 1500 });
     }).toPass({ timeout: 15_000 });
   };
 
@@ -80,13 +82,18 @@ test("드래그: 선택한 음표를 위로 끌면 반음 단위로 올라감", 
   const before = (await live.textContent())!; // 예: 2번째 음표 · D4 · 4분음표
   const m = /· ([A-G]#?)(\d) ·/.exec(before)!;
 
+  await handle.evaluate((element) => element.scrollIntoView({ block: "center", inline: "nearest" }));
   const box = (await handle.boundingBox())!;
   const x = box.x + box.width / 2;
   const y = box.y + box.height / 2;
+  const scale = await page.locator(".score-sheet:visible svg").first().evaluate((svg) => {
+    const image = svg as SVGSVGElement;
+    return image.getBoundingClientRect().width / image.viewBox.baseVal.width;
+  });
   await page.mouse.move(x, y);
   await page.mouse.down();
-  await page.mouse.move(x, y - 12, { steps: 4 });
-  await page.mouse.move(x, y - 21, { steps: 4 });
+  await page.mouse.move(x, y - 12 * scale, { steps: 4 });
+  await page.mouse.move(x, y - 21 * scale, { steps: 4 });
   await expect(page.getByTestId("score-drag-label")).toBeVisible();
   await page.mouse.up();
 
@@ -120,6 +127,7 @@ test("제목·작곡자: 악보에 그려지고 Enter/Esc 로 편집", async ({ 
   await expect(title).toHaveValue("나의 노래");
 
   // 새로고침 후 유지
+  await page.getByRole("group", { name: "악보 편집 적용과 저장" }).getByRole("button", { name: "적용", exact: true }).click();
   await page.reload();
   await page.getByRole("button", { name: "편집모드", exact: true }).click();
   await expect(page.getByLabel("작곡자", { exact: true })).toHaveValue("홍길동");

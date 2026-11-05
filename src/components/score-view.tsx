@@ -4,11 +4,67 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNo
 import type { OpenSheetMusicDisplay } from "opensheetmusicdisplay";
 import { ChevronDown } from "lucide-react";
 import { LoadingSpinner } from "@/components/loading-spinner";
+import { formatCreditLines } from "@/components/score-header-logic";
 import { beatKey, dragSteps, hitTestMarks, noteIndexByStart, type MarkRect } from "@/components/score-cursor";
 import type { ChordEvent, NoteEvent } from "@/lib/music/types";
 
 const DEBOUNCE_MS = 200;
 const MEASURES_PER_LINE = 4;
+
+/** SVG의 원본 좌표는 그대로 두고 화면에 놓이는 종이만 비례 축소한다. */
+function fitPages(container: HTMLElement, enabled: boolean) {
+  if (!enabled) return;
+  const maxHeight = window.innerHeight * 0.74;
+  container.style.minWidth = "";
+  container.style.width = "100%";
+  const available = container.clientWidth;
+  for (const svg of container.querySelectorAll("svg")) {
+    const { width, height } = svg.viewBox.baseVal;
+    if (!width || !height) continue;
+    const scale = Math.min(1, available / width, maxHeight / height);
+    svg.style.width = `${width * scale}px`;
+    svg.style.height = `${height * scale}px`;
+    svg.style.display = "block";
+    svg.style.maxWidth = "100%";
+    svg.style.marginInline = "auto";
+    const page = svg.parentElement;
+    if (page && page !== container) {
+      page.style.width = "100%";
+      page.style.height = `${height * scale}px`;
+    }
+  }
+}
+
+function creditLines(xml: string) {
+  const doc = new DOMParser().parseFromString(xml, "application/xml");
+  const creator = (type: string) => Array.from(doc.querySelectorAll("identification > creator"))
+    .find((entry) => entry.getAttribute("type") === type)?.textContent ?? "";
+  return formatCreditLines({ lyricist: creator("lyricist"), composer: creator("composer"), arranger: creator("arranger") });
+}
+
+/** OSMD의 합쳐진 저작자 행 대신 역할별로 독립된 텍스트 행을 그린다. */
+function drawCreditLines(osmd: OpenSheetMusicDisplay, container: HTMLElement, lines: string[]) {
+  const svg = container.querySelector("svg");
+  if (!svg || !lines.length) return;
+  const firstSystem = osmd.GraphicSheet?.MusicPages[0]?.MusicSystems[0];
+  const k = 10 * osmd.zoom;
+  const top = (firstSystem?.PositionAndShape.AbsolutePosition.y ?? 12) * k;
+  const lineHeight = 1.6 * k;
+  const x = svg.viewBox.baseVal.width - osmd.EngravingRules.PageRightMargin * k;
+  const group = document.createElementNS("http://www.w3.org/2000/svg", "g");
+  group.dataset.scoreCredits = "true";
+  lines.forEach((line, index) => {
+    const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
+    text.setAttribute("x", String(x));
+    text.setAttribute("y", String(top - (lines.length - index) * lineHeight));
+    text.setAttribute("text-anchor", "end");
+    text.setAttribute("font-size", String(1.2 * k));
+    text.setAttribute("fill", "#111");
+    text.textContent = line;
+    group.appendChild(text);
+  });
+  svg.appendChild(group);
+}
 
 /** 음표가 빽빽하거나 화면이 좁아도 네 마디가 한 줄에 남도록 종이의 최소 폭을 구한다. */
 function renderFourMeasureLines(osmd: OpenSheetMusicDisplay, container: HTMLElement) {
@@ -27,7 +83,7 @@ function renderFourMeasureLines(osmd: OpenSheetMusicDisplay, container: HTMLElem
         measure.minimumStaffEntriesWidth + measure.beginInstructionsWidth + measure.endInstructionsWidth,
       ));
   }
-  // 줄 시작의 음자리표·조표와 페이지 여백을 포함한다. 좁은 화면은 종이 안에서만 스크롤한다.
+  // 줄 시작의 음자리표·조표와 페이지 여백을 포함한다.
   const margin = rules.PageLeftMargin + rules.PageRightMargin + rules.SystemLeftMargin + rules.SystemRightMargin;
   const minimumWidth = Math.ceil((widestMeasure * MEASURES_PER_LINE * 1.2 + margin) * 10 * osmd.zoom);
   if (minimumWidth > 0) {
@@ -38,7 +94,9 @@ function renderFourMeasureLines(osmd: OpenSheetMusicDisplay, container: HTMLElem
     for (let pass = 0; pass < 3; pass++) {
       const current = osmd.GraphicSheet?.MeasureList ?? [];
       const labelWidth = Math.max(0, ...(osmd.GraphicSheet?.MusicPages ?? []).flatMap((page) => page.MusicSystems.map((system) => system.MaxLabelLength > 0 ? system.MaxLabelLength + rules.SystemLabelsRightMargin : 0)));
-      const slot = (container.clientWidth / (10 * osmd.zoom) - margin - labelWidth - rules.MeasureLeftMargin - 0.02) / MEASURES_PER_LINE;
+      const pageWidth = Math.min(container.clientWidth / (10 * osmd.zoom), osmd.GraphicSheet?.MusicPages[0]?.PositionAndShape.Size.width ?? Infinity);
+      // 빈 총보도 줄 끝 세로선과 보표 내부 여백을 포함해 네 마디가 들어가게 한다.
+      const slot = (pageWidth - margin - labelWidth - rules.MeasureLeftMargin - 0.02) / MEASURES_PER_LINE * 0.9;
       for (const staves of current) {
         const source = staves[0]?.parentSourceMeasure;
         if (!source) continue;
@@ -195,7 +253,8 @@ export function ScoreView({
   cursor,
   chordEditor,
   showHeader = false,
-  printLayout = false,
+  printLayout = true,
+  fitToPage = true,
   header,
   onHandle,
 }: {
@@ -208,6 +267,8 @@ export function ScoreView({
   showHeader?: boolean;
   /** 출력용 총보는 A4 페이지에서 시스템(줄)을 통째로 나눈다. */
   printLayout?: boolean;
+  /** 화면의 한 페이지를 가로·세로에 맞춘다. 인쇄/PDF 원본은 false를 사용한다. */
+  fitToPage?: boolean;
   /** 악보(종이) 맨 위, OSMD 그림 앞에 놓는 HTML 머리글 (인쇄에 포함됨) */
   header?: ReactNode;
   /** PDF 내보내기용 핸들을 받는다 (언마운트 때 null) */
@@ -284,9 +345,10 @@ export function ScoreView({
             osmdRef.current = new OpenSheetMusicDisplay(ref.current, {
               autoResize: false,
               newSystemFromXML: false, // 화면 폭과 무관하게 아래의 4마디 단위 배치를 사용
+              setWantedStemDirectionByXml: true,
               backend: "svg",
               drawTitle: showHeader,
-              drawComposer: showHeader,
+              drawComposer: false,
               drawPartNames: false,
               pageFormat: printLayout ? "A4_P" : "Endless",
               drawingParameters: "compacttight",
@@ -298,12 +360,13 @@ export function ScoreView({
           }
           const osmd = osmdRef.current;
           const multipleInstruments = xml.includes('id="M1-');
-          osmd.setOptions({ drawPartNames: multipleInstruments, drawPartAbbreviations: multipleInstruments });
+          osmd.setOptions({ drawTitle: showHeader, drawComposer: false, drawLyricist: false, drawPartNames: multipleInstruments, drawPartAbbreviations: multipleInstruments });
           if (showHeader) {
             // 기본값은 제목이 너무 커서 긴 제목이 잘림 → 작게
             osmd.EngravingRules.SheetTitleHeight = 2;
             osmd.EngravingRules.SheetComposerHeight = 1.2;
             osmd.EngravingRules.TitleTopDistance = 1.5;
+            osmd.EngravingRules.TitleBottomDistance = 2 + creditLines(xml).length * 1.6;
           }
           if (loadedXml.current !== xml) {
             loadedXml.current = null; // load 도중 상태 불명 → 완료 전까지 null
@@ -312,7 +375,10 @@ export function ScoreView({
             if (!isLatest()) return;
           }
           osmd.zoom = zoom;
+          if (fitToPage) ref.current.style.width = `${Math.max(720, sheetRef.current?.clientWidth ?? 720)}px`;
           renderFourMeasureLines(osmd, ref.current);
+          if (showHeader) drawCreditLines(osmd, ref.current, creditLines(xml));
+          fitPages(ref.current, fitToPage);
           setError(null);
           if (isLatest()) updateMarks();
         } catch (e) {
@@ -327,28 +393,35 @@ export function ScoreView({
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [xml, zoom, updateMarks, showHeader, printLayout]);
+  }, [xml, zoom, updateMarks, showHeader, printLayout, fitToPage]);
 
   useEffect(() => {
     const sheet = sheetRef.current;
     if (!sheet) return;
     let width = sheet.clientWidth;
+    let height = window.innerHeight;
     let timer: ReturnType<typeof setTimeout> | undefined;
-    const observer = new ResizeObserver(() => {
+    const resize = () => {
       if (window.matchMedia("print").matches) return;
-      if (Math.abs(sheet.clientWidth - width) < 1) return;
+      if (Math.abs(sheet.clientWidth - width) < 1 && Math.abs(window.innerHeight - height) < 1) return;
       width = sheet.clientWidth;
+      height = window.innerHeight;
       clearTimeout(timer);
       timer = setTimeout(() => {
         if (osmdRef.current && ref.current && loadedXml.current) {
+          if (fitToPage) ref.current.style.width = `${Math.max(720, sheet.clientWidth)}px`;
           renderFourMeasureLines(osmdRef.current, ref.current);
+          if (showHeader) drawCreditLines(osmdRef.current, ref.current, creditLines(loadedXml.current));
+          fitPages(ref.current, fitToPage);
           updateMarks();
         }
       }, DEBOUNCE_MS);
-    });
+    };
+    const observer = new ResizeObserver(resize);
     observer.observe(sheet);
-    return () => { observer.disconnect(); clearTimeout(timer); };
-  }, [updateMarks]);
+    window.addEventListener("resize", resize);
+    return () => { observer.disconnect(); window.removeEventListener("resize", resize); clearTimeout(timer); };
+  }, [updateMarks, fitToPage, showHeader]);
 
   // 커서 모드: OSMD 가 자체적으로 다시 그릴 때(창 크기 변경 등)도 위치 재계산
   useEffect(() => {
@@ -432,7 +505,9 @@ export function ScoreView({
     if (!d || d.id !== e.pointerId) return;
     if (!d.moved && Math.abs(e.clientY - d.startY) < 4) return;
     d.moved = true;
-    const steps = dragSteps(d.startY, e.clientY);
+    const svg = ref.current?.querySelector("svg");
+    const scale = svg && svg.viewBox.baseVal.width ? svg.getBoundingClientRect().width / svg.viewBox.baseVal.width : 1;
+    const steps = dragSteps(d.startY, e.clientY, 10 * (osmdRef.current?.zoom ?? 1) * scale);
     if (steps !== d.last) {
       d.last = steps;
       setDrag(steps);
@@ -523,7 +598,7 @@ export function ScoreView({
           aria-label={`코드 ${chord.label} 변경`}
           onClick={(event) => { event.stopPropagation(); chordEditor.onSelect(chord.startBeat); }}
           className="no-print absolute z-10 cursor-pointer rounded-md border border-transparent bg-transparent outline-none hover:border-accent hover:bg-accent/10 focus-visible:border-accent focus-visible:ring-3 focus-visible:ring-ring/60"
-          style={{ left: chord.left - 8, top: chord.top - 8, width: Math.max(36, chord.width + 16), height: Math.max(36, chord.height + 16) }}
+          style={{ left: chord.left - 4, top: chord.top - 2, width: Math.max(24, chord.width + 8), height: chord.height + 4 }}
         />
       ))}
       {mark && (
@@ -545,12 +620,13 @@ export function ScoreView({
           onPointerMove={onHandleMove}
           onPointerUp={(e) => endDrag(e, true)}
           onPointerCancel={(e) => endDrag(e, false)}
-          className="no-print absolute cursor-ns-resize touch-none rounded-md"
+          onClick={(event) => { event.stopPropagation(); if (selected !== null) cursorRef.current?.onSelect(selected); }}
+          className="no-print absolute z-20 cursor-ns-resize touch-none rounded-md"
           style={{
-            left: mark.left + mark.width / 2 - Math.max(mark.width / 2 + 8, 18),
-            top: mark.top - 4,
-            width: Math.max(mark.width + 16, 36),
-            height: mark.height + 8,
+            left: mark.left + mark.width / 2 - 12,
+            top: Math.max(0, mark.top - 24),
+            width: 24,
+            height: 20,
           }}
         />
       )}

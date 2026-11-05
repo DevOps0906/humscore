@@ -55,14 +55,15 @@ export function measureOf(beat: number, beatsPerMeasure: number): number {
   return Math.max(0, Math.floor(beat / beatsPerMeasure + EPS));
 }
 
-/** 악보 마디 수: 음표 끝과 코드 위치 중 큰 쪽 기준, 최소 1 */
-export function scoreMeasureCount(score: Pick<Score, "notes" | "chords" | "beatsPerMeasure"> & Pick<Partial<Score>, "parts">): number {
+/** 지정 마디 수를 유지하면서 음표·코드·추가 파트가 더 길면 늘린다. 구버전은 최소 1마디. */
+export function scoreMeasureCount(score: Pick<Score, "notes" | "chords" | "beatsPerMeasure"> & Pick<Partial<Score>, "parts" | "measureCount">): number {
   const bpm = score.beatsPerMeasure;
   const end = score.notes.reduce((m, n) => Math.max(m, n.startBeat + n.durationBeats), 0);
   const byNotes = Math.ceil(end / bpm - EPS);
   const byChords = score.chords.reduce((m, c) => Math.max(m, measureOf(c.startBeat, bpm) + 1), 0);
   const byParts = (score.parts ?? []).map((part) => scoreMeasureCount({ ...part, beatsPerMeasure: bpm }));
-  return Math.max(1, byNotes, byChords, ...byParts);
+  const requested = Number.isFinite(score.measureCount) ? Math.max(1, Math.floor(score.measureCount!)) : 1;
+  return Math.max(requested, byNotes, byChords, ...byParts);
 }
 
 /** measure번째 마디 첫 박의 코드 */

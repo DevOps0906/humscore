@@ -6,8 +6,8 @@ export interface Credits {
   arranger?: string;
 }
 
-/** "작사 A · 작곡 B · 편곡 C" — 값이 있는 것만, 없으면 빈 문자열 */
-export function formatCredits({ lyricist, composer, arranger }: Credits): string {
+/** 작사·작곡·편곡은 각 역할을 별도 줄로 표시한다. 빈 역할은 생략한다. */
+export function formatCreditLines({ lyricist, composer, arranger }: Credits): string[] {
   const parts: [string, string | undefined][] = [
     ["작사", lyricist],
     ["작곡", composer],
@@ -16,8 +16,11 @@ export function formatCredits({ lyricist, composer, arranger }: Credits): string
   return parts
     .map(([label, v]) => [label, v?.trim()] as const)
     .filter(([, v]) => !!v)
-    .map(([label, v]) => `${label} ${v}`)
-    .join(" · ");
+    .map(([label, v]) => `${label} ${v}`);
+}
+
+export function formatCredits(credits: Credits): string {
+  return formatCreditLines(credits).join("\n");
 }
 
 /** "Adagio ♩ = 72" */

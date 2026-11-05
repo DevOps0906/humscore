@@ -66,6 +66,7 @@ export const scorePartSchema = z.object({
 export const scorePartsSchema = z.array(scorePartSchema).max(32).refine((parts) => new Set(parts.map((part) => part.id)).size === parts.length, "악기 파트 ID가 중복됐어요");
 
 export const scoreSchema = z.object({
+  measureCount: z.number().int().min(1).max(128).optional(),
   parts: scorePartsSchema.optional(),
   id: z.uuid(),
   title: z.string().max(200),

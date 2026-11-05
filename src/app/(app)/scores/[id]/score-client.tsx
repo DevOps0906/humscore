@@ -1,7 +1,8 @@
 "use client";
 import Link from "next/link";
+import { ScoreArrangementTabs } from "@/components/score-arrangement-tabs";
 import { ScorePartsPanel } from "@/components/score-parts-panel";
-import { MAIN_PART_ID, getScoreParts, scoreForPart, updateScorePart, addScorePart } from "@/lib/music/parts";
+import { MAIN_PART_ID, scoreForPart, updateScorePart, addScorePart } from "@/lib/music/parts";
 import { canTie } from "@/lib/music/articulation";
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
@@ -26,7 +27,7 @@ import { InlineField } from "@/components/inline-field";
 import { ScoreEditToolbar } from "@/components/score-edit-toolbar";
 import { applyEditKey, describeInterval, describeNote, dragTargetMidi } from "@/components/score-cursor";
 import { ScoreHeader, HeaderSettings } from "@/components/score-header";
-import { formatCredits } from "@/components/score-header-logic";
+import { formatCreditLines } from "@/components/score-header-logic";
 import { usePianoSound } from "@/hooks/use-piano-sound";
 import { useInstrument } from "@/hooks/use-instrument";
 import { useScoreEditKeys } from "@/hooks/use-score-edit-keys";
@@ -79,10 +80,12 @@ function ScoreEditor({ id, entry }: { id: string; entry?: ScoreEntry }) {
   const [selectedLayout, setLayout] = useState<ScoreLayout | null>(null);
   const layout: ScoreLayout = selectedLayout ?? (score?.accompaniment?.mode === "arpeggio" ? "piano" : "lead");
   const [showTab, setShowTab] = useState(false);
+  const [arrangementView, setArrangementView] = useState<"full" | "individual">("full");
   const [chordEditingBeat, setChordEditingBeat] = useState<number | null>(null);
   const [preferredInstrument, setPreferredInstrument] = useInstrument();
   const isDrums = score?.notation === "drums" || score?.instrument === "drumKit";
   const instrument = isDrums ? "drumKit" : score?.instrument ?? preferredInstrument;
+  const guitarPart = isGuitarInstrument(instrument);
   function setInstrument(value: typeof preferredInstrument) {
     setPreferredInstrument(value);
     update({ instrument: value });
@@ -127,7 +130,7 @@ function ScoreEditor({ id, entry }: { id: string; entry?: ScoreEntry }) {
   }
   function enterEdit() {
     if (editMode || !rootScore) return;
-    draftRef.current = rootScore; setDraftRoot(rootScore); setEditMode(true); resetSelection();
+    draftRef.current = rootScore; setDraftRoot(rootScore); setEditMode(true); setArrangementView("individual"); resetSelection();
   }
   async function applyEdits(exit = false) {
     if (editingSession !== getScoreSessionVersion() || !getScore(id)) {
@@ -152,7 +155,7 @@ function ScoreEditor({ id, entry }: { id: string; entry?: ScoreEntry }) {
   const selected = selectedRaw !== null && selectedRaw < noteCount ? selectedRaw : null;
 
   useScoreEditKeys({
-    enabled: editMode && !isDrums && editNotes && !lyricsOpen && !audioOpen && compositionMode === null,
+    enabled: (!rootScore?.parts?.length || arrangementView === "individual") && (!guitarPart || showTab) && editMode && !isDrums && editNotes && !lyricsOpen && !audioOpen && compositionMode === null,
     notes: score?.notes ?? [],
     selected,
     transpose: score?.transpose ?? 0,
@@ -255,7 +258,7 @@ function ScoreEditor({ id, entry }: { id: string; entry?: ScoreEntry }) {
     const view = exportHandle.current ?? viewHandle.current;
     if (!view || pdfBusy) return;
     setPdfBusy(true);
-    const credits = formatCredits(score);
+    const credits = formatCreditLines(rootScore!);
     const t = toast.loading("PDF를 만드는 중…");
     try {
       const deadline = Date.now() + 15_000;
@@ -265,7 +268,7 @@ function ScoreEditor({ id, entry }: { id: string; entry?: ScoreEntry }) {
       if (view.container.getAttribute("aria-busy") === "true") throw new Error("악보를 그리는 중이에요. 잠시 후 다시 시도해 주세요.");
       if (!isNativeApp()) { window.print(); return; }
       // 음표 선택 표시는 SVG 밖(HTML)이라 PDF에 들어가지 않는다. OSMD가 제목을 이미 그렸다면 직접 머리글은 생략
-      const bytes = await sheetToPdf(view.container, view.drawsTitle ? [] : [score.title, credits], view.systemSpans());
+      const bytes = await sheetToPdf(view.container, view.drawsTitle ? [] : [score.title, ...credits], view.systemSpans());
       await exportFile(`${base}.pdf`, bytes, "application/pdf");
     } catch (e) {
       const msg = e instanceof Error ? e.message : "";
@@ -297,7 +300,7 @@ function ScoreEditor({ id, entry }: { id: string; entry?: ScoreEntry }) {
       </div>
 
       <div className="no-print flex flex-wrap items-center gap-2 text-sm">
-        {!isDrums && (["lead", "piano"] as const).filter((l) => l === "lead" || score.notation === "piano").map((l) => (
+        {!isDrums && !guitarPart && (["lead", "piano"] as const).filter((l) => l === "lead" || score.notation === "piano").map((l) => (
           <Button
             key={l}
             type="button"
@@ -309,12 +312,10 @@ function ScoreEditor({ id, entry }: { id: string; entry?: ScoreEntry }) {
             {l === "lead" ? "코드 악보" : "피아노"}
           </Button>
         ))}
-        {!isDrums && <Button type="button" variant="outline" aria-pressed={showTab} onClick={() => setShowTab(true)} className={`h-11 rounded-full px-4 lg:h-9 ${showTab ? "border-accent bg-accent/15 text-accent" : ""}`}>TAB</Button>}
-        {!isDrums && showTab && <label className="flex min-w-0 items-center gap-2">TAB 악기
-          <select aria-label="TAB 악기" value={tabInstrument} onChange={(event) => { if (isGuitarInstrument(event.target.value)) setInstrument(event.target.value); }} className="h-11 min-w-0 rounded-md border border-input bg-surface px-3 text-sm">
-            {(["classicalGuitar", "acousticGuitar", "electricGuitar", "bassGuitar", "bassGuitar5"] as const).map((id) => <option key={id} value={id}>{INSTRUMENT_LABELS[id]}</option>)}
-          </select>
-        </label>}
+        {guitarPart && <>
+          <Button type="button" variant="outline" aria-pressed={!showTab} onClick={() => { setShowTab(false); setEditNotes(false); resetSelection(); setArrangementView("individual"); }} className="h-11 rounded-full px-4">TAB</Button>
+          <Button type="button" variant="outline" aria-pressed={showTab} onClick={() => { setShowTab(true); setArrangementView("individual"); }} className="h-11 rounded-full px-4">악보</Button>
+        </>}
         <span className="ml-auto text-ink-soft">
           {score.bpm} BPM · <span className="text-xs">{meterLabel}</span>
         </span>
@@ -323,18 +324,19 @@ function ScoreEditor({ id, entry }: { id: string; entry?: ScoreEntry }) {
         clearPlayback(); setPlaying(false); setLayout("piano"); setShowTab(false); update({ accompaniment });
       }} />}
 
-      <ScorePartsPanel score={rootScore!} activePartId={activePartId} onSelect={(partId) => { resetSelection(); setActivePartId(partId); setShowTab(false); setLayout(null); }} onAdd={(notation, selectedInstrument) => {
+      <ScorePartsPanel score={rootScore!} activePartId={activePartId} onSelect={(partId) => { resetSelection(); setActivePartId(partId); setArrangementView("individual"); setShowTab(false); setLayout(null); }} onAdd={(notation, selectedInstrument) => {
         const result = addScorePart(draftRef.current ?? rootScore!, notation, selectedInstrument);
         draftRef.current = result.score; setDraftRoot(result.score); setActivePartId(result.partId);
-        setEditMode(true); setEditNotes(true); resetSelection(); setShowTab(false); setLayout(null);
+        setEditMode(true); setEditNotes(true); setArrangementView("individual"); resetSelection(); setShowTab(false); setLayout(null);
       }} />
       {editMode && <div role="group" aria-label="악보 편집 적용과 저장" className="no-print sticky top-0 z-20 flex flex-wrap items-center gap-2 rounded-xl border border-line bg-surface p-3">
         <p className="mr-auto text-sm text-ink-soft">{INSTRUMENT_LABELS[instrument]} 편집 중 · 저장하면 편집을 마칩니다.</p>
         <Button type="button" variant="outline" disabled={saving} onClick={() => void applyEdits()} className="h-11 px-5">적용</Button>
         <Button type="button" disabled={saving} onClick={() => void applyEdits(true)} className="h-11 px-5">저장</Button>
       </div>}
+      <ScoreArrangementTabs score={rootScore!} view={arrangementView} onViewChange={(value) => { resetSelection(); setArrangementView(value); }}>
       <h2 className="text-sm font-semibold">{INSTRUMENT_LABELS[instrument]} 악보</h2>
-      <ScoreView
+      {(!guitarPart || showTab) && <ScoreView
         onHandle={(h) => {
           viewHandle.current = h;
         }}
@@ -388,13 +390,10 @@ function ScoreEditor({ id, entry }: { id: string; entry?: ScoreEntry }) {
               }
             : undefined
         }
-      />
+      />}
 
-      {getScoreParts(rootScore!).filter((part) => part.id !== activePartId).map((part) => <section key={part.id} aria-label={`${INSTRUMENT_LABELS[part.instrument]} 악보`} className="grid min-w-0 gap-2">
-        <h2 className="text-sm font-semibold">{INSTRUMENT_LABELS[part.instrument]} 악보</h2>
-        <ScoreView showHeader={false} xml={scoreToMusicXML(scoreForPart(rootScore!, part.id), part.notation === "piano" && part.accompaniment?.mode === "arpeggio" ? "piano" : "lead", { externalHeader: true })} />
-      </section>)}
-      {!isDrums && showTab && <TabScoreView score={score} instrument={tabInstrument} />}
+      {guitarPart && <>{!showTab && header}<TabScoreView score={score} instrument={tabInstrument} /></>}
+      </ScoreArrangementTabs>
       <Dialog open={chordEditingBeat !== null} onOpenChange={(open) => { if (!open) setChordEditingBeat(null); }}>
         <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-lg">
           <DialogHeader><DialogTitle>코드 변경</DialogTitle><DialogDescription>선택한 위치의 코드 근음과 종류를 고르고 적용해 주세요.</DialogDescription></DialogHeader>
@@ -419,7 +418,7 @@ function ScoreEditor({ id, entry }: { id: string; entry?: ScoreEntry }) {
       </div>
       {editMode && <section id="score-edit-mode-panel" aria-label="악보 편집 옵션" className="no-print grid gap-4 rounded-xl border border-line bg-surface p-4">
         <h2 className="text-sm font-semibold">악보 편집 옵션</h2>
-        <div className="grid min-w-0 gap-2 md:grid-cols-3">
+        <div className="grid min-w-0 gap-2">
           {([['lyricist', '작사', score.lyricist], ['composer', '작곡', score.composer], ['arranger', '편곡', score.arranger]] as const).map(([field, label, value]) => <InlineField
             key={field} label={label} ariaLabel={`${label}자`} placeholder={`${label}자 (선택)`} allowEmpty value={value ?? ""}
             onCommit={(text) => { update({ [field]: text || undefined }); toast.success(`${label}자를 저장했어요`); }}
@@ -432,7 +431,7 @@ function ScoreEditor({ id, entry }: { id: string; entry?: ScoreEntry }) {
         <Button
           type="button"
           variant="outline"
-          onClick={() => { setEditNotes((value) => !value); setSelected(null); setToolbarOpen(false); setChordEditingBeat(null); }}
+          onClick={() => { setArrangementView("individual"); if (guitarPart) setShowTab(true); setEditNotes((value) => !value); setSelected(null); setToolbarOpen(false); setChordEditingBeat(null); }}
           aria-pressed={editNotes}
           className={`h-11 rounded-full px-4 text-sm lg:h-9 ${editNotes ? "border-accent bg-accent/15 text-accent hover:bg-accent/20 hover:text-accent" : ""}`}
         >
@@ -591,7 +590,7 @@ function ScoreEditor({ id, entry }: { id: string; entry?: ScoreEntry }) {
       </div>
       <div className="h-44" />
       <div className="score-export" aria-hidden="true">
-        <ScoreView showHeader printLayout xml={scoreToMusicXML(rootScore!, "piano")} onHandle={(handle) => { exportHandle.current = handle; }} />
+        <ScoreView showHeader printLayout fitToPage={false} xml={scoreToMusicXML(rootScore!, "piano")} onHandle={(handle) => { exportHandle.current = handle; }} />
       </div>
     </div>
   );
