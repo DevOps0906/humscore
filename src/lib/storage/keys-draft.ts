@@ -5,9 +5,11 @@ import { PROGRESSIONS } from "../music/progressions";
 import { isValidChordSymbol } from "../music/edit";
 import type { ChordEvent, KeyInfo, Meter, NoteEvent } from "../music/types";
 import { isCreationMode, isInstrumentId, type CreationMode, type InstrumentId } from "../music/instrument-catalog";
+import { isArpeggioPatternId, type AccompanimentSettings } from "../music/accompaniment";
 
 /** 건반 입력 화면 초안 (음표 숫자와 설정만, 오디오 아님) */
 export interface KeysDraft {
+  accompaniment?: AccompanimentSettings;
   /** 작곡 도구로 저장한 악보를 다시 열 때 같은 악보에 이어서 저장한다. */
   scoreId?: string;
   /** 악보 입력 방식과 재생 음색. 구버전 초안은 두 필드가 없을 수 있다. */
@@ -79,12 +81,16 @@ export function parseKeysDraft(raw: string | null): KeysDraft | null {
       ? o.progressionId
       : AUTO_PROGRESSION;
 
+  const accompaniment = o.accompaniment as Record<string, unknown> | undefined;
+  const accompanimentSetting = accompaniment && (accompaniment.mode === "block" || accompaniment.mode === "arpeggio") && isArpeggioPatternId(accompaniment.pattern)
+    ? { accompaniment: { mode: accompaniment.mode, pattern: accompaniment.pattern } as AccompanimentSettings } : {};
+
   if (o.chords !== undefined) {
     const parsedChords = chordsSchema.safeParse(o.chords);
     if (!parsedChords.success) return null;
-    return { notes: parsedNotes.data, bpm, meter, key, progressionId, chords: parsedChords.data, ...settings, ...(scoreId ? { scoreId } : {}) };
+    return { notes: parsedNotes.data, bpm, meter, key, progressionId, chords: parsedChords.data, ...settings, ...accompanimentSetting, ...(scoreId ? { scoreId } : {}) };
   }
-  return { notes: parsedNotes.data, bpm, meter, key, progressionId, ...settings, ...(scoreId ? { scoreId } : {}) };
+  return { notes: parsedNotes.data, bpm, meter, key, progressionId, ...settings, ...accompanimentSetting, ...(scoreId ? { scoreId } : {}) };
 }
 
 export function serializeKeysDraft(d: KeysDraft): string {

@@ -1,4 +1,5 @@
 import { midiToFreq } from "../music/frequency";
+import { buildAccompanimentNotes } from "../music/accompaniment";
 import { ORCHESTRAL_DRUM_NOTES } from "../music/instrument-catalog";
 import { DYNAMIC_VELOCITY, velocityAt } from "../music/dynamics";
 import { unrollScore } from "../music/form";
@@ -129,7 +130,12 @@ export function playScore(
     });
   }
   if (!percussion && (opts.withChords ?? true)) {
-    score.chords.forEach((c, i) => {
+    if (score.accompaniment?.mode === "arpeggio") {
+      const endBeat = score.notes.reduce((end, note) => Math.max(end, note.startBeat + note.durationBeats), 0);
+      for (const note of buildAccompanimentNotes(score.chords, score.accompaniment, { endBeat, beatsPerMeasure: score.beatsPerMeasure, transpose: tp })) {
+        playPianoNote(ctx, note.midi, start + note.startBeat * spb, { velocity: Math.min(1, (CHORD_BASE * velocityAt(score.dynamics, note.startBeat)) / MF), duration: note.durationBeats * spb, destination: bus });
+      }
+    } else score.chords.forEach((c, i) => {
       const end = score.chords[i + 1]?.startBeat ?? c.startBeat + score.beatsPerMeasure;
       for (const m of chordToMidi(transposeChordSymbol(c.symbol, tp, preferFlats), 3)) {
         playPianoNote(ctx, m, start + c.startBeat * spb, { velocity: Math.min(1, (CHORD_BASE * velocityAt(score.dynamics, c.startBeat)) / MF), duration: (end - c.startBeat) * spb, destination: bus });
@@ -190,7 +196,11 @@ export function playPlan(
     });
   }
   if (!percussion && (opts.withChords ?? true)) {
-    plan.chords.forEach((c, i) => {
+    if (plan.accompaniment?.mode === "arpeggio") {
+      for (const note of buildAccompanimentNotes(plan.chords, plan.accompaniment, { endBeat: total, beatsPerMeasure: plan.beatsPerMeasure, transpose: tp, fromBeat: from })) {
+        playPianoNote(ctx, note.midi, timeOf(note.startBeat), { velocity: Math.min(1, (CHORD_BASE * velocityAt(plan.dynamics, note.startBeat)) / MF), duration: note.durationBeats * spb, destination: bus });
+      }
+    } else plan.chords.forEach((c, i) => {
       const end = Math.min(total, plan.chords[i + 1]?.startBeat ?? total);
       const on = Math.max(from, c.startBeat);
       if (end <= on + EPS) return;

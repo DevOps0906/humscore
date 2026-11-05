@@ -1,4 +1,5 @@
 import { Midi } from "@tonejs/midi";
+import { buildAccompanimentNotes } from "./accompaniment";
 import { chordToMidi, transposeChordSymbol, transposeKey } from "./theory";
 import { timeSignatureOf } from "./meter";
 import { DYNAMIC_VELOCITY, velocityAt } from "./dynamics";
@@ -63,7 +64,12 @@ export function scoreToMidi(source: Score, opts: MidiExportOptions = {}): Uint8A
     comp.name = "Chords";
     comp.channel = 1;
     comp.instrument.number = GM_INSTRUMENTS[chordInstrument];
-    score.chords.forEach((c, i) => {
+    if (score.accompaniment?.mode === "arpeggio") {
+      const endBeat = score.notes.reduce((end, note) => Math.max(end, note.startBeat + note.durationBeats), 0);
+      for (const note of buildAccompanimentNotes(score.chords, score.accompaniment, { endBeat, beatsPerMeasure: score.beatsPerMeasure, transpose: tp })) {
+        comp.addNote({ midi: note.midi, time: note.startBeat * spb, duration: note.durationBeats * spb * 0.98, velocity: 0.55 });
+      }
+    } else score.chords.forEach((c, i) => {
       const end = score.chords[i + 1]?.startBeat ?? c.startBeat + score.beatsPerMeasure;
       const symbol = transposeChordSymbol(c.symbol, tp, preferFlats);
       for (const m of chordToMidi(symbol, 3)) {

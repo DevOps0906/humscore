@@ -4,6 +4,12 @@ import { parseKeysDraft, serializeKeysDraft, type KeysDraft } from "../keys-draf
 const note = { midi: 60, startBeat: 0, durationBeats: 1 };
 
 describe("keys-draft", () => {
+  it("반주 모드와 템플릿을 복원하며 잘못된 설정은 생략한다", () => {
+    const draft: KeysDraft = { notes: [note], bpm: 90, meter: "4/4", key: { tonic: 0, mode: "major", fifths: 0 }, progressionId: "auto", accompaniment: { mode: "arpeggio", pattern: "alberti" } };
+    expect(parseKeysDraft(serializeKeysDraft(draft))?.accompaniment).toEqual(draft.accompaniment);
+    expect(parseKeysDraft(JSON.stringify({ ...draft, accompaniment: { mode: "arpeggio", pattern: "unknown" } }))?.accompaniment).toBeUndefined();
+    expect(parseKeysDraft(JSON.stringify({ ...draft, accompaniment: { mode: "unknown", pattern: "alberti" } }))?.accompaniment).toBeUndefined();
+  });
   it("5현 베이스와 오케스트라 악기 설정을 수동 코드 유무에 관계없이 왕복 복원한다", () => {
     const variants = [
       { notation: "guitarTab", instrument: "bassGuitar5" },

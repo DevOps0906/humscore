@@ -1,4 +1,5 @@
 import type { CreationMode, InstrumentId } from "./instrument-catalog";
+import type { AccompanimentSettings } from "./accompaniment";
 
 /** 악보 내부 표현 — 모든 입력(허밍·파일·향후 GPU 채보)이 이 형식으로 모이고, 모든 출력이 여기서 갈라집니다. */
 
@@ -72,6 +73,8 @@ export interface MeasureMark {
 export type Meter = "3/4" | "4/4" | "6/8";
 
 export interface Score {
+  /** 반주 표현과 재생. 생략한 기존 악보는 동시에 누르는 화음 반주를 유지한다. */
+  accompaniment?: AccompanimentSettings;
   id: string;
   title: string;
   /** 생성·표기 방식. 생략한 기존 악보는 기존 선율 악보로 읽는다. */

@@ -1,4 +1,5 @@
 import { scoreMeasureCount } from "./edit";
+import { buildAccompanimentNotes } from "./accompaniment";
 import { chordToMidi, tempoTerm, transposeChordSymbol, transposeKey } from "./theory";
 import { splitForNotation, type NotationPiece } from "./notation";
 import { AccidentalTracker, spellPitch, type AccidentalName, type SpelledPitch } from "./spelling";
@@ -233,7 +234,7 @@ function drumMusicXML(score: Score, opts: MusicXmlOptions): string {
   }
   const instruments = midis.map((midi) => `<score-instrument id="D${midi}"><instrument-name>${esc(partName === "드럼" ? percussionPiece(midi)?.label ?? `드럼 ${midi}` : partName)}</instrument-name></score-instrument>`).join("");
   const midi = midis.map((midi) => `<midi-instrument id="D${midi}"><midi-channel>10</midi-channel><midi-unpitched>${midi + 1}</midi-unpitched></midi-instrument>`).join("");
-  const creators = external ? "" : (["composer", "lyricist", "arranger"] as const).map((kind) => score[kind]?.trim() ? `<creator type="${kind}">${esc(score[kind]!)}</creator>` : "").join("");
+  const creators = external ? "" : (["lyricist", "composer", "arranger"] as const).map((kind) => score[kind]?.trim() ? `<creator type="${kind}">${esc(score[kind]!.trim())}</creator>` : "").join("");
   return `<?xml version="1.0" encoding="UTF-8"?>\n<score-partwise version="4.0">${external ? "" : `<work><work-title>${esc(score.title)}</work-title></work>`}<identification>${creators}<encoding><software>HumScore</software></encoding></identification><part-list><score-part id="P1"><part-name>${esc(partName)}</part-name>${instruments}${midi}</score-part></part-list><part id="P1">${body.join("")}</part></score-partwise>`;
 }
 
@@ -295,6 +296,9 @@ export function scoreToMusicXML(score: Score, layout: ScoreLayout = "lead", opts
     : `<clef number="1"><sign>G</sign><line>2</line></clef>`;
 
   const piano = layout === "piano";
+  const arpeggioPieces = piano && score.accompaniment?.mode === "arpeggio"
+    ? splitForNotation(buildAccompanimentNotes(score.chords, score.accompaniment, { endBeat: Math.min(measures * bpm, score.notes.reduce((end, note) => Math.max(end, note.startBeat + note.durationBeats), 0)), beatsPerMeasure: bpm, transpose: tp }), { beatsPerMeasure: bpm, measures })
+    : null;
   const allPieces = splitForNotation(notes, { beatsPerMeasure: bpm, measures });
   const dirs = directionsByMeasure(score, bpm, measures);
   const unmatchedStart = hasUnmatchedRepeatStart(score);
@@ -360,7 +364,13 @@ export function scoreToMusicXML(score: Score, layout: ScoreLayout = "lead", opts
     for (const e of dirs.ends[m]) parts.push(e.make(0));
     for (const k of kinds) if (k !== "repeatStart" && k !== "repeatEnd" && k !== "segno" && k !== "coda") parts.push(markDirectionXml(k));
 
-    if (piano) {
+    if (piano && arpeggioPieces) {
+      for (const piece of arpeggioPieces.filter((entry) => entry.measure === m)) {
+        const pitch = piece.midi === null ? null : spellPitch(piece.midi, key);
+        const accidental = pitch && !piece.tieStop ? handTracker.next(pitch) : null;
+        lower.push(noteXml(piece, pitch, accidental, 1, 1));
+      }
+    } else if (piano) {
       // 앞 마디에서 이어진 코드도 유지하고, 마디 안 코드 변경 지점마다 반주를 나눈다.
       const boundaries = [...new Set([measureStart, ...measureChords.filter((c) => c.startBeat > measureStart + 1e-6).map((c) => c.startBeat), measureEnd])];
       for (let segment = 0; segment < boundaries.length - 1; segment++) {

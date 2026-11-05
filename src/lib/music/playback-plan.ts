@@ -26,6 +26,7 @@ export interface PlannedNote {
 }
 
 export interface PlaybackPlan {
+  accompaniment?: Score["accompaniment"];
   notation?: Score["notation"];
   instrument?: Score["instrument"];
   /** 펼친(또는 A–B) 순서의 음·쉼표 */
@@ -94,6 +95,7 @@ export function buildPlaybackPlan(score: Score, range?: PlaybackRange): Playback
   const total = scoreMeasureCount(score);
   const inMeasure = (beat: number, m: number) => Math.min(total - 1, measureOf(beat, bpm)) === m;
   const base = { bpm: score.bpm, beatsPerMeasure: bpm, transpose: score.transpose, key: score.key,
+    ...(score.accompaniment ? { accompaniment: score.accompaniment } : {}),
     ...(score.notation ? { notation: score.notation } : {}),
     ...(score.instrument ? { instrument: score.instrument } : {}),
   };

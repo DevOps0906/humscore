@@ -1,6 +1,7 @@
 import { z } from "zod";
 import type { Score } from "../music/types";
 import { isInstrumentId } from "../music/instrument-catalog";
+import { isArpeggioPatternId } from "../music/accompaniment";
 
 /** Score 와 동일한 형태의 입력 검증 스키마 (서버 경계용). 음표 숫자 데이터만 허용 — 오디오 없음. */
 const isoDate = z.iso.datetime({ offset: true });
@@ -50,6 +51,10 @@ export const scoreSchema = z.object({
   title: z.string().max(200),
   notation: z.enum(["piano", "guitarTab", "drums", "orchestra"]).optional(),
   instrument: z.custom<NonNullable<Score["instrument"]>>(isInstrumentId, "알 수 없는 악기 음색입니다").optional(),
+  accompaniment: z.object({
+    mode: z.enum(["block", "arpeggio"]),
+    pattern: z.custom<string>((value) => isArpeggioPatternId(value), "알 수 없는 아르페지오 패턴입니다"),
+  }).optional(),
   composer: z.string().max(200).optional(),
   lyricist: z.string().max(200).optional(),
   arranger: z.string().max(200).optional(),

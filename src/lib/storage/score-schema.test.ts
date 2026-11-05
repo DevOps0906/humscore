@@ -9,6 +9,13 @@ const base = (): Score => ({
 });
 
 describe("score-schema", () => {
+  it("반주 설정을 보존하고 잘못된 모드와 패턴을 거부한다", () => {
+    const s: Score = { ...base(), accompaniment: { mode: "arpeggio", pattern: "alberti" } };
+    expect(parseScore(JSON.parse(JSON.stringify(s)))).toEqual(s);
+    expect(parseScore({ ...base(), accompaniment: { mode: "block", pattern: "ascending" } })).not.toBeNull();
+    expect(parseScore({ ...base(), accompaniment: { mode: "invalid", pattern: "ascending" } })).toBeNull();
+    expect(parseScore({ ...base(), accompaniment: { mode: "arpeggio", pattern: "invalid" } })).toBeNull();
+  });
   it("생성 방식·음색과 드럼 동시 타격은 JSON 저장·서버 검증 후에도 보존된다", () => {
     const score: Score = { ...base(), notation: "drums", instrument: "drumKit", notes: [
       { midi: 36, startBeat: 0, durationBeats: 0.5 },
