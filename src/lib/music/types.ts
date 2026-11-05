@@ -14,6 +14,10 @@ export interface NoteEvent {
   lyric?: string;
   /** 절별 가사(1~99). 기존 lyric은 1절 호환용이며 새 입력 시 함께 유지한다. */
   lyrics?: Record<string, string>;
+  /** 같은 높이로 바로 이어지는 다음 음과 붙임줄로 연결한다. */
+  tieToNext?: boolean;
+  /** 다음 음까지 이음줄로 연결한다. */
+  slurToNext?: boolean;
 }
 
 export interface ChordEvent {
@@ -72,7 +76,20 @@ export interface MeasureMark {
 /** 선택 가능한 박자표. 6/8 은 내부적으로 4분음표 3박(beatsPerMeasure=3)이며 표기·묶음만 다르다 */
 export type Meter = "3/4" | "4/4" | "6/8";
 
+/** 추가 악기 파트. 박자·조성·템포·반복 기호는 곡을 공유하고 음표·코드는 독립 보관한다. */
+export interface ScorePart {
+  id: string;
+  notation: CreationMode;
+  instrument: InstrumentId;
+  notes: NoteEvent[];
+  chords: ChordEvent[];
+  accompaniment?: AccompanimentSettings;
+  dynamics?: DynamicEvent[];
+}
+
 export interface Score {
+  /** 첫 파트는 기존 최상위 notes/chords를 사용한다. 추가 파트는 별도 보관한다. */
+  parts?: ScorePart[];
   /** 반주 표현과 재생. 생략한 기존 악보는 동시에 누르는 화음 반주를 유지한다. */
   accompaniment?: AccompanimentSettings;
   id: string;

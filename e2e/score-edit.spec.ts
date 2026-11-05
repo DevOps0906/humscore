@@ -1,6 +1,6 @@
 import { createScoreViaKeys, expect, openKeysInput, test } from "./fixtures";
 
-test("악보 커서 편집: → ↑ 2 키로 선택·음높이·길이 변경", async ({ page }) => {
+test("악보 커서 편집: → ↑ 2 키로 선택·음높이·길이 변경", async ({ page, isMobile }) => {
   await createScoreViaKeys(page);
   await expect(page.locator(".score-sheet svg").first()).toBeVisible({ timeout: 15_000 });
 
@@ -46,8 +46,9 @@ test("악보 커서 편집: → ↑ 2 키로 선택·음높이·길이 변경", 
     await page.evaluate(() => window.scrollTo(0, 0)); // 하단 고정 바에 가리지 않게
     await expect(marker).toBeVisible();
     await sheet.evaluate((el) => (el.scrollLeft = 0));
-    const head = (await sheet.locator(".vf-stavenote .vf-notehead").first().boundingBox())!;
-    await page.mouse.click(head.x + head.width / 2, head.y + head.height / 2);
+    await sheet.scrollIntoViewIfNeeded();
+    const head = sheet.locator(".vf-stavenote .vf-notehead").first();
+    if (isMobile) await head.tap(); else await head.click();
     await expect(live).toContainText("1번째 음표", { timeout: 1500 });
   }).toPass({ timeout: 15_000 });
 });

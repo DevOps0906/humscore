@@ -2,7 +2,10 @@ import type { Page } from "@playwright/test";
 import { expect, openKeysInput, test } from "./fixtures";
 
 async function expectDraftInstrument(page: Page, instrument: string) {
-  await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem("humscore.keysDraft") ?? "null")?.instrument)).toBe(instrument);
+  await expect.poll(() => page.evaluate(() => {
+    const draft = JSON.parse(localStorage.getItem("humscore.keysDraft") ?? "null");
+    return draft?.activePartId && draft.activePartId !== "main" ? draft.parts?.find((part: { id: string }) => part.id === draft.activePartId)?.instrument : draft?.instrument;
+  })).toBe(instrument);
 }
 
 async function capture(page: Page, width: number, mode: string) {
@@ -65,7 +68,7 @@ for (const width of [390, 900, 1440]) {
     await mode.selectOption("orchestra");
     await expect(page.getByRole("heading", { name: "오케스트라로 악보생성", exact: true })).toBeVisible();
     const group = page.getByLabel("악기군 선택", { exact: true });
-    await expect(group.locator("option")).toHaveText(["현악", "목관", "금관", "팀파니", "타악기", "하프"]);
+    await expect(group.locator("option")).toHaveText(["현악", "목관", "금관", "팀파니", "타악기", "하프", "보컬·합창"]);
     for (const entry of [
       ["strings", "violin", "현악", "바이올린 I"], ["woodwinds", "flute", "목관", "플루트"], ["brass", "frenchHorn", "금관", "호른"],
       ["timpani", "timpani", "팀파니", "팀파니"], ["percussion", "orchestralSnare", "타악기", "스네어 드럼"], ["harp", "harp", "하프", "하프"],
@@ -81,7 +84,6 @@ for (const width of [390, 900, 1440]) {
     await expect(page.getByRole("group", { name: "하프 음색 프리셋", exact: true }).getByRole("button", { name: "하프", exact: true })).toHaveAttribute("aria-pressed", "true");
 
     await mode.selectOption("drums");
-    await page.getByRole("button", { name: "새 악보로 시작", exact: true }).click();
     await expect(mode).toHaveValue("drums");
     await expect(page.getByRole("heading", { name: "드럼으로 악보생성", exact: true })).toBeVisible();
     const legend = page.getByLabel("드럼 음표 안내", { exact: true });

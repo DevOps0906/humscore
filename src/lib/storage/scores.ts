@@ -62,12 +62,16 @@ export function subscribeScores(listener: () => void): () => void {
 
 // 현재 세션 uid 캐시(동기 접근용). undefined = 아직 모름, null = 로그아웃 상태
 let cachedUid: string | null | undefined;
+let sessionVersion = 0;
+/** 편집 초안을 다른 계정 세션에서 재사용하지 않도록 하는 세션 세대. */
+export function getScoreSessionVersion(): number { return sessionVersion; }
 const EMPTY: Score[] = [];
 
 /** CloudSync 가 auth 상태 변경 때 호출 — 바뀌면 목록 구독자에게 알린다 */
 export function setSessionUserId(uid: string | null) {
   if (cachedUid === uid) return;
   cachedUid = uid;
+  sessionVersion++;
   listeners.forEach((l) => l());
 }
 

@@ -4,7 +4,7 @@ import { createScoreViaKeys, expect, openKeysInput, test } from "./fixtures";
 test.beforeEach(() => { test.setTimeout(120_000); });
 
 async function capture(page: Page, width: number, kind: string) {
-  const sheet = page.locator(".score-sheet:visible");
+  const sheet = page.locator(".score-sheet:visible").first();
   await sheet.scrollIntoViewIfNeeded();
   await expect(sheet.getByText("악보 그리는 중…", { exact: true })).toHaveCount(0, { timeout: 20_000 });
   await expect(sheet.locator("svg").first()).toBeVisible({ timeout: 20_000 });
@@ -37,7 +37,6 @@ for (const width of [390, 900, 1440]) {
     await expect(summary).toContainText("1마디 구성: 스네어 · 닫힌 하이햇");
     await capture(page, width, "drums");
     await page.getByLabel("악기 선택", { exact: true }).selectOption("orchestra");
-    await page.getByRole("button", { name: "새 악보로 시작", exact: true }).click();
     const family = page.getByLabel("악기군 선택", { exact: true });
     const strings = page.getByRole("group", { name: "현악 음색 프리셋", exact: true });
     await strings.getByRole("button", { name: "첼로", exact: true }).click();
@@ -80,10 +79,13 @@ for (const width of [390, 900, 1440]) {
     await panel.getByRole("button", { name: "음표 편집", exact: true }).click();
     await expect(panel.getByRole("button", { name: "음표 편집", exact: true })).toHaveAttribute("aria-pressed", "true");
     await edit.click();
+    await expect(panel).toBeVisible();
+    await page.getByRole("group", { name: "악보 편집 적용과 저장", exact: true }).getByRole("button", { name: "저장", exact: true }).click();
     await expect(panel).toHaveCount(0);
     await edit.click();
     await expect(panel.getByRole("button", { name: "음표 편집", exact: true })).toHaveAttribute("aria-pressed", "false");
     await capture(page, width, "editor");
+    await page.getByRole("group", { name: "악보 편집 적용과 저장", exact: true }).getByRole("button", { name: "저장", exact: true }).click();
     await page.reload();
     await expect(page.getByTestId("score-header-credits")).toHaveText("작사 테스트 작사 · 편곡 테스트 편곡");
     await edit.click();

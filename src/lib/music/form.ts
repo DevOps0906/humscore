@@ -91,10 +91,10 @@ export function measureOrder(score: Score): number[] {
 }
 
 /** 반복을 모두 펼친 일렬 타임라인 Score. marks 는 비우고 원본은 건드리지 않음 */
-export function unrollScore(score: Score): Score {
+export function unrollScore(score: Score, timeline?: { measures: number; order: readonly number[] }): Score {
   const bpm = score.beatsPerMeasure;
-  const total = scoreMeasureCount(score);
-  const order = measureOrder(score);
+  const total = timeline?.measures ?? scoreMeasureCount(score);
+  const order = timeline?.order ?? measureOrder(score);
   const notes: Score["notes"] = [];
   const chords: Score["chords"] = [];
   const dynamics: DynamicEvent[] = [];

@@ -56,12 +56,13 @@ export function measureOf(beat: number, beatsPerMeasure: number): number {
 }
 
 /** 악보 마디 수: 음표 끝과 코드 위치 중 큰 쪽 기준, 최소 1 */
-export function scoreMeasureCount(score: Pick<Score, "notes" | "chords" | "beatsPerMeasure">): number {
+export function scoreMeasureCount(score: Pick<Score, "notes" | "chords" | "beatsPerMeasure"> & Pick<Partial<Score>, "parts">): number {
   const bpm = score.beatsPerMeasure;
   const end = score.notes.reduce((m, n) => Math.max(m, n.startBeat + n.durationBeats), 0);
   const byNotes = Math.ceil(end / bpm - EPS);
   const byChords = score.chords.reduce((m, c) => Math.max(m, measureOf(c.startBeat, bpm) + 1), 0);
-  return Math.max(1, byNotes, byChords);
+  const byParts = (score.parts ?? []).map((part) => scoreMeasureCount({ ...part, beatsPerMeasure: bpm }));
+  return Math.max(1, byNotes, byChords, ...byParts);
 }
 
 /** measure번째 마디 첫 박의 코드 */

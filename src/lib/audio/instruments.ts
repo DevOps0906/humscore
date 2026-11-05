@@ -29,8 +29,8 @@ const LEVEL = {
   acousticGuitar: 0.22,
   classicalGuitar: 0.25,
   electricGuitar: 0.18,
-  bassGuitar: 0.3,
-  bassGuitar5: 0.3,
+  bassGuitar: 0.42,
+  bassGuitar5: 0.42,
   choir: 0.36,
 };
 
@@ -292,8 +292,8 @@ const GUITAR_VOICES: Record<GuitarInstrumentId, { harmonics: number; brightness:
   classicalGuitar: { harmonics: 8, brightness: 1.8, decay: 2.1, attack: 0.008, pluck: 0.045 },
   acousticGuitar: { harmonics: 8, brightness: 1.15, decay: 2.5, attack: 0.004, pluck: 0.18 },
   electricGuitar: { harmonics: 12, brightness: 0.95, decay: 3.2, attack: 0.003, pluck: 0.06 },
-  bassGuitar: { harmonics: 6, brightness: 2.1, decay: 2.8, attack: 0.006, pluck: 0.035 },
-  bassGuitar5: { harmonics: 7, brightness: 2.3, decay: 3.1, attack: 0.008, pluck: 0.03 },
+  bassGuitar: { harmonics: 10, brightness: 1.25, decay: 2.8, attack: 0.006, pluck: 0.035 },
+  bassGuitar5: { harmonics: 10, brightness: 1.25, decay: 3.1, attack: 0.008, pluck: 0.03 },
 };
 
 function playGuitar(ctx: AudioContext, instrument: GuitarInstrumentId, midi: number, when: number, opts: PlayNoteOptions): void {

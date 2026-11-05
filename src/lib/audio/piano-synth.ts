@@ -1,3 +1,5 @@
+import { buildPlaybackPlan } from "../music/playback-plan";
+import { mergeTiedNotes } from "../music/articulation";
 import { midiToFreq } from "../music/frequency";
 import { buildAccompanimentNotes } from "../music/accompaniment";
 import { ORCHESTRAL_DRUM_NOTES } from "../music/instrument-catalog";
@@ -111,6 +113,7 @@ export function playScore(
   source: Score,
   opts: { withChords?: boolean; instrument?: InstrumentId } = {},
 ): Playback {
+  if (source.parts?.length) return playPlan(ctx, buildPlaybackPlan(source), opts);
   const score = unrollScore(source);
   const instrument = opts.instrument ?? score.instrument ?? (score.notation === "drums" ? "drumKit" : "piano");
   const percussion = instrument === "drumKit" || ORCHESTRAL_DRUM_NOTES[instrument] !== undefined;
@@ -121,7 +124,7 @@ export function playScore(
   const tp = percussion ? 0 : score.transpose;
   const preferFlats = transposeKey(score.key, tp).fifths < 0;
 
-  for (const n of score.notes) {
+  for (const n of mergeTiedNotes(score.notes)) {
     if (n.midi === null) continue;
     playInstrumentNote(ctx, instrument, n.midi + tp, start + n.startBeat * spb, {
       duration: n.durationBeats * spb,
@@ -129,7 +132,7 @@ export function playScore(
       destination: bus,
     });
   }
-  if (!percussion && (opts.withChords ?? true)) {
+  if (!percussion && (opts.withChords ?? (score.notation === undefined || score.notation === "piano"))) {
     if (score.accompaniment?.mode === "arpeggio") {
       const endBeat = score.notes.reduce((end, note) => Math.max(end, note.startBeat + note.durationBeats), 0);
       for (const note of buildAccompanimentNotes(score.chords, score.accompaniment, { endBeat, beatsPerMeasure: score.beatsPerMeasure, transpose: tp })) {
@@ -171,8 +174,17 @@ export interface PlanPlayback extends Playback {
 export function playPlan(
   ctx: AudioContext,
   plan: PlaybackPlan,
-  opts: { rate?: number; fromBeat?: number; at?: number; withChords?: boolean; instrument?: InstrumentId } = {},
+  opts: { rate?: number; fromBeat?: number; at?: number; withChords?: boolean; instrument?: InstrumentId; mixGain?: number } = {},
 ): PlanPlayback {
+  if (plan.parts?.length) {
+    const at = opts.at ?? ctx.currentTime + 0.1;
+    const mixGain = 1 / Math.sqrt(plan.parts.length + 1);
+    const tracks = [plan, ...plan.parts].map((part, index) => playPlan(ctx, { ...part, parts: undefined }, {
+      ...opts, at, mixGain, instrument: index === 0 ? opts.instrument : part.instrument,
+      withChords: (opts.withChords ?? true) && (part.notation ?? "piano") === "piano",
+    }));
+    return { ...tracks[0], durationSec: Math.max(...tracks.map((track) => track.durationSec)), stop: () => tracks.forEach((track) => track.stop()) };
+  }
   const instrument = opts.instrument ?? plan.instrument ?? (plan.notation === "drums" ? "drumKit" : "piano");
   const percussion = instrument === "drumKit" || ORCHESTRAL_DRUM_NOTES[instrument] !== undefined;
   const spb = secondsPerBeat(plan.bpm, opts.rate ?? 1);
@@ -182,20 +194,22 @@ export function playPlan(
   const timeOf = (beat: number) => start + (beat - from) * spb;
   const EPS = 1e-6;
   const bus = ctx.createGain();
+  bus.gain.value = opts.mixGain ?? 1;
   bus.connect(ctx.destination);
   const tp = percussion ? 0 : plan.transpose;
   const preferFlats = transposeKey(plan.key, tp).fifths < 0;
 
-  for (const n of plan.notes) {
-    if (n.midi === null || n.startBeat < from - EPS || n.startBeat >= total - EPS) continue;
+  for (const n of mergeTiedNotes(plan.notes)) {
+    if (n.midi === null || n.startBeat + n.durationBeats <= from + EPS || n.startBeat >= total - EPS) continue;
+    const on = Math.max(from, n.startBeat);
     const end = Math.min(total, n.startBeat + n.durationBeats);
-    playInstrumentNote(ctx, instrument, n.midi + tp, timeOf(n.startBeat), {
-      duration: (end - n.startBeat) * spb,
+    playInstrumentNote(ctx, instrument, n.midi + tp, timeOf(on), {
+      duration: (end - on) * spb,
       velocity: Math.min(1, (MELODY_BASE * velocityAt(plan.dynamics, n.startBeat)) / MF),
       destination: bus,
     });
   }
-  if (!percussion && (opts.withChords ?? true)) {
+  if (!percussion && (opts.withChords ?? (plan.notation === undefined || plan.notation === "piano"))) {
     if (plan.accompaniment?.mode === "arpeggio") {
       for (const note of buildAccompanimentNotes(plan.chords, plan.accompaniment, { endBeat: total, beatsPerMeasure: plan.beatsPerMeasure, transpose: tp, fromBeat: from })) {
         playPianoNote(ctx, note.midi, timeOf(note.startBeat), { velocity: Math.min(1, (CHORD_BASE * velocityAt(plan.dynamics, note.startBeat)) / MF), duration: note.durationBeats * spb, destination: bus });

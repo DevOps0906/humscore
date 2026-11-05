@@ -57,6 +57,7 @@ test("도돌이표 지정 → 반복 마디선 표시, 메뉴에서 선택 상�
 
   await expect(page.getByTestId("score-toolbar").getByRole("button", { name: /1마디 기호/ })).toContainText("(1)");
   // 반복 마디선: 저장된 악보에 marks 가 들어가고 악보가 다시 그려짐
+  await page.getByRole("group", { name: "악보 편집 적용과 저장", exact: true }).getByRole("button", { name: "적용", exact: true }).click();
   await expect
     .poll(async () => page.evaluate(() => JSON.stringify(Object.entries(localStorage))), { timeout: 10_000 })
     .toContain("repeatEnd");

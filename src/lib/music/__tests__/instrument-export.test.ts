@@ -25,7 +25,7 @@ describe("선택 악기 내보내기", () => {
       expect(midi.tracks[0].channel).toBe(percussion ? 9 : 0);
       expect(midi.tracks[0].instrument.number).toBe(GM_INSTRUMENTS[instrument]);
       expect(midi.tracks[0].notes[0].midi).toBe(fixedDrum ?? (percussion ? 60 : 65));
-      expect(midi.tracks).toHaveLength(percussion ? 1 : 2);
+      expect(midi.tracks).toHaveLength(percussion || instrumentMode(instrument) !== "piano" ? 1 : 2);
       const xml = scoreToMusicXML(score);
       if (percussion) {
         expect(xml).toContain("<sign>percussion</sign>");
@@ -53,10 +53,16 @@ describe("선택 악기 내보내기", () => {
     expect(xml).not.toContain("드럼 81");
   });
 
-  it("두 파트 레이아웃에서 선율 악기와 피아노 반주 채널을 구별한다", () => {
+  it("관현악 단일 악보에는 피아노 반주 보표를 자동 추가하지 않는다", () => {
     const xml = scoreToMusicXML(makeScore([{ midi: 60, startBeat: 0, durationBeats: 1 }], { instrument: "flute" }), "piano");
     expect(xml).toContain('<score-instrument id="P1-I1"><instrument-name>플루트</instrument-name>');
     expect(xml).toContain('<midi-instrument id="P1-I1"><midi-channel>1</midi-channel><midi-program>74</midi-program>');
+    expect(xml).not.toContain('<part id="P2">');
+  });
+
+  it("피아노 양손 레이아웃에서는 선율과 반주 채널을 구별한다", () => {
+    const xml = scoreToMusicXML(makeScore([{ midi: 60, startBeat: 0, durationBeats: 1 }], { instrument: "epRhodes", notation: "piano" }), "piano");
+    expect(xml).toContain('<midi-instrument id="P1-I1"><midi-channel>1</midi-channel><midi-program>5</midi-program>');
     expect(xml).toContain('<midi-instrument id="P2-I1"><midi-channel>2</midi-channel><midi-program>1</midi-program>');
   });
 });

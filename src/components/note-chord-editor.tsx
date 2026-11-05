@@ -16,11 +16,12 @@ interface NoteChordEditorProps {
   /** 코드 문자를 직접 눌렀을 때는 음표가 없는 박도 편집한다. */
   startBeat?: number;
   onChange: (chords: ChordEvent[]) => void;
+  commitOnBlur?: boolean;
 }
 
 const EPS = 1e-6;
 
-function NoteChordForm({ score, startBeat, selected, onChange }: NoteChordEditorProps & { startBeat: number }) {
+function NoteChordForm({ score, startBeat, selected, onChange, commitOnBlur }: NoteChordEditorProps & { startBeat: number }) {
   const helpId = useId();
   const exact = score.chords.find((chord) => Math.abs(chord.startBeat - startBeat) < EPS);
   const active = score.chords
@@ -38,7 +39,7 @@ function NoteChordForm({ score, startBeat, selected, onChange }: NoteChordEditor
   const quality = parsed?.[2] ?? "";
   const field = "h-11 min-w-0 rounded-md border border-input bg-surface px-3 text-sm outline-none focus-visible:ring-3 focus-visible:ring-ring/60";
 
-  function apply() {
+  function apply(silent = false) {
     if (!valid) return;
     const original = transposeChordSymbol(symbol, -score.transpose, score.key.fifths < 0);
     if (!isValidChordSymbol(original)) return;
@@ -46,7 +47,7 @@ function NoteChordForm({ score, startBeat, selected, onChange }: NoteChordEditor
       ...score.chords.filter((chord) => Math.abs(chord.startBeat - startBeat) >= EPS),
       { startBeat, symbol: original },
     ].sort((left, right) => left.startBeat - right.startBeat));
-    toast.success("선택한 음표 위에 코드를 붙였어요");
+    if (!silent) toast.success("선택한 음표 위에 코드를 붙였어요");
   }
 
   function remove() {
@@ -55,7 +56,9 @@ function NoteChordForm({ score, startBeat, selected, onChange }: NoteChordEditor
   }
 
   return (
-    <div className="grid gap-3">
+    <div className="grid gap-3" onBlur={(event) => {
+      if (commitOnBlur && !event.currentTarget.contains(event.relatedTarget) && valid && (!exact || shown(exact.symbol) !== symbol)) apply(true);
+    }}>
       <p className="text-sm text-ink-soft">{selected !== null ? `${selected + 1}번째 음표 · ` : ""}{measure}마디 {beat}박</p>
       <div className="grid grid-cols-2 gap-2">
         <label className="grid min-w-0 gap-1.5 text-sm">코드 근음
@@ -87,7 +90,7 @@ function NoteChordForm({ score, startBeat, selected, onChange }: NoteChordEditor
       </p>
       {symbol && !valid && <p role="alert" className="text-sm text-tune-bad">C, F#m7, Bb/D처럼 근음과 코드 종류를 입력해 주세요. 지원 종류: 메이저·m·7·maj7·m7·dim·sus4.</p>}
       <div className="flex flex-wrap gap-2">
-        <Button type="button" onClick={apply} disabled={!valid} className="h-11 px-4 text-sm lg:h-9">음표에 코드 적용</Button>
+        <Button type="button" onClick={() => apply()} disabled={!valid} className="h-11 px-4 text-sm lg:h-9">음표에 코드 적용</Button>
         <Button type="button" variant="outline" onClick={remove} disabled={!exact} className="h-11 px-4 text-sm lg:h-9">음표 코드 삭제</Button>
       </div>
     </div>
@@ -95,7 +98,7 @@ function NoteChordForm({ score, startBeat, selected, onChange }: NoteChordEditor
 }
 
 /** 선택 음표의 시작 박에 코드를 붙인다. 화면은 전조된 코드, 저장은 원키 코드다. */
-export function NoteChordEditor({ score, selected, startBeat, onChange }: NoteChordEditorProps) {
+export function NoteChordEditor({ score, selected, startBeat, onChange, commitOnBlur }: NoteChordEditorProps) {
   const note = selected !== null ? score.notes[selected] : undefined;
   const targetBeat = startBeat ?? note?.startBeat;
   const exact = targetBeat !== undefined ? score.chords.find((chord) => Math.abs(chord.startBeat - targetBeat) < EPS)?.symbol : undefined;
@@ -113,6 +116,7 @@ export function NoteChordEditor({ score, selected, startBeat, onChange }: NoteCh
           startBeat={targetBeat}
           selected={selected}
           onChange={onChange}
+          commitOnBlur={commitOnBlur}
         />
       )}
     </Card>

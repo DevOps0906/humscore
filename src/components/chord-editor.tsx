@@ -35,7 +35,7 @@ const pill = (on: boolean) =>
   `h-11 px-2 text-sm lg:h-9 ${on ? "border-accent bg-accent/15 text-accent hover:bg-accent/20 hover:text-accent" : "bg-paper"}`;
 
 /** 마디별 코드 추가·수정. 화면은 전조된 기호, 저장은 원키 기호 */
-export function ChordEditor({ score, onChange }: { score: Score; onChange: (chords: ChordEvent[]) => void }) {
+export function ChordEditor({ score, onChange, commitOnBlur = false }: { score: Score; onChange: (chords: ChordEvent[]) => void; commitOnBlur?: boolean }) {
   const { transpose, beatsPerMeasure, chords } = score;
   const flats = transposeKey(score.key, transpose).fifths < 0;
   const { playNote } = usePianoSound();
@@ -71,13 +71,13 @@ export function ChordEditor({ score, onChange }: { score: Score; onChange: (chor
     for (const m of chordToMidi(symbol)) playNote(m, { duration: 1.2, velocity: 0.6 });
   }
 
-  function apply() {
+  function commit(keepOpen: boolean) {
     if (measure === null) return;
-    preview();
+    if (!keepOpen) preview();
     const orig = transposeChordSymbol(symbol, -transpose, score.key.fifths < 0);
     if (!isValidChordSymbol(orig)) return;
     onChange(setChordAtMeasure(chords, measure, beatsPerMeasure, orig));
-    setMeasure(null);
+    if (!keepOpen) setMeasure(null);
   }
 
   function remove() {
@@ -151,7 +151,9 @@ export function ChordEditor({ score, onChange }: { score: Score; onChange: (chor
       </div>
 
       {measure !== null && (
-        <Card className="mt-3 gap-3 p-4">
+        <Card className="mt-3 gap-3 p-4" onBlur={(event) => {
+          if (commitOnBlur && !event.currentTarget.contains(event.relatedTarget)) commit(true);
+        }}>
           <p className="text-sm font-semibold">
             {measure + 1}마디 코드 · <span className="text-accent">{symbol}</span>
           </p>
@@ -189,7 +191,7 @@ export function ChordEditor({ score, onChange }: { score: Score; onChange: (chor
             </div>
           </div>
           <div className="flex flex-wrap gap-2 text-sm">
-            <Button type="button" onClick={apply} className="h-11 px-5 lg:h-9">
+            <Button type="button" onClick={() => commit(false)} className="h-11 px-5 lg:h-9">
               적용
             </Button>
             <Button type="button" variant="outline" onClick={preview} className="h-11 px-5 lg:h-9">

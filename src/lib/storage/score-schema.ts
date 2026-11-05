@@ -19,6 +19,8 @@ export const noteEventSchema = z.object({
   /** 사용자가 확인·적용한 가사 음절 (텍스트만, 음성 아님) */
   lyric: z.string().min(1).max(MAX_LYRIC_LENGTH).optional(),
   lyrics: z.record(z.string().regex(/^[1-9]\d?$/), z.string().min(1).max(MAX_LYRIC_LENGTH)).optional(),
+  tieToNext: z.boolean().optional(),
+  slurToNext: z.boolean().optional(),
 });
 
 export const chordEventSchema = z.object({
@@ -46,7 +48,25 @@ export const measureMarkSchema = z.object({
   ]),
 });
 
+export const accompanimentSchema = z.object({
+  mode: z.enum(["block", "arpeggio"]),
+  pattern: z.custom<string>((value) => isArpeggioPatternId(value), "알 수 없는 아르페지오 패턴입니다"),
+});
+
+export const scorePartSchema = z.object({
+  id: z.string().regex(/^[a-zA-Z0-9_-]{1,80}$/).refine((id) => id !== "main"),
+  notation: z.enum(["piano", "guitarTab", "drums", "orchestra"]),
+  instrument: z.custom<NonNullable<Score["instrument"]>>(isInstrumentId, "알 수 없는 악기 음색입니다"),
+  notes: z.array(noteEventSchema).max(6_000),
+  chords: z.array(chordEventSchema).max(1_500),
+  accompaniment: accompanimentSchema.optional(),
+  dynamics: z.array(dynamicEventSchema).max(2_000).optional(),
+});
+
+export const scorePartsSchema = z.array(scorePartSchema).max(32).refine((parts) => new Set(parts.map((part) => part.id)).size === parts.length, "악기 파트 ID가 중복됐어요");
+
 export const scoreSchema = z.object({
+  parts: scorePartsSchema.optional(),
   id: z.uuid(),
   title: z.string().max(200),
   notation: z.enum(["piano", "guitarTab", "drums", "orchestra"]).optional(),

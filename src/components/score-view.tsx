@@ -13,25 +13,47 @@ const MEASURES_PER_LINE = 4;
 /** 음표가 빽빽하거나 화면이 좁아도 네 마디가 한 줄에 남도록 종이의 최소 폭을 구한다. */
 function renderFourMeasureLines(osmd: OpenSheetMusicDisplay, container: HTMLElement) {
   container.style.minWidth = "";
+  const rules = osmd.EngravingRules;
+  rules.FixedMeasureWidth = false;
+  rules.LastSystemMaxScalingFactor = 1;
+  for (const staves of osmd.GraphicSheet?.MeasureList ?? []) {
+    if (staves[0]) staves[0].parentSourceMeasure.WidthFactor = 1;
+  }
   osmd.render();
   const measures = osmd.GraphicSheet?.MeasureList ?? [];
-  const rules = osmd.EngravingRules;
-  let widestGroup = 0;
-  for (let start = 0; start < measures.length; start += MEASURES_PER_LINE) {
-    let width = 0;
-    for (const staves of measures.slice(start, start + MEASURES_PER_LINE)) {
-      width += Math.max(0, ...staves.map((measure) =>
+  let widestMeasure = 0;
+  for (const staves of measures) {
+      widestMeasure = Math.max(widestMeasure, ...staves.map((measure) =>
         measure.minimumStaffEntriesWidth + measure.beginInstructionsWidth + measure.endInstructionsWidth,
       ));
-    }
-    widestGroup = Math.max(widestGroup, width);
   }
   // 줄 시작의 음자리표·조표와 페이지 여백을 포함한다. 좁은 화면은 종이 안에서만 스크롤한다.
   const margin = rules.PageLeftMargin + rules.PageRightMargin + rules.SystemLeftMargin + rules.SystemRightMargin;
-  const minimumWidth = Math.ceil((widestGroup * 1.2 + margin) * 10 * osmd.zoom);
+  const minimumWidth = Math.ceil((widestMeasure * MEASURES_PER_LINE * 1.2 + margin) * 10 * osmd.zoom);
   if (minimumWidth > 0) {
     container.style.minWidth = `${minimumWidth}px`;
     osmd.render();
+    // 음자리표·박자표까지 포함한 전체 마디 폭을 맞춘다. 음표 글리프는 늘이지 않는다.
+    // 첫 계산에서 줄바꿈이 달라질 수 있어 지시 기호 폭을 다시 읽어 수렴시킨다.
+    for (let pass = 0; pass < 3; pass++) {
+      const current = osmd.GraphicSheet?.MeasureList ?? [];
+      const labelWidth = Math.max(0, ...(osmd.GraphicSheet?.MusicPages ?? []).flatMap((page) => page.MusicSystems.map((system) => system.MaxLabelLength > 0 ? system.MaxLabelLength + rules.SystemLabelsRightMargin : 0)));
+      const slot = (container.clientWidth / (10 * osmd.zoom) - margin - labelWidth - rules.MeasureLeftMargin - 0.02) / MEASURES_PER_LINE;
+      for (const staves of current) {
+        const source = staves[0]?.parentSourceMeasure;
+        if (!source) continue;
+        const factor = source.WidthFactor || 1;
+        const natural = Math.max(0.1, ...staves.map((measure) => measure.minimumStaffEntriesWidth / factor));
+        const instructions = Math.max(0, ...staves.map((measure) => measure.beginInstructionsWidth + measure.endInstructionsWidth));
+        source.WidthFactor = Math.max(1, (slot - instructions) / natural);
+      }
+      osmd.render();
+    }
+  }
+  for (const svg of container.querySelectorAll("svg")) {
+    const width = svg.width.baseVal.value;
+    const height = svg.height.baseVal.value;
+    if (width > 0 && height > 0) svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
   }
 }
 
@@ -173,6 +195,7 @@ export function ScoreView({
   cursor,
   chordEditor,
   showHeader = false,
+  printLayout = false,
   header,
   onHandle,
 }: {
@@ -183,6 +206,8 @@ export function ScoreView({
   chordEditor?: ScoreChordEditorProps;
   /** MusicXML 의 제목·작곡자를 악보 맨 위에 그림 (생성 시점에만 반영) */
   showHeader?: boolean;
+  /** 출력용 총보는 A4 페이지에서 시스템(줄)을 통째로 나눈다. */
+  printLayout?: boolean;
   /** 악보(종이) 맨 위, OSMD 그림 앞에 놓는 HTML 머리글 (인쇄에 포함됨) */
   header?: ReactNode;
   /** PDF 내보내기용 핸들을 받는다 (언마운트 때 null) */
@@ -257,20 +282,23 @@ export function ScoreView({
             const { OpenSheetMusicDisplay } = await import("opensheetmusicdisplay"); // 브라우저에서만 로드
             if (!isLatest() || !ref.current) return;
             osmdRef.current = new OpenSheetMusicDisplay(ref.current, {
-              autoResize: true,
+              autoResize: false,
               newSystemFromXML: false, // 화면 폭과 무관하게 아래의 4마디 단위 배치를 사용
               backend: "svg",
               drawTitle: showHeader,
               drawComposer: showHeader,
               drawPartNames: false,
+              pageFormat: printLayout ? "A4_P" : "Endless",
               drawingParameters: "compacttight",
               autoGenerateMultipleRestMeasuresFromRestMeasures: false, // 빈 마디를 "7" 식 다중쉼표로 합치지 않음 (8마디 미리보기)
-              stretchLastSystemLine: true, // 5~8마디와 마지막 줄도 종이 오른쪽 끝까지 채움
+              stretchLastSystemLine: false, // 마지막 1~3마디도 기존 마디 폭 유지
             });
             osmdRef.current.EngravingRules.RenderXMeasuresPerLineAkaSystem = MEASURES_PER_LINE;
             osmdRef.current.EngravingRules.NewPartAndSystemAfterFinalBarline = false;
           }
           const osmd = osmdRef.current;
+          const multipleInstruments = xml.includes('id="M1-');
+          osmd.setOptions({ drawPartNames: multipleInstruments, drawPartAbbreviations: multipleInstruments });
           if (showHeader) {
             // 기본값은 제목이 너무 커서 긴 제목이 잘림 → 작게
             osmd.EngravingRules.SheetTitleHeight = 2;
@@ -299,7 +327,28 @@ export function ScoreView({
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [xml, zoom, updateMarks, showHeader]);
+  }, [xml, zoom, updateMarks, showHeader, printLayout]);
+
+  useEffect(() => {
+    const sheet = sheetRef.current;
+    if (!sheet) return;
+    let width = sheet.clientWidth;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const observer = new ResizeObserver(() => {
+      if (window.matchMedia("print").matches) return;
+      if (Math.abs(sheet.clientWidth - width) < 1) return;
+      width = sheet.clientWidth;
+      clearTimeout(timer);
+      timer = setTimeout(() => {
+        if (osmdRef.current && ref.current && loadedXml.current) {
+          renderFourMeasureLines(osmdRef.current, ref.current);
+          updateMarks();
+        }
+      }, DEBOUNCE_MS);
+    });
+    observer.observe(sheet);
+    return () => { observer.disconnect(); clearTimeout(timer); };
+  }, [updateMarks]);
 
   // 커서 모드: OSMD 가 자체적으로 다시 그릴 때(창 크기 변경 등)도 위치 재계산
   useEffect(() => {

@@ -1,14 +1,17 @@
 import { z } from "zod";
-import { chordEventSchema, noteEventSchema } from "./score-schema";
+import { chordEventSchema, noteEventSchema, scorePartsSchema } from "./score-schema";
 import { fifthsFor } from "../music/theory";
 import { PROGRESSIONS } from "../music/progressions";
 import { isValidChordSymbol } from "../music/edit";
-import type { ChordEvent, KeyInfo, Meter, NoteEvent } from "../music/types";
+import type { ChordEvent, KeyInfo, Meter, NoteEvent, ScorePart } from "../music/types";
 import { isCreationMode, isInstrumentId, type CreationMode, type InstrumentId } from "../music/instrument-catalog";
 import { isArpeggioPatternId, type AccompanimentSettings } from "../music/accompaniment";
 
 /** 건반 입력 화면 초안 (음표 숫자와 설정만, 오디오 아님) */
 export interface KeysDraft {
+  title?: string;
+  parts?: ScorePart[];
+  activePartId?: string;
   accompaniment?: AccompanimentSettings;
   /** 작곡 도구로 저장한 악보를 다시 열 때 같은 악보에 이어서 저장한다. */
   scoreId?: string;
@@ -46,7 +49,13 @@ export function parseKeysDraft(raw: string | null): KeysDraft | null {
   const o = d as Record<string, unknown>;
   const scoreId = typeof o.scoreId === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(o.scoreId)
     ? o.scoreId : undefined;
+  const parsedParts = o.parts === undefined ? undefined : scorePartsSchema.safeParse(o.parts);
+  if (parsedParts && !parsedParts.success) return null;
+  const parts = parsedParts?.success ? parsedParts.data : undefined;
   const settings = {
+    ...(typeof o.title === "string" && o.title.length <= 200 ? { title: o.title } : {}),
+    ...(parts ? { parts } : {}),
+    ...(typeof o.activePartId === "string" && (o.activePartId === "main" || parts?.some((part) => part.id === o.activePartId)) ? { activePartId: o.activePartId } : {}),
     ...(isCreationMode(o.notation) ? { notation: o.notation } : {}),
     ...(isInstrumentId(o.instrument) ? { instrument: o.instrument } : {}),
   };

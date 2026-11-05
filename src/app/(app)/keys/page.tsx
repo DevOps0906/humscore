@@ -1,5 +1,8 @@
 "use client";
 import { Suspense } from "react";
+import { ScorePartsPanel } from "@/components/score-parts-panel";
+import { ScoreTemplateDialog } from "@/components/score-template-dialog";
+import { MAIN_PART_ID, getScoreParts, scoreForPart, updateScorePart, addScorePart } from "@/lib/music/parts";
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -28,7 +31,7 @@ import { useInstrument } from "@/hooks/use-instrument";
 import { useMidiInput } from "@/hooks/use-midi-input";
 import { getAudioContext, setAudioSessionType } from "@/lib/audio/context";
 import { playScore, type Playback } from "@/lib/audio/piano-synth";
-import { ACOUSTIC_PIANOS, ELECTRIC_PIANOS, SYNTH_INSTRUMENTS, ORCHESTRA_GROUPS, type CreationMode, type InstrumentId } from "@/lib/music/instrument-catalog";
+import { ACOUSTIC_PIANOS, ELECTRIC_PIANOS, SYNTH_INSTRUMENTS, ORCHESTRA_GROUPS, INSTRUMENT_LABELS, type CreationMode, type InstrumentId } from "@/lib/music/instrument-catalog";
 import { appendNote, createBlankScore, deleteNote, scoreMeasureCount } from "@/lib/music/edit";
 import { PIANO_KEYS } from "@/lib/music/frequency";
 import { keysCanAppend, keysPreviewMinMeasures, keysShowsScore, keysToggleInput, type KeysScorePhase } from "@/lib/music/keys-entry";
@@ -164,7 +167,8 @@ function KeysPageInner() {
   const drums = creationMode === "drums";
   const { playNote, sustain, setSustain } = usePianoSound(inputInstrument);
   const tabInstrument: GuitarInstrumentId = guitar ?? "acousticGuitar";
-  const [pendingMode, setPendingMode] = useState<CreationMode | null>(null);
+  const [activePartId, setActivePartId] = useState(MAIN_PART_ID);
+  const [templateOpen, setTemplateOpen] = useState(false);
   const [playing, setPlaying] = useState(false);
   const playback = useRef<Playback | null>(null);
   const playbackTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -200,19 +204,20 @@ function KeysPageInner() {
   useEffect(() => {
     const t = setTimeout(() => {
       const d = loadDraft();
-      if (d && d.notes.length > 0) {
+      if (d && (d.notes.length > 0 || d.parts?.some((part) => part.notes.length))) {
         const saved = d.scoreId ? getScore(d.scoreId) : undefined;
-        if (saved) setBase(saved);
-        setNotes(d.notes);
-        setBpm(d.bpm || 90);
-        setMeter(d.meter);
-        setTonic(d.key.tonic);
-        setMode(d.key.mode);
+        const restored = { ...(saved ?? createBlankScore()), ...d, chords: d.chords ?? [], id: saved?.id ?? d.scoreId ?? createBlankScore().id };
+        const partId = d.activePartId ?? MAIN_PART_ID;
+        const activeScore = scoreForPart(restored, partId);
+        setBase(restored); setActivePartId(partId);
+        setNotes(activeScore.notes);
+        setBpm(d.bpm || 90); setMeter(d.meter);
+        setTonic(d.key.tonic); setMode(d.key.mode);
         setProgressionId(d.progressionId);
-        setCustomChords(d.chords);
-        setAccompaniment(d.accompaniment ?? saved?.accompaniment ?? { mode: "block", pattern: "ascending" });
-        setCreationMode(d.notation ?? saved?.notation ?? "piano");
-        if (d.instrument ?? saved?.instrument) setInstrument((d.instrument ?? saved?.instrument)!);
+        setCustomChords(partId === MAIN_PART_ID ? d.chords : activeScore.chords);
+        setAccompaniment(activeScore.accompaniment ?? { mode: "block", pattern: "ascending" });
+        setCreationMode(activeScore.notation ?? "piano");
+        setInstrument(activeScore.instrument ?? "piano");
         // 복원한 악보는 마침줄과 함께 보여 주고, 편집 버튼으로 입력을 재개한다.
         setPhase("done");
       } else {
@@ -226,31 +231,33 @@ function KeysPageInner() {
     }, 0);
     return () => clearTimeout(t);
   }, [setInstrument]);
-  useEffect(() => {
-    if (!loaded) return;
-    try {
-      if (notes.length === 0) localStorage.removeItem(DRAFT_KEY);
-      else {
-        localStorage.setItem(
-          DRAFT_KEY,
-          serializeKeysDraft({ notes, bpm, meter, key: { tonic, mode, fifths: fifthsFor(tonic, mode) }, progressionId, chords: customChords, scoreId: base.id, notation: creationMode, instrument: inputInstrument, accompaniment }),
-        );
-      }
-    } catch {
-      /* 저장 불가 환경 무시 */
-    }
-  }, [notes, bpm, meter, tonic, mode, progressionId, customChords, loaded, base.id, creationMode, inputInstrument, accompaniment]);
 
   // 조는 사용자가 고른 값 그대로 (음을 눌러도 조표가 바뀌지 않음)
   const draftScore = useMemo(() => {
     const key: KeyInfo = { tonic, mode, fifths: fifthsFor(tonic, mode) };
-    const score = { ...base, notes, bpm, meter, beatsPerMeasure: beats, key, notation: creationMode, instrument: inputInstrument, accompaniment, transpose: drums ? 0 : base.transpose };
+    const score = { ...scoreForPart(base, activePartId), notes, bpm, meter, beatsPerMeasure: beats, key, notation: creationMode, instrument: inputInstrument, accompaniment, transpose: drums ? 0 : base.transpose };
     const measures = scoreMeasureCount(score);
     const chords = drums ? [] : customChords ?? (progressionId === AUTO_PROGRESSION
       ? suggestChords(notes, key, beats, measures)
       : buildProgression(progressionId, key, measures, beats));
     return { ...score, chords };
-  }, [base, notes, bpm, meter, beats, tonic, mode, progressionId, customChords, creationMode, inputInstrument, drums, accompaniment]);
+  }, [base, activePartId, notes, bpm, meter, beats, tonic, mode, progressionId, customChords, creationMode, inputInstrument, drums, accompaniment]);
+  const rootDraft = useMemo(() => updateScorePart(base, activePartId, {
+    notes: draftScore.notes, chords: draftScore.chords, notation: creationMode, instrument: inputInstrument, accompaniment,
+    bpm, meter, beatsPerMeasure: beats, key: draftScore.key,
+  }), [base, activePartId, draftScore, creationMode, inputInstrument, accompaniment, bpm, meter, beats]);
+  const hasNotes = getScoreParts(rootDraft).some((part) => part.notes.length > 0);
+  useEffect(() => {
+    if (!loaded) return;
+    try {
+      if (!hasNotes) localStorage.removeItem(DRAFT_KEY);
+      else localStorage.setItem(DRAFT_KEY, serializeKeysDraft({
+        notes: rootDraft.notes, bpm, meter, key: rootDraft.key, progressionId,
+        chords: rootDraft.chords, scoreId: rootDraft.id, notation: rootDraft.notation, instrument: rootDraft.instrument,
+        accompaniment: rootDraft.accompaniment, parts: rootDraft.parts, activePartId, title: rootDraft.title,
+      }));
+    } catch { /* storage unavailable */ }
+  }, [loaded, hasNotes, rootDraft, bpm, meter, progressionId, activePartId]);
   const xml = useMemo(
     () => (showScore ? scoreToMusicXML(draftScore, accompaniment.mode === "arpeggio" ? "piano" : "lead", { minMeasures: drums ? 1 : keysPreviewMinMeasures(phase), measuresPerSystem: 4 }) : ""),
     [showScore, phase, draftScore, drums, accompaniment.mode],
@@ -328,7 +335,7 @@ function KeysPageInner() {
     const ctx = getAudioContext();
     setPlaying(true);
     const start = () => {
-      playback.current = playScore(ctx, draftScore, { instrument: inputInstrument });
+      playback.current = playScore(ctx, rootDraft);
       playbackTimer.current = setTimeout(stopPlayback, (playback.current.durationSec + 0.5) * 1000);
     };
     if (ctx.state === "running") { start(); return; }
@@ -339,35 +346,39 @@ function KeysPageInner() {
     playbackPending.current = () => ctx.removeEventListener("statechange", ready);
   }
 
-  function applyMode(next: CreationMode) {
+  function selectPart(partId: string, whole = rootDraft) {
     stopPlayback();
-    const reset = (next === "drums") !== drums;
-    if (reset) {
-      setNotes([]); setCustomChords(undefined); setBase(createBlankScore());
-      setSelectedNote(null); setSelectedChordBeat(undefined); setNoteChordOpen(false);
-      try { localStorage.removeItem(DRAFT_KEY); } catch { /* 저장소 접근 불가 */ }
+    const selected = scoreForPart(whole, partId);
+    setBase(whole); setActivePartId(partId);
+    setNotes(selected.notes); setCustomChords(selected.chords);
+    setCreationMode(selected.notation ?? "piano"); setInstrument(selected.instrument ?? "piano");
+    setAccompaniment(selected.accompaniment ?? { mode: "block", pattern: "ascending" });
+    setSelectedNote(null); setSelectedChordBeat(undefined); setNoteChordOpen(false);
+    setPhase("input");
+  }
+  function selectInstrument(nextMode: CreationMode, nextInstrument: InstrumentId) {
+    if (!hasNotes && !rootDraft.parts?.length) {
+      selectPart(MAIN_PART_ID, { ...rootDraft, notation: nextMode, instrument: nextInstrument, chords: [] });
+      return;
     }
-    const nextInstrument: InstrumentId = next === "drums" ? "drumKit" : next === "guitarTab" ? "acousticGuitar" : next === "orchestra" ? ORCHESTRA_GROUPS[0].instruments[0] : "piano";
-    setCreationMode(next); setInstrument(nextInstrument);
-    if (next === "drums") setPhase("input");
-    setPendingMode(null);
+    const result = addScorePart(rootDraft, nextMode, nextInstrument);
+    selectPart(result.partId, result.score);
   }
   function changeMode(next: CreationMode) {
     if (next === creationMode) return;
-    if (notes.length > 0 && ((next === "drums") !== drums)) setPendingMode(next);
-    else applyMode(next);
+    selectInstrument(next, next === "drums" ? "drumKit" : next === "guitarTab" ? "acousticGuitar" : next === "orchestra" ? ORCHESTRA_GROUPS[0].instruments[0] : "piano");
   }
 
   function openTitleDialog() {
-    if (notes.length === 0) return;
+    if (!hasNotes) return;
     setPhase("done");
-    setDefaultTitle(`건반 입력 ${new Date().toLocaleString("ko-KR")}`);
+    setDefaultTitle(rootDraft.title);
     setTitleOpen(true);
   }
 
   async function save(result: { title: string; composer?: string; lyricist?: string; arranger?: string }) {
-    if (notes.length === 0) return;
-    const saved = await saveScore({ ...draftScore, ...result });
+    if (!hasNotes) return;
+    const saved = await saveScore({ ...rootDraft, ...result });
     try { localStorage.removeItem(DRAFT_KEY); } catch { /* 무시 */ }
     setTitleOpen(false); // 이동 전에 닫아 대화상자가 DOM 에 남지 않게 함
     router.push(`/scores/${saved.id}`);
@@ -387,6 +398,7 @@ function KeysPageInner() {
           <h1 className="text-2xl font-medium">{drums ? "드럼으로 악보생성" : creationMode === "guitarTab" ? "기타TAB로 악보생성" : creationMode === "orchestra" ? "오케스트라로 악보생성" : "피아노로 악보생성"}</h1>
         </div>
         <div className="flex w-full min-w-0 max-w-full flex-wrap items-center justify-end gap-2 sm:w-auto">
+        <Button type="button" variant="outline" onClick={() => setTemplateOpen(true)} className="h-11 rounded-full px-4 text-sm lg:h-9">템플릿으로 시작하기</Button>
         <Button
           type="button"
           variant="outline"
@@ -414,13 +426,11 @@ function KeysPageInner() {
       </header>
 
       <Card className="gap-3 p-4">
-        <CreationInstrumentSelector mode={creationMode} instrument={inputInstrument} onModeChange={changeMode} onInstrumentChange={(next) => { stopPlayback(); setInstrument(next); }} />
+        <CreationInstrumentSelector mode={creationMode} instrument={inputInstrument} onModeChange={changeMode} onInstrumentChange={(next) => selectInstrument(creationMode, next)} />
         {drums && <p className="text-xs text-ink-soft">드럼은 아래 격자에서 악기별 타격을 입력합니다. 멜로디 작곡과 코드 수정은 피아노·기타TAB·오케스트라에서 사용할 수 있어요.</p>}
       </Card>
 
-      <ConfirmDialog open={pendingMode !== null} onOpenChange={(open) => { if (!open) setPendingMode(null); }} title="새 악보로 시작할까요?"
-        description="드럼과 선율 악보는 입력 방식이 달라요. 현재 초안을 비우고 새 악보를 시작합니다. 이미 내 악보에 저장한 곡은 유지됩니다."
-        confirmLabel="새 악보로 시작" onConfirm={() => { if (pendingMode) applyMode(pendingMode); }} />
+      <ScorePartsPanel score={rootDraft} activePartId={activePartId} onSelect={(partId) => selectPart(partId)} onAdd={selectInstrument} />
 
       {!drums && <MidiConnectButton
         status={midi.supported ? midi.status : "unsupported"}
@@ -528,7 +538,7 @@ function KeysPageInner() {
             </Button>
             {chordEditorOpen && (
               <div id="keys-chord-editor" className="min-w-0">
-                <ChordEditor score={draftScore} onChange={setCustomChords} />
+                <ChordEditor key={`${base.id}:${activePartId}`} score={draftScore} onChange={setCustomChords} />
                 <p className="mt-2 text-xs text-ink-soft">수정한 코드는 악보 미리보기와 저장에 반영돼요. 아래 코드 진행을 다시 선택하면 해당 진행으로 바뀌어요.</p>
               </div>
             )}
@@ -599,6 +609,10 @@ function KeysPageInner() {
         } : undefined} />
         {creationMode === "guitarTab" && <TabScoreView score={draftScore} instrument={tabInstrument} minMeasures={keysPreviewMinMeasures(phase)} />}
       </>}
+      {showScore && getScoreParts(rootDraft).filter((part) => part.id !== activePartId).map((part) => <section key={part.id} aria-label={`${INSTRUMENT_LABELS[part.instrument]} 악보`} className="grid min-w-0 gap-2">
+        <h2 className="text-sm font-semibold">{INSTRUMENT_LABELS[part.instrument]} 악보</h2>
+        <ScoreView xml={scoreToMusicXML(scoreForPart(rootDraft, part.id), part.notation === "piano" && part.accompaniment?.mode === "arpeggio" ? "piano" : "lead")} />
+      </section>)}
       {phase === "done" && !drums && (
         <p role="status" className="text-sm text-ink-soft">
           입력을 마쳤어요. 남은 빈 마디를 정리하고 마지막 마디에 마침줄을 넣었어요. 악보 편집을 누르면 이어서 입력하고 코드도 수정할 수 있어요.
@@ -606,7 +620,7 @@ function KeysPageInner() {
       )}
 
       {/* 오선지 + 정보 카드 */}
-      {!drums && <AccompanimentSettingsPanel value={accompaniment} onChange={(next) => { stopPlayback(); setAccompaniment(next); }} />}
+      {creationMode === "piano" && <AccompanimentSettingsPanel value={accompaniment} onChange={(next) => { stopPlayback(); setAccompaniment(next); }} />}
       {!drums && <Card className="flex-row items-center gap-4 p-4">
         <NoteStaff midi={active} forceBass={guitar === "bassGuitar" || guitar === "bassGuitar5"} />
         <div className="flex min-w-0 flex-col gap-1">
@@ -628,7 +642,7 @@ function KeysPageInner() {
       </label>}
 
       {showScore && (
-        <Button type="button" disabled={notes.length === 0} onClick={openTitleDialog} className="h-11 w-full text-sm">
+        <Button type="button" disabled={!hasNotes} onClick={openTitleDialog} className="h-11 w-full text-sm">
           악보로 저장
         </Button>
       )}
@@ -645,7 +659,7 @@ function KeysPageInner() {
         mode="compose"
         onClose={() => setComposerOpen(false)}
         onApply={async (patch) => {
-          const saved = await saveScore({ ...draftScore, ...patch });
+          const saved = await saveScore(updateScorePart(rootDraft, activePartId, patch));
           if (getScore(saved.id)?.updatedAt !== saved.updatedAt) throw new Error("악보를 저장하지 못했어요. 기기 저장 공간을 확인한 뒤 다시 시도해 주세요.");
           setBase(saved);
           if (patch.notes) setNotes(patch.notes);
@@ -662,6 +676,11 @@ function KeysPageInner() {
           <NoteChordEditor score={draftScore} selected={selectedNote !== null && selectedNote >= 0 ? selectedNote : null} startBeat={selectedChordBeat} onChange={setCustomChords} />
         </DialogContent>
       </Dialog>
+
+      {templateOpen && <ScoreTemplateDialog replacing={hasNotes} onClose={() => setTemplateOpen(false)} onCreate={(created) => {
+        selectPart(MAIN_PART_ID, created); setBpm(created.bpm); setMeter(created.meter ?? "4/4");
+        setTonic(created.key.tonic); setMode(created.key.mode); setPhase("done"); setTemplateOpen(false);
+      }} />}
 
 
       {!drums && <details className="rounded-2xl border border-line bg-surface p-4 text-sm">

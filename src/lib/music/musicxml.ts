@@ -1,3 +1,5 @@
+import { getScoreParts, scoreForPart } from "./parts";
+import { canTie } from "./articulation";
 import { scoreMeasureCount } from "./edit";
 import { buildAccompanimentNotes } from "./accompaniment";
 import { chordToMidi, tempoTerm, transposeChordSymbol, transposeKey } from "./theory";
@@ -8,7 +10,7 @@ import { hasUnmatchedRepeatStart } from "./form";
 import { lyricForVerse, lyricText, syllabicOf, type Syllabic } from "./lyrics";
 import type { MeasureMarkKind, Score } from "./types";
 import { DRUM_PIECES, drumPiece } from "./drums";
-import { GM_INSTRUMENTS, INSTRUMENT_LABELS, ORCHESTRAL_DRUM_NOTES, type InstrumentId } from "./instrument-catalog";
+import { GM_INSTRUMENTS, INSTRUMENT_LABELS, ORCHESTRAL_DRUM_NOTES, instrumentMode, type InstrumentId } from "./instrument-catalog";
 
 /**
  * Score → MusicXML 4.0
@@ -158,12 +160,12 @@ function lyricXml(lyrics?: LyricNotation[]): string {
   return (lyrics ?? []).map((lyric) => `<lyric number="${lyric.verse}"${lyric.named ? ` name="${lyric.verse}절"` : ""}><syllabic>${lyric.syllabic}</syllabic><text>${esc(lyric.text)}</text></lyric>`).join("");
 }
 
-function noteXml(p: NotationPiece, pitch: SpelledPitch | null, accidental: AccidentalName | null, staff: number, voice: number, lyric?: LyricNotation[]): string {
+function noteXml(p: NotationPiece, pitch: SpelledPitch | null, accidental: AccidentalName | null, staff: number, voice: number, lyric?: LyricNotation[], slur = ""): string {
   const ties = (p.tieStop ? `<tie type="stop"/>` : "") + (p.tieStart ? `<tie type="start"/>` : "");
   const tied = (p.tieStop ? `<tied type="stop"/>` : "") + (p.tieStart ? `<tied type="start"/>` : "");
   const head = pitch === null ? "<rest/>" : pitchXml(pitch);
   const divs = Math.round(p.durationBeats * DIVISIONS);
-  return `<note>${head}<duration>${divs}</duration>${ties}<voice>${voice}</voice><type>${p.type}</type>${p.dots ? "<dot/>" : ""}${accidental ? `<accidental>${accidental}</accidental>` : ""}<staff>${staff}</staff>${tied ? `<notations>${tied}</notations>` : ""}${lyricXml(lyric)}</note>`;
+  return `<note>${head}<duration>${divs}</duration>${ties}<voice>${voice}</voice><type>${p.type}</type>${p.dots ? "<dot/>" : ""}${accidental ? `<accidental>${accidental}</accidental>` : ""}<staff>${staff}</staff>${tied || slur ? `<notations>${tied}${slur}</notations>` : ""}${lyricXml(lyric)}</note>`;
 }
 
 export interface MusicXmlOptions {
@@ -239,6 +241,32 @@ function drumMusicXML(score: Score, opts: MusicXmlOptions): string {
 }
 
 export function scoreToMusicXML(score: Score, layout: ScoreLayout = "lead", opts: MusicXmlOptions = {}): string {
+  if (score.parts?.length) {
+    const measures = Math.max(scoreMeasureCount(score), opts.minMeasures ?? 1);
+    let nextChannel = 0;
+    const channels = [1, 2, 3, 4, 5, 6, 7, 8, 9, 11, 12, 13, 14, 15, 16];
+    const documents = getScoreParts(score).map((part, index) => {
+      const single = scoreForPart(score, part.id);
+      const partLayout = part.notation === "piano" ? layout : "lead";
+      const channelMap = new Map<string, { channel: number; port: number }>();
+      return scoreToMusicXML(single, partLayout, { ...opts, minMeasures: measures })
+        .replace(/\bid="([^"]+)"/g, (_, id: string) => `id="M${index + 1}-${id}"`)
+        .replace(/<midi-instrument id="([^"]+)">([\s\S]*?)<\/midi-instrument>/g, (_, id: string, body: string) => {
+          const original = body.match(/<midi-channel>(\d+)<\/midi-channel>/)?.[1] ?? "1";
+          if (!channelMap.has(original)) {
+            channelMap.set(original, original === "10" ? { channel: 10, port: 1 } : { channel: channels[nextChannel % channels.length], port: Math.floor(nextChannel / channels.length) + 1 });
+            if (original !== "10") nextChannel++;
+          }
+          const assignment = channelMap.get(original)!;
+          return `<midi-device id="${id}" port="${assignment.port}"/><midi-instrument id="${id}">${body.replace(/<midi-channel>\d+<\/midi-channel>/, `<midi-channel>${assignment.channel}</midi-channel>`)}</midi-instrument>`;
+        })
+        .replace(/(<score-part\b[^>]*>[\s\S]*?<part-name[^>]*>)([\s\S]*?)(<\/part-name>[\s\S]*?<part-abbreviation[^>]*>)[\s\S]*?(<\/part-abbreviation>)/g, "$1$2$3$2$4")
+        .replace(/ print-object="no"/g, "");
+    });
+    const lists = documents.map((xml) => xml.match(/<part-list>([\s\S]*?)<\/part-list>/)?.[1] ?? "");
+    const bodies = documents.map((xml) => [...xml.matchAll(/<part id="[^"]+">[\s\S]*?<\/part>/g)].map((match) => match[0]).join(""));
+    return documents[0].replace(/<part-list>[\s\S]*<\/score-partwise>/, `<part-list>${lists.join("")}</part-list>${bodies.join("")}</score-partwise>`);
+  }
   const percussionNote = score.instrument ? ORCHESTRAL_DRUM_NOTES[score.instrument] : undefined;
   if (percussionNote !== undefined) return drumMusicXML({ ...score, transpose: 0, chords: [], notes: score.notes.map((note) => ({ ...note, midi: note.midi === null ? null : percussionNote })) }, opts);
   if (score.notation === "drums" || score.instrument === "drumKit") return drumMusicXML(score, opts);
@@ -290,16 +318,22 @@ export function scoreToMusicXML(score: Score, layout: ScoreLayout = "lead", opts
   // 남성 음역(가온 도 아래 중심)이면 옥타브 낮춘 높은음자리표(테너 표기)
   const sung = notes.filter((n) => n.midi !== null).map((n) => n.midi!).sort((a, b) => a - b);
   const medianMidi = sung.length ? sung[sung.length >> 1] : 67;
-  const bass = score.instrument === "bassGuitar" || score.instrument === "bassGuitar5" || opts.clef === "bass";
-  const trebleClef = bass ? `<clef number="1"><sign>F</sign><line>4</line></clef>` : opts.clef === "treble" ? `<clef number="1"><sign>G</sign><line>2</line></clef>` : medianMidi < 57
+  const bass = score.instrument === "bassGuitar" || score.instrument === "bassGuitar5" || ["cello", "doubleBass", "bassoon", "trombone", "bassTrombone", "tuba"].includes(score.instrument ?? "") || opts.clef === "bass";
+  const trebleClef = score.instrument === "viola" ? `<clef number="1"><sign>C</sign><line>3</line></clef>` : bass ? `<clef number="1"><sign>F</sign><line>4</line></clef>` : opts.clef === "treble" ? `<clef number="1"><sign>G</sign><line>2</line></clef>` : medianMidi < 57
     ? `<clef number="1"><sign>G</sign><line>2</line><clef-octave-change>-1</clef-octave-change></clef>`
     : `<clef number="1"><sign>G</sign><line>2</line></clef>`;
 
-  const piano = layout === "piano";
+  const piano = layout === "piano" && (score.notation ?? instrumentMode(score.instrument ?? "piano")) === "piano";
   const arpeggioPieces = piano && score.accompaniment?.mode === "arpeggio"
     ? splitForNotation(buildAccompanimentNotes(score.chords, score.accompaniment, { endBeat: Math.min(measures * bpm, score.notes.reduce((end, note) => Math.max(end, note.startBeat + note.durationBeats), 0)), beatsPerMeasure: bpm, transpose: tp }), { beatsPerMeasure: bpm, measures })
     : null;
-  const allPieces = splitForNotation(notes, { beatsPerMeasure: bpm, measures });
+  const allPieces = splitForNotation(notes, { beatsPerMeasure: bpm, measures }).map((piece) => {
+    if (piece.source === undefined) return piece;
+    const index = piece.source, source = notes[index];
+    const first = Math.abs(piece.startBeat - source.startBeat) < 1e-6;
+    const last = Math.abs(piece.startBeat + piece.durationBeats - source.startBeat - source.durationBeats) < 1e-6;
+    return { ...piece, tieStart: piece.tieStart || (last && !!source.tieToNext && canTie(notes, index)), tieStop: piece.tieStop || (first && index > 0 && !!notes[index - 1].tieToNext && canTie(notes, index - 1)) };
+  });
   const dirs = directionsByMeasure(score, bpm, measures);
   const unmatchedStart = hasUnmatchedRepeatStart(score);
   const marksAt = (m: number) => (score.marks ?? []).filter((x) => x.measure === m).map((x) => x.kind);
@@ -357,7 +391,10 @@ export function scoreToMusicXML(score: Score, layout: ScoreLayout = "lead", opts
       const acc = sp && !p.tieStop ? tracker.next(sp) : null;
       // 가사는 붙임줄 첫 조각에만
       const ly = p.source !== undefined && !p.tieStop ? lyrics.get(p.source) : undefined;
-      parts.push(noteXml(p, sp, acc, 1, 1, ly));
+      parts.push(noteXml(p, sp, acc, 1, 1, ly, p.source === undefined ? "" : (
+        (p.startBeat === notes[p.source].startBeat && p.source > 0 && notes[p.source - 1].slurToNext && notes[p.source - 1].midi !== null && notes[p.source].midi !== null ? `<slur type="stop" number="1"/>` : "") +
+        (Math.abs(p.startBeat + p.durationBeats - notes[p.source].startBeat - notes[p.source].durationBeats) < 1e-6 && notes[p.source].slurToNext && notes[p.source + 1]?.midi != null && notes[p.source].midi !== null ? `<slur type="start" number="1"/>` : "")
+      )));
     }
     flush((m + 1) * bpm, Infinity);
     // 마디 끝 위치(헤어핀 종료 등) 기호

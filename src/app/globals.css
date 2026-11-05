@@ -252,7 +252,19 @@ h3 {
   box-shadow: var(--shadow-md);
 }
 
+/* 출력 전용 총보는 화면 밖에서 A4 비율로 준비한다. */
+.score-export {
+  visibility: hidden;
+  position: absolute;
+  left: -10000px;
+  width: 186mm;
+  pointer-events: none;
+}
+
 @media print {
+  :root {
+    color-scheme: light;
+  }
   @page {
     size: A4;
     margin: 12mm;
@@ -262,12 +274,47 @@ h3 {
   }
   html,
   body {
-    background: #fff;
-    color: #111;
+    background: #fff !important;
+    color: #111 !important;
+    color-scheme: light;
+  }
+  body:has(.score-editor-page) main {
+    padding: 0 !important;
+    max-width: none !important;
+  }
+  body:has(.score-editor-page) [class*="pl-60"] {
+    padding-left: 0 !important;
   }
   .score-sheet {
     box-shadow: none !important;
     border: 0 !important;
+    overflow: visible !important;
+    background: #fff !important;
+    border-radius: 0 !important;
+  }
+  .score-sheet > div[aria-busy] {
+    min-width: 0 !important;
+    width: 100% !important;
+  }
+  .score-sheet svg {
+    max-width: 100% !important;
+    height: auto !important;
+  }
+  .score-editor-page > :not(.score-export) {
+    display: none !important;
+  }
+  .score-editor-page > .score-export {
+    visibility: visible;
+    position: static;
+    width: 186mm;
+    max-width: 100%;
+  }
+  .score-export [id^="osmdCanvasPage"] {
+    break-inside: avoid;
+    break-after: page;
+  }
+  .score-export [id^="osmdCanvasPage"]:last-child {
+    break-after: auto;
   }
 }
 @layer base {

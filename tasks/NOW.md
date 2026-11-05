@@ -1,22 +1,20 @@
 # NOW — 재진입 스냅샷 (30줄 이내, 매 작업 끝에 덮어쓴다)
 
 - 갱신: 2026-11-05
-- 현재 작업: task-026 완료 — 드럼 그림·오케스트라 음색 버튼·악보 편집모드·반주 선택과 아르페지오 10종
-- task-026 1단계: 반주 설정 모델·검증·초안 복원과 10패턴 생성, 전체/공연 재생·MIDI·MusicXML 연결. 58bb41d 커밋·main 푸시
-- task-026 검증: 단위 1519개 통과·32개 건너뜀, 린트·타입·프로덕션 빌드·코드 리뷰 통과. desktop 통합 E2E 33개 통과, 신규 UI·터치 desktop/mobile 25개 통과·모바일 마우스 드래그 1개 건너뜀. 390·900·1440px 12 PNG 검수, 반주 선택시 보표 자동 표시. Next16 숨겨진 이전 화면 DOM은 E2E :visible로 구분
-- task-025 1단계: 전체 음색 연결·5현 베이스·오케스트라 타악·초안 복원, 단위 831개 통과 후 c8c6c5c 커밋·main 푸시
-- 마지막으로 한 일: 전체 단위 1508 통과·32 건너뜀. 린트·타입·프로덕션 빌드 통과, 선택 UI E2E 3개·기존 제목 회귀 2개 통과. 390·900·1440px 12 PNG, 드럼 실제 음표와 넘침 검수
-- 다음 한 걸음: 실제 기기의 음색 청취·iOS/Safari 재생 확인. PDF의 레이어·패치 시트·총보 자동 편곡은 별도 확장. task-005 실기기 결과로 task-016 조정, task-020 운영 마이그레이션은 별도 배포
-- 미확인: rAF 누수 수정은 코드로만(브라우저 실측 필요). OSMD 시스템 경계 단위(task-001)
-- 열린 결정: task-004 실녹음 no-go 이후 재개 여부 · task-011 재계획. 스파이크 worktree(.claude/worktrees/agent-aa9849d89ba9916a9) 정리 여부
-- 주의: 영역은 `.claude/rules/delegation.md` ①표 + `npm run agents:check -- <팀원>`. 푸시는 사용자 지시가 있을 때만. `.serena/`는 커밋하지 않음.
-- SDLC 단계: task-026 구현·검증 완료. main 푸시 후 CI·Vercel 운영 배포 결과는 별도 확인. 사용자가 단계별 커밋·푸시와 한국어 지시·질문·보고 요청
-- 담당 모델/역할: Codex scout·builder·music-logic-coder·tester·codex-reviewer는 부모 모델·추론 설정 상속. 기존 Claude 위임 지시: Opus 기본, astra 금지
-- 수정 파일: keys/score-client/welcome·composition-dialog·score-view·note-chord-editor·guitar-fretboard·tab-score-view·tablature·midi·instruments·keys-draft·단위/E2E·README·tasks. 새 의존성·DB·Score 모델 변경 없음. 기존 미추적 파일 보존
-- task-022 검증: Vitest746 통과·32 건너뜀, 신규E2E10·기존회귀E2E12 통과, 3구간 PNG6장 검수. lint·tsc·코드리뷰·프로덕션빌드 확인. agents:check는 팀장 전용 types/tasks 및 기존로컬파일 탓 전체실패, 구현/테스트파일 통과
-- 모델 결정: NoteEvent.lyrics 선택적 절별맵 추가, 기존 lyric=1절 호환. 서버스키마동기화, 기존JSONB/RLS유지·DB마이그레이션/새의존성 없음. iOS/Safari실음재생은 실기기확인 필요
-- 디자인 검증: 1440·900·390px 전체 페이지 가로 넘침 없음, 이미지 4장 시각검수·파일 링크·git diff --check 확인. 화면·기능 코드는 변경하지 않음
-- 설정 검증: TOML 파싱·역할 필수 필드·동시 실행 한도·AGENTS.md 80줄 제한·git diff --check 통과. Codex CLI 미설치로 실제 역할 로딩은 새 세션에서 확인 필요
-- task-021 검증: Vitest 707 통과·32 건너뜀, lint·tsc·코드 리뷰 통과. 기능 E2E 6·스타일 적용 3구간 QA 2 통과, 완료/편집 12 PNG(.nomad) 중 6장 시각검수. agents:check는 기존 설정/주 에이전트 문서 변경 12건으로 전체 실패, 기능·테스트 파일은 영역 통과
-- 테스트 상태: Vitest 697 통과·32 건너뜀, 로컬 Supabase setlist RLS 15 통과, 콘티 공유 E2E 1 통과, lint·tsc·production build 통과
-- 남은 작업: 실기기: 말로 가사 입력(processLocally)·VOICE_* 상수 조정. 호환 로고 5개(Simple Icons 없음) 공식 파일 필요. 앱용 음성 인식 플러그인(새 의존성 승인). 실제 로그인(NEXT_PUBLIC_AUTH_MOCK=0). Docker http://localhost:3200, dev 3101
+- 현재 작업: task-027 구현·검증 완료. 사용자 요청에 따라 README 갱신 및 main 커밋·푸시 진행. 운영 배포 결과는 별도 확인.
+- 모델 결정(주 에이전트): 기존 Score의 최상위 notes/chords를 첫 파트로 유지하고 parts?: ScorePart[]로 추가 악기를 독립 보관. 박자·조성·템포·반복 기호는 곡 공유, 음표·코드·음색·셈여림은 파트별. 구버전 악보/초안 호환, 서버 Zod 동기화. DB 마이그레이션·새 의존성 없음.
+- 입력: 악기 전환 시 기존 파트를 보존하고 독립 파트를 추가/선택. 초안에 전체 파트·활성 파트·템플릿 제목 보존. 기존 악보에도 악기 추가 가능.
+- 편집: 악보 바로 위 적용/저장. 적용은 저장 후 편집 유지, 저장은 편집 종료. 코드 입력 포커스 이탈 시 유효 변경 함께 반영. 파트별 코드 폼 key로 상태 격리.
+- 안전: 저장소의 삭제/숨김은 초안보다 우선. 계정 세션 변경 시 편집기 재생성·저장 가드. edit/compose/import 진입 의도는 서버 searchParams prop으로 보존.
+- 음색·재생: 4/5현 베이스 배음·레벨 보강, 실제 높이 유지. 합주/공연 모드에서 파트별 음색·타악 전조 제외·동일 타임라인·전체 정지. MIDI port/XML midi-device로 15개 초과 선율 채널 분리.
+- 표기: 악기별 독립 보표, 베이스·첼로 등 F음자리표, 비올라 C음자리표, 드럼 타악 보표. 붙임줄/이음줄 편집·XML 표기, 붙임줄 소리 연결 및 중간 재개.
+- 드럼: 개별 버튼 그림 크기 절반, 왼쪽 개별 선택/오른쪽 전체 드럼셋 반반 배치. 양쪽 선택·현재 마디 타격 상태 연동.
+- 템플릿: Templates 이미지/PDF 참고 CCM·찬송가·피아노·기타·드럼·베이스·밴드·관현악 8종. Finale 설정 마법사처럼 형식→악기 편성→조성/박자/템포/마디/제목/미리보기. 편집 가능한 시작 악보로 재구성.
+- 배치·출력: 기본 한 줄 4마디, 마디 경계 정렬. 마지막 1~3마디 확대 금지, TAB도 동일. 출력 전용 총보는 A4 페이지에서 시스템 통째로 나누며 인쇄 배경·여백·종횡비 보정.
+- 검증: 전체 단위 1540 통과·32 건너뜀. 린트·타입·최종 프로덕션 빌드 통과. 프로덕션 E2E 68개 통과 후 A4 페이지 보완을 포함한 26개 재검증 통과. 15악기/8마디 총보 120마디·A4 2페이지, 390/900/1440px PNG 및 PDF 2페이지 육안 검수.
+- 오디오 실측: Chromium OfflineAudioContext, MIDI40 RMS 0.145·150Hz 이상 0.078, MIDI28 RMS 0.150·150Hz 이상 0.036, 측정 peak 1 미만. 실제 스피커/iOS/Safari 청취는 task-005에서 확인.
+- 리뷰: codex-reviewer의 계정 전환/삭제 초안·파트 코드 폼·반복 공유·MIDI 채널 충돌 지적 수정, 단위/E2E 회귀 추가.
+- 영역 검사: builder 단독 검사에는 주 에이전트 core/types/tasks 변경과 사용자 제공 Templates/.claude 파일이 포함돼 전체 실패(예상). 담당 영역에 따라 통합.
+- 보존: 사용자 미추적 Templates/와 .claude/settings.local.json은 수정하지 않음. QA 산출물 .nomad/task-027/.
+- 후속: task-005 실기기 → task-016 인식/지연 상수 조정. task-014 기기 내 음성 인식 지원 검증. task-020 운영 DB·실제 인증·CI/Vercel 결과 별도 확인.
+- 열린 결정: task-004는 초기 no-go 이후 B2/음원 분리 스파이크 재개·청취 판정 대기(보고서 후반부가 최신). task-011은 결과에 따름.

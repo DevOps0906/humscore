@@ -39,13 +39,14 @@ export function TabScoreView({ score, instrument, minMeasures = 1 }: { score: Sc
           {Array.from({ length: systems }, (_, system) => {
             const top = system * systemHeight + 40;
             const lineMeasures = Math.min(4, measures - system * 4);
-            const lineWidth = (right - left) / lineMeasures;
+            const lineWidth = (right - left) / 4;
+            const lineEnd = left + lineWidth * lineMeasures;
             return (
               <g key={system} data-testid="tab-system">
                 {tuning.map((midi, string) => (
                   <g key={string}>
                     <text x={8} y={top + string * 24 + 5} fontSize={14} fill="currentColor">{midiToName(midi)}</text>
-                    <line x1={left} x2={right} y1={top + string * 24} y2={top + string * 24} stroke="currentColor" />
+                    <line x1={left} x2={lineEnd} y1={top + string * 24} y2={top + string * 24} stroke="currentColor" />
                   </g>
                 ))}
                 {Array.from({ length: lineMeasures }, (_, column) => {
@@ -80,7 +81,7 @@ export function TabScoreView({ score, instrument, minMeasures = 1 }: { score: Sc
                     </g>
                   );
                 })}
-                <line x1={right} x2={right} y1={top} y2={top + (tuning.length - 1) * 24} stroke="currentColor" strokeWidth={2} />
+                <line x1={lineEnd} x2={lineEnd} y1={top} y2={top + (tuning.length - 1) * 24} stroke="currentColor" strokeWidth={2} />
               </g>
             );
           })}

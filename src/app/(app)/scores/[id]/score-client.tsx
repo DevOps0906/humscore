@@ -1,6 +1,9 @@
 "use client";
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { ScorePartsPanel } from "@/components/score-parts-panel";
+import { MAIN_PART_ID, getScoreParts, scoreForPart, updateScorePart, addScorePart } from "@/lib/music/parts";
+import { canTie } from "@/lib/music/articulation";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import { AudioLines, Download, FileMusic, Play, Printer, Share2, Square, Trash2, Type } from "lucide-react";
 import { toast } from "sonner";
@@ -39,20 +42,39 @@ import { midiToName } from "@/lib/music/frequency";
 import { keyName, transposeKey } from "@/lib/music/theory";
 import { exportFile, isNativeApp, safeFileName } from "@/lib/platform/export-file";
 import { sheetToPdf } from "@/lib/platform/sheet-pdf";
-import { deleteScore, getScore, saveScore } from "@/lib/storage/scores";
+import { deleteScore, getScore, saveScore, subscribeScores, getScoreSessionVersion } from "@/lib/storage/scores";
 import type { Score } from "@/lib/music/types";
 import { isGuitarInstrument, type GuitarInstrumentId } from "@/lib/music/tablature";
 
 const compositionSignature = (score: Score) => JSON.stringify([score.notes, score.chords, score.marks, score.dynamics]);
 
-export function ScoreClient({ id }: { id: string }) {
+interface ScoreEntry { edit: boolean; compose: boolean; importAudio: boolean }
+
+export function ScoreClient({ id, entry }: { id: string; entry?: ScoreEntry }) {
+  const session = useSyncExternalStore(subscribeScores, getScoreSessionVersion, () => 0);
+  return <ScoreEditor key={`${id}:${session}:${entry?.edit}:${entry?.compose}:${entry?.importAudio}`} id={id} entry={entry} />;
+}
+
+function ScoreEditor({ id, entry }: { id: string; entry?: ScoreEntry }) {
   const router = useRouter();
-  const { score, update: persist } = useScore(id);
-  const [compositionMode, setCompositionMode] = useState<CompositionMode | null>(null);
+  const { score: storedScore, update: persist } = useScore(id);
+  const [draftRoot, setDraftRoot] = useState<Score | null>(null);
+  const draftRef = useRef<Score | null>(null);
+  const [activePartId, setActivePartId] = useState(MAIN_PART_ID);
+  const rootScore = storedScore === null ? null : draftRoot ?? storedScore;
+  const [editingSession] = useState(getScoreSessionVersion);
+  const score = rootScore ? scoreForPart(rootScore, activePartId) : rootScore;
+  const [saving, setSaving] = useState(false);
+  const [compositionMode, setCompositionMode] = useState<CompositionMode | null>(entry?.compose ? "compose" : null);
   const [compositionUndo, setCompositionUndo] = useState<{ patch: Partial<Score>; expected: string } | null>(null);
   function update(patch: Partial<Score>) {
+    if (editingSession !== getScoreSessionVersion() || !getScore(id)) return;
     setCompositionUndo(null);
-    persist(patch);
+    const current = draftRef.current ?? rootScore;
+    if (!current) return;
+    const next = updateScorePart(current, activePartId, patch);
+    if (editMode) { draftRef.current = next; setDraftRoot(next); }
+    else persist(next);
   }
   const [selectedLayout, setLayout] = useState<ScoreLayout | null>(null);
   const layout: ScoreLayout = selectedLayout ?? (score?.accompaniment?.mode === "arpeggio" ? "piano" : "lead");
@@ -66,7 +88,7 @@ export function ScoreClient({ id }: { id: string }) {
     update({ instrument: value });
   }
   const [editNotes, setEditNotes] = useState(false);
-  const [editMode, setEditMode] = useState(false);
+  const [editMode, setEditMode] = useState(entry?.edit ?? false);
   const [selectedRaw, setSelected] = useState<number | null>(null);
   const [toolbarOpen, setToolbarOpen] = useState(false);
   const sound = usePianoSound(instrument);
@@ -74,27 +96,14 @@ export function ScoreClient({ id }: { id: string }) {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [pdfBusy, setPdfBusy] = useState(false);
   const [lyricsOpen, setLyricsOpen] = useState(false);
-  const [audioOpen, setAudioOpen] = useState(false);
+  const [audioOpen, setAudioOpen] = useState(entry?.importAudio ?? false);
   // '내 악보 → 음원 파일'로 들어오면(?import=audio) 음원 등록 창을 바로 연다. 적용 없이 닫으면 빈 악보는 지운다
-  const fromImport = useRef(false);
+  const fromImport = useRef(entry?.importAudio ?? false);
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const editing = params.get("edit") === "1";
-    const composing = params.get("compose") === "1";
-    const importing = params.get("import") === "audio";
-    if (editing) {
-      setEditMode(true); // eslint-disable-line react-hooks/set-state-in-effect -- 내 악보에서 편집으로 진입한 주소를 읽는다
-    }
-    if (composing) {
-      setCompositionMode("compose");
-    }
-    if (importing) {
-      fromImport.current = true;
-      setAudioOpen(true);
-    }
-    if (editing || composing || importing) window.history.replaceState(null, "", window.location.pathname);
-  }, []);
+    if (entry?.edit || entry?.compose || entry?.importAudio) window.history.replaceState(null, "", window.location.pathname);
+  }, [entry]);
   const viewHandle = useRef<ScoreViewHandle | null>(null);
+  const exportHandle = useRef<ScoreViewHandle | null>(null);
   const playback = useRef<Playback | null>(null);
   const stopTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -112,6 +121,31 @@ export function ScoreClient({ id }: { id: string }) {
 
   useEffect(() => clearPlayback, [clearPlayback]);
 
+  function resetSelection() {
+    clearPlayback(); setPlaying(false); setSelected(null); setToolbarOpen(false); setChordEditingBeat(null);
+    setLyricsOpen(false); setAudioOpen(false);
+  }
+  function enterEdit() {
+    if (editMode || !rootScore) return;
+    draftRef.current = rootScore; setDraftRoot(rootScore); setEditMode(true); resetSelection();
+  }
+  async function applyEdits(exit = false) {
+    if (editingSession !== getScoreSessionVersion() || !getScore(id)) {
+      toast.error("계정이나 악보 상태가 바뀌었어요. 악보를 다시 열어 주세요.");
+      return;
+    }
+    const current = draftRef.current ?? rootScore;
+    if (!current || saving) return;
+    setSaving(true); clearPlayback(); setPlaying(false);
+    try {
+      const saved = await saveScore(current);
+      if (getScore(saved.id)?.updatedAt !== saved.updatedAt) throw new Error("기기 저장 공간을 확인하고 다시 시도해 주세요.");
+      draftRef.current = saved; setDraftRoot(saved);
+      if (exit) { setEditMode(false); setEditNotes(false); resetSelection(); draftRef.current = null; setDraftRoot(null); }
+      toast.success(exit ? "악보를 저장했어요" : "변경을 적용했어요. 계속 편집할 수 있어요");
+    } catch (error) { toast.error(error instanceof Error ? error.message : "악보를 저장하지 못했어요"); }
+    finally { setSaving(false); }
+  }
   const xml = useMemo(() => (score ? scoreToMusicXML(score, layout, { externalHeader: true }) : ""), [score, layout]);
 
   const noteCount = score?.notes.length ?? 0;
@@ -149,9 +183,9 @@ export function ScoreClient({ id }: { id: string }) {
     clearPlayback(); // 기존 재생·타이머·리스너 정리 후 시작
     setAudioSessionType("playback");
     const ctx = getAudioContext(); // 제스처 핸들러 안에서 동기 호출 (await 금지)
-    const target = score!;
+    const target = rootScore!;
     const doPlay = () => {
-      playback.current = playScore(ctx, target, { instrument });
+      playback.current = playScore(ctx, target, { instrument: activePartId === MAIN_PART_ID ? instrument : target.instrument });
       stopTimer.current = setTimeout(() => setPlaying(false), (playback.current.durationSec + 2.5) * 1000);
     };
     setPlaying(true);
@@ -213,18 +247,23 @@ export function ScoreClient({ id }: { id: string }) {
 
   const ts = timeSignatureOf(score);
   const meterLabel = meterOf(score) ?? `${ts.beats}/${ts.beatType}`;
-  const header = <ScoreHeader score={score} />;
+  const header = <ScoreHeader score={rootScore!} />;
   const base = `${safeFileName(score.title)}_${keyName(shownKey)}`;
 
   // 웹은 브라우저 인쇄, 앱은 이미지 PDF를 만들어 공유 시트로
   const printOrPdf = async () => {
-    if (!isNativeApp()) return window.print();
-    const view = viewHandle.current;
+    const view = exportHandle.current ?? viewHandle.current;
     if (!view || pdfBusy) return;
     setPdfBusy(true);
     const credits = formatCredits(score);
     const t = toast.loading("PDF를 만드는 중…");
     try {
+      const deadline = Date.now() + 15_000;
+      while (view.container.getAttribute("aria-busy") === "true" && Date.now() < deadline) {
+        await new Promise((resolve) => setTimeout(resolve, 50));
+      }
+      if (view.container.getAttribute("aria-busy") === "true") throw new Error("악보를 그리는 중이에요. 잠시 후 다시 시도해 주세요.");
+      if (!isNativeApp()) { window.print(); return; }
       // 음표 선택 표시는 SVG 밖(HTML)이라 PDF에 들어가지 않는다. OSMD가 제목을 이미 그렸다면 직접 머리글은 생략
       const bytes = await sheetToPdf(view.container, view.drawsTitle ? [] : [score.title, credits], view.systemSpans());
       await exportFile(`${base}.pdf`, bytes, "application/pdf");
@@ -238,7 +277,7 @@ export function ScoreClient({ id }: { id: string }) {
   };
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="score-editor-page flex flex-col gap-4">
       <div className="no-print flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
           {editMode ? <InlineField
@@ -258,7 +297,7 @@ export function ScoreClient({ id }: { id: string }) {
       </div>
 
       <div className="no-print flex flex-wrap items-center gap-2 text-sm">
-        {!isDrums && (["lead", "piano"] as const).map((l) => (
+        {!isDrums && (["lead", "piano"] as const).filter((l) => l === "lead" || score.notation === "piano").map((l) => (
           <Button
             key={l}
             type="button"
@@ -280,10 +319,21 @@ export function ScoreClient({ id }: { id: string }) {
           {score.bpm} BPM · <span className="text-xs">{meterLabel}</span>
         </span>
       </div>
-      {!isDrums && <AccompanimentSettingsPanel value={score.accompaniment} onChange={(accompaniment) => {
+      {score.notation === "piano" && <AccompanimentSettingsPanel value={score.accompaniment} onChange={(accompaniment) => {
         clearPlayback(); setPlaying(false); setLayout("piano"); setShowTab(false); update({ accompaniment });
       }} />}
 
+      <ScorePartsPanel score={rootScore!} activePartId={activePartId} onSelect={(partId) => { resetSelection(); setActivePartId(partId); setShowTab(false); setLayout(null); }} onAdd={(notation, selectedInstrument) => {
+        const result = addScorePart(draftRef.current ?? rootScore!, notation, selectedInstrument);
+        draftRef.current = result.score; setDraftRoot(result.score); setActivePartId(result.partId);
+        setEditMode(true); setEditNotes(true); resetSelection(); setShowTab(false); setLayout(null);
+      }} />
+      {editMode && <div role="group" aria-label="악보 편집 적용과 저장" className="no-print sticky top-0 z-20 flex flex-wrap items-center gap-2 rounded-xl border border-line bg-surface p-3">
+        <p className="mr-auto text-sm text-ink-soft">{INSTRUMENT_LABELS[instrument]} 편집 중 · 저장하면 편집을 마칩니다.</p>
+        <Button type="button" variant="outline" disabled={saving} onClick={() => void applyEdits()} className="h-11 px-5">적용</Button>
+        <Button type="button" disabled={saving} onClick={() => void applyEdits(true)} className="h-11 px-5">저장</Button>
+      </div>}
+      <h2 className="text-sm font-semibold">{INSTRUMENT_LABELS[instrument]} 악보</h2>
       <ScoreView
         onHandle={(h) => {
           viewHandle.current = h;
@@ -333,18 +383,22 @@ export function ScoreClient({ id }: { id: string }) {
                     activeMarks={(score.marks ?? []).filter((m) => m.measure === curMeasure).map((m) => m.kind)}
                     onToggleMark={(k) => update({ marks: toggleMeasureMark(score, curMeasure, k).marks })}
                   />
-                  {curNote.midi !== null && <NoteChordEditor score={score} selected={selected} onChange={(chords) => update({ chords })} />}
+                  {curNote.midi !== null && <NoteChordEditor commitOnBlur score={score} selected={selected} onChange={(chords) => update({ chords })} />}
                 </>) : null,
               }
             : undefined
         }
       />
 
+      {getScoreParts(rootScore!).filter((part) => part.id !== activePartId).map((part) => <section key={part.id} aria-label={`${INSTRUMENT_LABELS[part.instrument]} 악보`} className="grid min-w-0 gap-2">
+        <h2 className="text-sm font-semibold">{INSTRUMENT_LABELS[part.instrument]} 악보</h2>
+        <ScoreView showHeader={false} xml={scoreToMusicXML(scoreForPart(rootScore!, part.id), part.notation === "piano" && part.accompaniment?.mode === "arpeggio" ? "piano" : "lead", { externalHeader: true })} />
+      </section>)}
       {!isDrums && showTab && <TabScoreView score={score} instrument={tabInstrument} />}
       <Dialog open={chordEditingBeat !== null} onOpenChange={(open) => { if (!open) setChordEditingBeat(null); }}>
         <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-lg">
           <DialogHeader><DialogTitle>코드 변경</DialogTitle><DialogDescription>선택한 위치의 코드 근음과 종류를 고르고 적용해 주세요.</DialogDescription></DialogHeader>
-          {chordEditingBeat !== null && <NoteChordEditor score={score} selected={null} startBeat={chordEditingBeat} onChange={(chords) => update({ chords })} />}
+          {chordEditingBeat !== null && <NoteChordEditor commitOnBlur score={score} selected={null} startBeat={chordEditingBeat} onChange={(chords) => update({ chords })} />}
         </DialogContent>
       </Dialog>
 
@@ -353,17 +407,13 @@ export function ScoreClient({ id }: { id: string }) {
           작곡
         </Button>
         <Button type="button" variant="outline" aria-pressed={editMode} aria-expanded={editMode} aria-controls="score-edit-mode-panel" onClick={() => {
-          clearPlayback(); setPlaying(false);
-          setEditMode((value) => !value);
-          setEditNotes(false); setSelected(null); setToolbarOpen(false); setChordEditingBeat(null);
-          setLyricsOpen(false); setAudioOpen(false);
-          if (compositionMode === "reharmonize") setCompositionMode(null);
+          enterEdit();
         }} className={`h-11 rounded-full px-4 text-sm lg:h-9 ${editMode ? "border-accent bg-accent/15 text-accent" : ""}`}>
           편집모드
         </Button>
         {compositionUndo && <Button type="button" variant="outline" disabled={compositionSignature(score) !== compositionUndo.expected} onClick={() => {
           clearPlayback(); setPlaying(false);
-          persist(compositionUndo.patch); setCompositionUndo(null); setSelected(null);
+          update(compositionUndo.patch); setCompositionUndo(null); setSelected(null);
           toast.success("작곡·리하모니 적용 전으로 되돌렸어요");
         }} className="h-11 rounded-full px-4 text-sm lg:h-9">작곡·리하모니 되돌리기</Button>}
       </div>
@@ -404,9 +454,10 @@ export function ScoreClient({ id }: { id: string }) {
         onClose={() => setCompositionMode(null)}
         onApply={async (patch) => {
           const before = { notes: score.notes, chords: score.chords, marks: score.marks, dynamics: score.dynamics };
-          const saved = await saveScore({ ...score, ...patch });
-          if (getScore(saved.id)?.updatedAt !== saved.updatedAt) {
-            throw new Error("악보를 저장하지 못했어요. 기기 저장 공간을 확인하고 다시 시도해 주세요.");
+          update(patch);
+          if (!editMode) {
+            const saved = await saveScore(updateScorePart(rootScore!, activePartId, patch));
+            if (getScore(saved.id)?.updatedAt !== saved.updatedAt) throw new Error("악보를 저장하지 못했어요.");
           }
           setCompositionUndo({ patch: before, expected: compositionSignature({ ...score, ...patch }) });
           setSelected(null); setToolbarOpen(false);
@@ -439,13 +490,18 @@ export function ScoreClient({ id }: { id: string }) {
       />
       {editMode && editNotes && !isDrums && (
         <>
+          {selected !== null && <div role="group" aria-label="붙임줄과 이음줄" className="no-print flex flex-wrap gap-2">
+            <Button type="button" variant="outline" disabled={!canTie(score.notes, selected)} aria-pressed={!!curNote?.tieToNext} onClick={() => update({ notes: score.notes.map((note, index) => index === selected ? { ...note, tieToNext: !note.tieToNext } : note) })} className="h-11 px-4">붙임줄</Button>
+            <Button type="button" variant="outline" disabled={curNote?.midi == null || score.notes[selected + 1]?.midi == null} aria-pressed={!!curNote?.slurToNext} onClick={() => update({ notes: score.notes.map((note, index) => index === selected ? { ...note, slurToNext: !note.slurToNext } : note) })} className="h-11 px-4">이음줄</Button>
+            <p className="self-center text-xs text-ink-soft">선택한 음과 다음 음을 연결합니다. 붙임줄은 연속한 같은 높이의 음에 사용해요.</p>
+          </div>}
           <NoteEditor score={score} onChange={(notes) => update({ notes })} selected={selected} onSelect={setSelected} sound={sound} />
-          {!toolbarOpen && <NoteChordEditor score={score} selected={selected} onChange={(chords) => update({ chords })} />}
+          {!toolbarOpen && <NoteChordEditor commitOnBlur score={score} selected={selected} onChange={(chords) => update({ chords })} />}
         </>
       )}
 
       {editMode && isDrums && editNotes && <DrumEditor score={score} onChange={(notes) => update({ notes })} onPreview={(midi) => sound.playNote(midi)} />}
-      {editMode && !isDrums && <ChordEditor score={score} onChange={(chords) => update({ chords })} />}
+      {editMode && !isDrums && <ChordEditor key={activePartId} commitOnBlur score={score} onChange={(chords) => update({ chords })} />}
 
       {/* 내보내기 */}
       <Card className="no-print gap-3 p-4">
@@ -457,7 +513,7 @@ export function ScoreClient({ id }: { id: string }) {
           <Button
             type="button"
             variant="outline"
-            onClick={() => exportFile(`${base}.musicxml`, scoreToMusicXML(score, layout), "application/vnd.recordare.musicxml+xml")}
+            onClick={() => exportFile(`${base}.musicxml`, scoreToMusicXML(rootScore!, layout), "application/vnd.recordare.musicxml+xml")}
             className="h-11 rounded-full px-4 lg:h-9"
           >
             <FileMusic aria-hidden /> MusicXML
@@ -479,7 +535,7 @@ export function ScoreClient({ id }: { id: string }) {
             <Button
               type="button"
               variant="outline"
-              onClick={() => exportFile(`${base}_${instrument}.mid`, scoreToMidi(score, { melodyInstrument: instrument }), "audio/midi")}
+              onClick={() => exportFile(`${base}_${instrument}.mid`, scoreToMidi(rootScore!, { melodyInstrument: activePartId === MAIN_PART_ID ? instrument : rootScore!.instrument }), "audio/midi")}
               className="h-11 rounded-full border-accent px-4 text-accent hover:bg-accent/10 hover:text-accent lg:h-9"
             >
               <Download aria-hidden /> MIDI
@@ -534,6 +590,9 @@ export function ScoreClient({ id }: { id: string }) {
         </div>
       </div>
       <div className="h-44" />
+      <div className="score-export" aria-hidden="true">
+        <ScoreView showHeader printLayout xml={scoreToMusicXML(rootScore!, "piano")} onHandle={(handle) => { exportHandle.current = handle; }} />
+      </div>
     </div>
   );
 }

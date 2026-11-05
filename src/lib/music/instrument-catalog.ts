@@ -55,6 +55,7 @@ export const ORCHESTRA_GROUPS = [
   { id: "timpani", label: "팀파니", instruments: ["timpani", "timpaniRoll"] },
   { id: "percussion", label: "타악기", instruments: ["orchestralSnare", "orchestralBassDrum", "orchestralCymbal", "triangle", "glockenspiel", "xylophone", "marimba", "vibraphone", "celesta"] },
   { id: "harp", label: "하프", instruments: ["harp"] },
+  { id: "voices", label: "보컬·합창", instruments: ["choir"] },
 ] as const satisfies readonly { id: string; label: string; instruments: readonly InstrumentId[] }[];
 
 export const INSTRUMENT_ORDER = Object.keys(GM_INSTRUMENTS) as InstrumentId[];

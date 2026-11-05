@@ -61,11 +61,14 @@ test("기타 4종은 실제 지판으로 바뀌고 피아노·TAB 보기와 6줄
     await expect(fretboard.locator("button[data-string][data-fret]")).toHaveCount((bass ? 4 : 6) * 7);
     await activate(fretboard.locator('button[data-string="1"][data-fret="0"]'), touch);
   }
-  await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem("humscore.keysDraft") ?? "null")?.notes?.map((note: { midi: number }) => note.midi))).toEqual([64, 64, 64, 43]);
+  await expect.poll(() => page.evaluate(() => {
+    const draft = JSON.parse(localStorage.getItem("humscore.keysDraft") ?? "null");
+    return [draft?.notes?.map((note: { midi: number }) => note.midi), ...draft?.parts?.map((part: { notes: { midi: number }[] }) => part.notes.map((note) => note.midi))];
+  })).toEqual([[64], [64], [64], [43]]);
   await expect(tab).toBeVisible();
   await expect(tab.getByRole("heading")).toContainText("베이스");
-  await expect(tab.getByTestId("tab-note")).toHaveCount(4);
-  const normal = page.locator(".score-sheet");
+  await expect(tab.getByTestId("tab-note")).toHaveCount(1);
+  const normal = page.locator(".score-sheet").first();
   const normalBox = await normal.boundingBox();
   const tabBox = await tab.boundingBox();
   expect(tabBox!.y).toBeGreaterThan(normalBox!.y + normalBox!.height - 1);
@@ -132,12 +135,14 @@ test("저장된 악보의 코드를 직접 바꾸고 TAB를 일반 악보 아래
   await dialog.getByLabel("코드 종류", { exact: true }).selectOption("7");
   await dialog.getByRole("button", { name: "음표에 코드 적용", exact: true }).click();
   await page.keyboard.press("Escape");
+  await page.getByRole("group", { name: "악보 편집 적용과 저장", exact: true }).getByRole("button", { name: "적용", exact: true }).click();
   await expect.poll(async () => (await savedScores(page)).find((score) => score.id === id)?.chords.find((event) => event.startBeat === 0)?.symbol).toBe("G7");
   await activate(page.locator(".score-sheet:visible .vf-stavenote .vf-notehead").nth(1), testInfo.project.name === "mobile");
   await expect(page.getByLabel("코드 근음", { exact: true })).toBeVisible();
   await page.getByLabel("코드 근음", { exact: true }).selectOption("F");
   await page.getByLabel("코드 종류", { exact: true }).selectOption("m7");
   await page.getByRole("button", { name: "음표에 코드 적용", exact: true }).click();
+  await page.getByRole("group", { name: "악보 편집 적용과 저장", exact: true }).getByRole("button", { name: "적용", exact: true }).click();
   await expect.poll(async () => (await savedScores(page)).find((score) => score.id === id)?.chords.find((event) => event.startBeat === 1)?.symbol).toBe("Fm7");
   await page.screenshot({ path: `.nomad/task-024-note-editor-${testInfo.project.name}.png`, fullPage: false });
   await page.getByRole("button", { name: "편집 도구 닫기", exact: true }).click();

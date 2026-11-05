@@ -1,3 +1,6 @@
+import { getScoreParts, scoreForPart } from "./parts";
+import { buildPlaybackPlan } from "./playback-plan";
+import { mergeTiedNotes } from "./articulation";
 import { Midi } from "@tonejs/midi";
 import { buildAccompanimentNotes } from "./accompaniment";
 import { chordToMidi, transposeChordSymbol, transposeKey } from "./theory";
@@ -33,9 +36,60 @@ export function latin1AsUtf8(text: string): string {
   return new TextDecoder().decode(bytes);
 }
 
+/** 15개를 넘는 선율 트랙은 MIDI port 메타 이벤트로 분리한다(10번 채널은 타악기). */
+function withMidiPorts(bytes: Uint8Array, ports: readonly number[]): Uint8Array {
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  const headerEnd = 8 + view.getUint32(4);
+  const chunks: Uint8Array[] = [bytes.slice(0, headerEnd)];
+  let position = headerEnd, trackIndex = 0;
+  while (position + 8 <= bytes.length) {
+    const length = view.getUint32(position + 4);
+    const track = bytes.slice(position, position + 8 + length);
+    const port = trackIndex++ === 0 ? 0 : ports[trackIndex - 2] ?? 0;
+    const expanded = new Uint8Array(track.length + 5);
+    expanded.set(track.slice(0, 8));
+    new DataView(expanded.buffer).setUint32(4, length + 5);
+    expanded.set([0, 0xff, 0x21, 1, port], 8);
+    expanded.set(track.slice(8), 13);
+    chunks.push(expanded);
+    position += 8 + length;
+  }
+  const output = new Uint8Array(chunks.reduce((sum, chunk) => sum + chunk.length, 0));
+  let offset = 0;
+  for (const chunk of chunks) { output.set(chunk, offset); offset += chunk.length; }
+  return output;
+}
+
 export function scoreToMidi(source: Score, opts: MidiExportOptions = {}): Uint8Array {
+  if (source.parts?.length) {
+    const combined = new Midi();
+    combined.header.setTempo(source.bpm);
+    const ts = timeSignatureOf(source);
+    combined.header.timeSignatures.push({ ticks: 0, timeSignature: [ts.beats, ts.beatType] });
+    combined.header.name = utf8AsLatin1(source.title);
+    const plan = buildPlaybackPlan(source);
+    let channel = 0;
+    const ports: number[] = [];
+    getScoreParts(source).forEach((part, index) => {
+      const single = scoreForPart(source, part.id);
+      const timeline = index === 0 ? plan : plan.parts![index - 1];
+      const data = new Midi(scoreToMidi({ ...single, notes: timeline.notes, chords: timeline.chords, dynamics: timeline.dynamics, marks: [] }, { ...opts, melodyInstrument: index === 0 ? opts.melodyInstrument : part.instrument, withChords: part.notation === "piano" && opts.withChords !== false }));
+      for (const input of data.tracks) {
+        const track = combined.addTrack();
+        track.name = utf8AsLatin1(part.instrument) + " " + input.name;
+        if (input.channel === 9) { track.channel = 9; ports.push(0); }
+        else {
+          ports.push(Math.floor(channel / 15));
+          track.channel = [0, 1, 2, 3, 4, 5, 6, 7, 8, 10, 11, 12, 13, 14, 15][channel++ % 15];
+        }
+        track.instrument.number = input.instrument.number;
+        for (const note of input.notes) track.addNote({ midi: note.midi, time: note.time, duration: note.duration, velocity: note.velocity });
+      }
+    });
+    return withMidiPorts(combined.toArray(), ports);
+  }
   const score = unrollScore(source); // 도돌이표·D.C./D.S. 를 펼친 타임라인
-  const { melodyInstrument = score.instrument ?? "piano", withChords = true, chordInstrument = "piano" } = opts;
+  const { melodyInstrument = score.instrument ?? "piano", withChords = score.notation === undefined || score.notation === "piano", chordInstrument = "piano" } = opts;
   const percussionNote = ORCHESTRAL_DRUM_NOTES[melodyInstrument];
   const drums = score.notation === "drums" || score.instrument === "drumKit" || melodyInstrument === "drumKit" || percussionNote !== undefined;
   const midi = new Midi();
@@ -52,7 +106,7 @@ export function scoreToMidi(source: Score, opts: MidiExportOptions = {}): Uint8A
   melody.channel = drums ? 9 : 0;
   melody.instrument.number = GM_INSTRUMENTS[drums ? "drumKit" : melodyInstrument];
   const hasDynamics = (score.dynamics?.length ?? 0) > 0;
-  for (const n of score.notes) {
+  for (const n of mergeTiedNotes(score.notes)) {
     if (n.midi === null) continue;
     // 셈여림이 없으면 기본 0.85, 있으면 mf 를 0.85 로 두고 비례
     const velocity = hasDynamics ? Math.min(1, (velocityAt(score.dynamics, n.startBeat) / DYNAMIC_VELOCITY.mf) * 0.85) : 0.85;

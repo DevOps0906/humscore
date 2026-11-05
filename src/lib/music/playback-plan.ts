@@ -3,6 +3,7 @@ import { hairpinTargets, levelAt } from "./dynamics";
 import { measureOf, scoreMeasureCount } from "./edit";
 import { measureOrder, unrollScore } from "./form";
 import type { ChordEvent, DynamicEvent, KeyInfo, Score } from "./types";
+import { getScoreParts, scoreForPart } from "./parts";
 
 const EPS = 1e-6;
 
@@ -16,6 +17,8 @@ export interface PlaybackRange {
 }
 
 export interface PlannedNote {
+  tieToNext?: boolean;
+  slurToNext?: boolean;
   /** 계획 시작부터의 박 */
   startBeat: number;
   durationBeats: number;
@@ -26,6 +29,8 @@ export interface PlannedNote {
 }
 
 export interface PlaybackPlan {
+  /** 첫 파트와 같은 곡 타임라인을 사용하는 추가 악기 파트. */
+  parts?: PlaybackPlan[];
   accompaniment?: Score["accompaniment"];
   notation?: Score["notation"];
   instrument?: Score["instrument"];
@@ -91,8 +96,20 @@ function buildCursor(notes: PlannedNote[]): PlaybackPlan["cursor"] {
  * range 있으면 A→B 를 한 번(구간 안 도돌이표·D.C. 무시), B 끝을 넘는 음은 자르고 첫 박 코드·셈여림을 보충한다.
  */
 export function buildPlaybackPlan(score: Score, range?: PlaybackRange): PlaybackPlan {
+  if (score.parts?.length) {
+    const measures = scoreMeasureCount(score);
+    const order = measureOrder(score);
+    const normalizedRange = range ? clampRange(score, range) : undefined;
+    const plans = getScoreParts(score).map((part) => buildSinglePlaybackPlan(scoreForPart(score, part.id), normalizedRange, { measures, order }));
+    const totalBeats = Math.max(...plans.map((plan) => plan.totalBeats));
+    return { ...plans[0], totalBeats, parts: plans.slice(1).map((plan) => ({ ...plan, totalBeats })) };
+  }
+  return buildSinglePlaybackPlan(score, range);
+}
+
+function buildSinglePlaybackPlan(score: Score, range?: PlaybackRange, timeline?: { measures: number; order: readonly number[] }): PlaybackPlan {
   const bpm = score.beatsPerMeasure;
-  const total = scoreMeasureCount(score);
+  const total = timeline?.measures ?? scoreMeasureCount(score);
   const inMeasure = (beat: number, m: number) => Math.min(total - 1, measureOf(beat, bpm)) === m;
   const base = { bpm: score.bpm, beatsPerMeasure: bpm, transpose: score.transpose, key: score.key,
     ...(score.accompaniment ? { accompaniment: score.accompaniment } : {}),
@@ -101,11 +118,11 @@ export function buildPlaybackPlan(score: Score, range?: PlaybackRange): Playback
   };
 
   if (!range) {
-    const unrolled = unrollScore(score);
+    const unrolled = unrollScore(score, timeline);
     // unrollScore 와 같은 순회로 원본 인덱스를 얻는다(마디 순서 × 원본 음 순서)
     const srcs: number[] = [];
-    for (const m of measureOrder(score)) score.notes.forEach((n, i) => inMeasure(n.startBeat, m) && srcs.push(i));
-    const notes = unrolled.notes.map((n, k) => ({ startBeat: n.startBeat, durationBeats: n.durationBeats, midi: n.midi, noteIndex: srcs[k] }));
+    for (const m of timeline?.order ?? measureOrder(score)) score.notes.forEach((n, i) => inMeasure(n.startBeat, m) && srcs.push(i));
+    const notes = unrolled.notes.map((n, k) => ({ startBeat: n.startBeat, durationBeats: n.durationBeats, midi: n.midi, tieToNext: n.tieToNext, slurToNext: n.slurToNext, noteIndex: srcs[k] }));
     return {
       ...base,
       notes,
@@ -117,7 +134,7 @@ export function buildPlaybackPlan(score: Score, range?: PlaybackRange): Playback
     };
   }
 
-  const r = clampRange(score, range);
+  const r = timeline ? range : clampRange(score, range);
   const a = r.startMeasure - 1;
   const b = r.endMeasure - 1;
   const from = a * bpm;
@@ -130,7 +147,7 @@ export function buildPlaybackPlan(score: Score, range?: PlaybackRange): Playback
   const notes: PlannedNote[] = [];
   score.notes.forEach((n, i) => {
     if (!inRange(n.startBeat)) return;
-    notes.push({ startBeat: n.startBeat - from, durationBeats: Math.min(n.durationBeats, to - n.startBeat), midi: n.midi, noteIndex: i });
+    notes.push({ startBeat: n.startBeat - from, durationBeats: Math.min(n.durationBeats, to - n.startBeat), midi: n.midi, tieToNext: n.tieToNext, slurToNext: n.slurToNext, noteIndex: i });
   });
 
   const chords: ChordEvent[] = score.chords.filter((c) => inRange(c.startBeat)).map((c) => ({ ...c, startBeat: c.startBeat - from }));
