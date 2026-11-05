@@ -13,7 +13,7 @@ async function activate(target: Locator, touch: boolean) {
 
 test("작곡하기는 건반에서 바로 열리고 취소·저장·새로고침 뒤 다시 사용해도 악보를 중복 생성하지 않는다", async ({ page }) => {
   await openKeysInput(page);
-  await expect(page.getByRole("heading", { name: "건반으로 악보생성", exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "피아노로 악보생성", exact: true })).toBeVisible();
   await expect(page.getByText(/f = 440/)).toHaveCount(0);
   const button = page.getByRole("button", { name: "작곡하기", exact: true });
   const dialog = page.getByRole("dialog");

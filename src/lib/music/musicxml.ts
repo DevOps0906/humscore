@@ -7,6 +7,7 @@ import { hasUnmatchedRepeatStart } from "./form";
 import { lyricForVerse, lyricText, syllabicOf, type Syllabic } from "./lyrics";
 import type { MeasureMarkKind, Score } from "./types";
 import { DRUM_PIECES, drumPiece } from "./drums";
+import { GM_INSTRUMENTS, INSTRUMENT_LABELS, ORCHESTRAL_DRUM_NOTES, type InstrumentId } from "./instrument-catalog";
 
 /**
  * Score → MusicXML 4.0
@@ -177,13 +178,19 @@ export interface MusicXmlOptions {
 
 /** 서로 다른 드럼은 독립 성부로 출력하여 같은 박의 타격을 유지한다. */
 function drumMusicXML(score: Score, opts: MusicXmlOptions): string {
+  // 트라이앵글은 드럼 입력 레인을 늘리지 않고 오케스트라의 독립 파트로 표기한다.
+  const percussionPiece = (midi: number) => midi === 81
+    ? { label: INSTRUMENT_LABELS.triangle, staffStep: "E", staffOctave: 5, head: "x" }
+    : drumPiece(midi);
+  const partName = score.instrument && ORCHESTRAL_DRUM_NOTES[score.instrument] !== undefined
+    ? INSTRUMENT_LABELS[score.instrument] : "드럼";
   const beats = score.beatsPerMeasure;
   const ts = timeSignatureOf(score);
   const measures = Math.max(scoreMeasureCount(score), opts.minMeasures ?? 1);
   const perSystem = opts.measuresPerSystem ?? 4;
   const external = opts.externalHeader === true;
   const midis = [...new Set(score.notes.flatMap((note) => note.midi === null ? [] : [note.midi]))].sort((a, b) => a - b);
-  if (!midis.length) midis.push(DRUM_PIECES[0].midi);
+  if (!midis.length) midis.push((score.instrument ? ORCHESTRAL_DRUM_NOTES[score.instrument] : undefined) ?? DRUM_PIECES[0].midi);
   const lanes = midis.map((midi) => {
     const notes = score.notes.filter((note) => note.midi === midi).slice().sort((a, b) => a.startBeat - b.startBeat);
     // 같은 북의 재타격은 이전 소리의 끝을 잘라 표기하되 타격 시점을 뒤로 밀지 않는다.
@@ -208,7 +215,7 @@ function drumMusicXML(score: Score, opts: MusicXmlOptions): string {
     const silentMeasure = !score.notes.some((note) => note.midi !== null && note.startBeat < (measure + 1) * beats && note.startBeat + note.durationBeats > measure * beats);
     lanes.forEach((lane, index) => {
       if (index > 0) elements.push(`<backup><duration>${beats * DIVISIONS}</duration></backup>`);
-      const piece = drumPiece(lane.midi);
+      const piece = percussionPiece(lane.midi);
       for (const note of lane.pieces.filter((note) => note.measure === measure)) {
         const rest = note.midi === null;
         const hiddenRest = rest && !(index === 0 && silentMeasure);
@@ -224,13 +231,15 @@ function drumMusicXML(score: Score, opts: MusicXmlOptions): string {
     if (repeatEnd || measure === measures - 1) elements.push(`<barline location="right"><bar-style>light-heavy</bar-style>${repeatEnd ? `<repeat direction="backward"/>` : ""}</barline>`);
     body.push(`<measure number="${measure + 1}">${elements.join("")}</measure>`);
   }
-  const instruments = midis.map((midi) => `<score-instrument id="D${midi}"><instrument-name>${esc(drumPiece(midi)?.label ?? `드럼 ${midi}`)}</instrument-name></score-instrument>`).join("");
+  const instruments = midis.map((midi) => `<score-instrument id="D${midi}"><instrument-name>${esc(partName === "드럼" ? percussionPiece(midi)?.label ?? `드럼 ${midi}` : partName)}</instrument-name></score-instrument>`).join("");
   const midi = midis.map((midi) => `<midi-instrument id="D${midi}"><midi-channel>10</midi-channel><midi-unpitched>${midi + 1}</midi-unpitched></midi-instrument>`).join("");
   const creators = external ? "" : (["composer", "lyricist", "arranger"] as const).map((kind) => score[kind]?.trim() ? `<creator type="${kind}">${esc(score[kind]!)}</creator>` : "").join("");
-  return `<?xml version="1.0" encoding="UTF-8"?>\n<score-partwise version="4.0">${external ? "" : `<work><work-title>${esc(score.title)}</work-title></work>`}<identification>${creators}<encoding><software>HumScore</software></encoding></identification><part-list><score-part id="P1"><part-name>드럼</part-name>${instruments}${midi}</score-part></part-list><part id="P1">${body.join("")}</part></score-partwise>`;
+  return `<?xml version="1.0" encoding="UTF-8"?>\n<score-partwise version="4.0">${external ? "" : `<work><work-title>${esc(score.title)}</work-title></work>`}<identification>${creators}<encoding><software>HumScore</software></encoding></identification><part-list><score-part id="P1"><part-name>${esc(partName)}</part-name>${instruments}${midi}</score-part></part-list><part id="P1">${body.join("")}</part></score-partwise>`;
 }
 
 export function scoreToMusicXML(score: Score, layout: ScoreLayout = "lead", opts: MusicXmlOptions = {}): string {
+  const percussionNote = score.instrument ? ORCHESTRAL_DRUM_NOTES[score.instrument] : undefined;
+  if (percussionNote !== undefined) return drumMusicXML({ ...score, transpose: 0, chords: [], notes: score.notes.map((note) => ({ ...note, midi: note.midi === null ? null : percussionNote })) }, opts);
   if (score.notation === "drums" || score.instrument === "drumKit") return drumMusicXML(score, opts);
   const tp = score.transpose;
   const key = transposeKey(score.key, tp);
@@ -401,13 +410,18 @@ export function scoreToMusicXML(score: Score, layout: ScoreLayout = "lead", opts
   };
   const creators = creator("lyricist", score.lyricist) + creator("composer", score.composer) + creator("arranger", score.arranger);
   const workTitle = external ? "" : `<work><work-title>${esc(score.title)}</work-title></work>`;
-  // 멜로디 한 줄이면 라벨 숨김, 대보표면 위 보표 Melody · 아래 보표 Piano 를 각자 파트로 표기
+  const instrumentMetadata = (id: string, instrument: InstrumentId, channel: number) =>
+    `<score-instrument id="${id}"><instrument-name>${esc(INSTRUMENT_LABELS[instrument])}</instrument-name></score-instrument>` +
+    `<midi-instrument id="${id}"><midi-channel>${channel}</midi-channel><midi-program>${GM_INSTRUMENTS[instrument] + 1}</midi-program></midi-instrument>`;
+  const melodyName = score.instrument ? esc(INSTRUMENT_LABELS[score.instrument]) : "Melody";
+  const melodyMetadata = instrumentMetadata("P1-I1", score.instrument ?? "piano", 1);
+  // 멜로디 한 줄이면 라벨 숨김. 음색 메타데이터는 외부 MusicXML 재생기에도 전달한다.
   const scoreParts = piano
     ? `<part-group type="start" number="1"><group-symbol>brace</group-symbol><group-barline>yes</group-barline></part-group>` +
-      `<score-part id="P1"><part-name>Melody</part-name><part-abbreviation>Mel.</part-abbreviation></score-part>` +
-      `<score-part id="P2"><part-name>Piano</part-name><part-abbreviation>Pno.</part-abbreviation></score-part>` +
+      `<score-part id="P1"><part-name>${melodyName}</part-name><part-abbreviation>Mel.</part-abbreviation>${melodyMetadata}</score-part>` +
+      `<score-part id="P2"><part-name>Piano</part-name><part-abbreviation>Pno.</part-abbreviation>${instrumentMetadata("P2-I1", "piano", 2)}</score-part>` +
       `<part-group type="stop" number="1"/>`
-    : `<score-part id="P1"><part-name print-object="no">Melody</part-name><part-abbreviation print-object="no">Mel.</part-abbreviation></score-part>`;
+    : `<score-part id="P1"><part-name print-object="no">${melodyName}</part-name><part-abbreviation print-object="no">Mel.</part-abbreviation>${melodyMetadata}</score-part>`;
   const lowerPart = piano ? `\n<part id="P2">${bodyLower.join("\n")}</part>` : "";
 
   return `<?xml version="1.0" encoding="UTF-8"?>

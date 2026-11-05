@@ -10,6 +10,7 @@ import type { Score } from "@/lib/music/types";
 
 const LABELS: Record<GuitarInstrumentId, string> = {
   classicalGuitar: "클래식 기타", acousticGuitar: "통기타", electricGuitar: "일렉 기타", bassGuitar: "베이스 기타",
+  bassGuitar5: "베이스기타(5현)",
 };
 
 /** 같은 Score의 실제 음높이를 기타 줄·프렛으로 표시한다. 범위 밖 음은 옥타브를 바꾸지 않는다. */

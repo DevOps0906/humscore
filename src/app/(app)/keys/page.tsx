@@ -156,7 +156,7 @@ function KeysPageInner() {
   const pianoSounds: readonly InstrumentId[] = [...ACOUSTIC_PIANOS, ...ELECTRIC_PIANOS, ...SYNTH_INSTRUMENTS];
   const inputInstrument: InstrumentId = creationMode === "drums" ? "drumKit"
     : creationMode === "guitarTab" ? isGuitarInstrument(instrument) ? instrument : "acousticGuitar"
-    : creationMode === "orchestra" ? ORCHESTRA_GROUPS.some((group) => group.instruments.includes(instrument)) ? instrument : ORCHESTRA_GROUPS[0].instruments[0]
+    : creationMode === "orchestra" ? ORCHESTRA_GROUPS.some((group) => (group.instruments as readonly InstrumentId[]).includes(instrument)) ? instrument : ORCHESTRA_GROUPS[0].instruments[0]
     : pianoSounds.includes(instrument) ? instrument : "piano";
   const guitar = creationMode === "guitarTab" && isGuitarInstrument(inputInstrument) ? inputInstrument : null;
   const drums = creationMode === "drums";
@@ -221,7 +221,7 @@ function KeysPageInner() {
       setLoaded(true);
     }, 0);
     return () => clearTimeout(t);
-  }, []);
+  }, [setInstrument]);
   useEffect(() => {
     if (!loaded) return;
     try {
@@ -380,7 +380,7 @@ function KeysPageInner() {
     <div className="flex flex-col gap-5">
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-medium">{drums ? "드럼으로 악보생성" : creationMode === "guitarTab" ? "기타TAB로 악보생성" : creationMode === "orchestra" ? "오케스트라 악보생성" : "건반으로 악보생성"}</h1>
+          <h1 className="text-2xl font-medium">{drums ? "드럼으로 악보생성" : creationMode === "guitarTab" ? "기타TAB로 악보생성" : creationMode === "orchestra" ? "오케스트라로 악보생성" : "피아노로 악보생성"}</h1>
         </div>
         <div className="flex w-full min-w-0 max-w-full flex-wrap items-center justify-end gap-2 sm:w-auto">
         <Button

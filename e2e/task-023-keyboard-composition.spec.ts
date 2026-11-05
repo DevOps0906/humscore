@@ -22,7 +22,7 @@ async function openEmptySavedComposer(page: Page): Promise<string> {
 
 test("악보생성 문구와 BPM 아래 코드 수정은 새로고침·악보 저장 후에도 유지된다", async ({ page }) => {
   await openKeysInput(page);
-  await expect(page.getByRole("heading", { name: "건반으로 악보생성", exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "피아노로 악보생성", exact: true })).toBeVisible();
   for (const key of ["a", "s", "d", "f"]) await page.keyboard.press(key);
   await page.getByRole("button", { name: "입력 마치기", exact: true }).click();
   await page.getByRole("button", { name: "악보 편집", exact: true }).click();

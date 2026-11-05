@@ -4,7 +4,7 @@ import { timeSignatureOf } from "./meter";
 import { DYNAMIC_VELOCITY, velocityAt } from "./dynamics";
 import { unrollScore } from "./form";
 import type { Score } from "./types";
-import { GM_INSTRUMENTS, type InstrumentId } from "./instrument-catalog";
+import { GM_INSTRUMENTS, ORCHESTRAL_DRUM_NOTES, type InstrumentId } from "./instrument-catalog";
 
 export { GM_INSTRUMENTS, type InstrumentId } from "./instrument-catalog";
 
@@ -35,7 +35,8 @@ export function latin1AsUtf8(text: string): string {
 export function scoreToMidi(source: Score, opts: MidiExportOptions = {}): Uint8Array {
   const score = unrollScore(source); // 도돌이표·D.C./D.S. 를 펼친 타임라인
   const { melodyInstrument = score.instrument ?? "piano", withChords = true, chordInstrument = "piano" } = opts;
-  const drums = score.notation === "drums" || score.instrument === "drumKit" || melodyInstrument === "drumKit";
+  const percussionNote = ORCHESTRAL_DRUM_NOTES[melodyInstrument];
+  const drums = score.notation === "drums" || score.instrument === "drumKit" || melodyInstrument === "drumKit" || percussionNote !== undefined;
   const midi = new Midi();
   midi.header.setTempo(score.bpm);
   const ts = timeSignatureOf(score);
@@ -54,7 +55,7 @@ export function scoreToMidi(source: Score, opts: MidiExportOptions = {}): Uint8A
     if (n.midi === null) continue;
     // 셈여림이 없으면 기본 0.85, 있으면 mf 를 0.85 로 두고 비례
     const velocity = hasDynamics ? Math.min(1, (velocityAt(score.dynamics, n.startBeat) / DYNAMIC_VELOCITY.mf) * 0.85) : 0.85;
-    melody.addNote({ midi: n.midi + tp, time: n.startBeat * spb, duration: n.durationBeats * spb, velocity });
+    melody.addNote({ midi: percussionNote ?? n.midi + tp, time: n.startBeat * spb, duration: n.durationBeats * spb, velocity });
   }
 
   if (!drums && withChords && score.chords.length) {
