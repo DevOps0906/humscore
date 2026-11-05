@@ -60,13 +60,13 @@ test("작곡 2-5-1 후보를 저장하기로 확정하면 새로고침 후에도
   await save.click();
   await expect(dialog).toHaveCount(0);
   await page.reload();
-  await expect(page.locator(".score-sheet svg .vf-measure")).toHaveCount(8, { timeout: 20_000 });
+  await expect(page.locator(".score-sheet:not(.score-export .score-sheet) svg .vf-measure")).toHaveCount(8, { timeout: 20_000 });
   const saved = await storedScore(page, id);
   expect(saved.chords.map((chord) => chord.symbol)).toEqual(["Dm7", "G7", "Cmaj7", "Cmaj7", "Dm7", "G7", "Cmaj7", "Cmaj7"]);
   expect(saved.notes.at(-1)!.startBeat + saved.notes.at(-1)!.durationBeats).toBe(32);
   await page.setViewportSize({ width: 390, height: 1000 });
   await expect(async () => {
-    const boxes = await page.locator(".score-sheet svg .vf-measure").evaluateAll((elements) => elements.map((element) => {
+    const boxes = await page.locator(".score-sheet:not(.score-export .score-sheet) svg .vf-measure").evaluateAll((elements) => elements.map((element) => {
       const box = element.getBoundingClientRect();
       const staff = element.querySelector(":scope > path")!.getBoundingClientRect();
       return { x: box.x, y: staff.y, right: box.right };
@@ -102,7 +102,7 @@ test("작곡 저장 실패는 후보 창을 유지하고 다시 저장할 수 �
   await dialog.getByRole("button", { name: "저장하기", exact: true }).click();
   await expect(dialog).toHaveCount(0);
   await page.reload();
-  const measures = page.locator(".score-sheet svg .vf-measure");
+  const measures = page.locator(".score-sheet:not(.score-export .score-sheet) svg .vf-measure");
   await expect(measures).toHaveCount(5, { timeout: 20_000 });
   await expect(async () => {
     const boxes = await measures.evaluateAll((elements) => elements.map((element) => {
@@ -112,13 +112,14 @@ test("작곡 저장 실패는 후보 창을 유지하고 다시 저장할 수 �
     }));
     expect(boxes[4].y).toBeGreaterThan(boxes[0].y + 20);
     expect(Math.abs(boxes[4].x - boxes[0].x)).toBeLessThan(5);
-    expect(Math.abs(boxes[4].right - boxes[3].right)).toBeLessThan(5);
+    // 마지막 줄이 한 마디뿐이면 줄 전체로 늘리지 않는다(task-030 이후 동작)
+    expect(boxes[4].right).toBeLessThanOrEqual(boxes[3].right + 5);
   }).toPass({ timeout: 15_000 });
 });
 
 test("8마디 악보는 세 화면 크기에서 4마디씩 두 줄이며 두 번째 줄도 폭을 채운다", async ({ page }, testInfo) => {
   await openKeysInput(page);
-  const measures = page.locator(".score-sheet svg .vf-measure");
+  const measures = page.locator(".score-sheet:not(.score-export .score-sheet) svg .vf-measure");
   for (const width of [390, 900, 1440]) {
     await page.setViewportSize({ width, height: 1000 });
     await expect(measures).toHaveCount(8, { timeout: 20_000 });
@@ -135,7 +136,8 @@ test("8마디 악보는 세 화면 크기에서 4마디씩 두 줄이며 두 번
       expect(Math.abs(boxes[7].right - boxes[3].right)).toBeLessThan(5);
       expect(Math.abs(boxes[4].x - boxes[0].x)).toBeLessThan(5);
       const paper = await page.locator(".score-sheet").boundingBox();
-      expect(Math.abs(paper!.x + paper!.width - boxes[7].right)).toBeLessThan(35);
+      // 악보는 종이 안에서 가운데 정렬되므로 좌우 여백이 비슷해야 한다
+      expect(Math.abs((boxes[0].x - paper!.x) - (paper!.x + paper!.width - boxes[7].right))).toBeLessThan(35);
     }).toPass({ timeout: 15_000 });
     await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     await page.screenshot({ path: `.nomad/task-023-layout-${testInfo.project.name}-${width}.png`, fullPage: true });

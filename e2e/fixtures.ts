@@ -55,6 +55,12 @@ export async function createScoreViaKeys(page: Page): Promise<string> {
   // 제목 대화상자: 기본 제목으로 저장
   await page.getByRole("dialog").getByRole("button", { name: "저장", exact: true }).click();
   await page.waitForURL(/\/scores\/[^/]+$/);
+  // 새 악보는 편집 모드로 열리므로, 편집을 마쳐야 이후 수정이 바로 저장되는 보기 모드가 된다.
+  const editBar = page.getByRole("group", { name: "악보 편집 적용과 저장" });
+  if (await editBar.waitFor({ state: "visible", timeout: 3000 }).then(() => true, () => false)) {
+    await editBar.getByRole("button", { name: "저장", exact: true }).click();
+    await expect(editBar).toHaveCount(0);
+  }
   return page.url().split("/scores/")[1];
 }
 

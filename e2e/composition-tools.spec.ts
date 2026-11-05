@@ -16,6 +16,10 @@ async function createScoreViaKeys(page: Page): Promise<string> {
 }
 
 async function storedScore(page: Page, id: string): Promise<Score> {
+  // 편집모드의 수정은 초안이므로, 저장된 값을 보기 전에 '적용'으로 반영한다.
+  const bar = page.getByRole("group", { name: "악보 편집 적용과 저장" });
+  const apply = bar.getByRole("button", { name: "적용", exact: true });
+  if (await bar.isVisible() && await apply.isEnabled()) { await apply.click(); await page.waitForTimeout(300); }
   return page.evaluate((scoreId) => {
     const scores = JSON.parse(localStorage.getItem("humscore.scores.v1") ?? "[]");
     return scores.find((score: { id: string }) => score.id === scoreId);
@@ -124,7 +128,7 @@ test("작곡: 후보는 저장하지 않고, 2마디 추가·되돌리기·명�
   await dialog.getByRole("button", { name: "멜로디 후보 만들기", exact: true }).click();
   await dialog.getByRole("button", { name: "기존 음표를 바꾸고 적용", exact: true }).click();
   await page.reload();
-  await expect(page.locator(".score-sheet svg .vf-measure")).toHaveCount(2, { timeout: 20_000 });
+  await expect(page.locator(".score-sheet:not(.score-export .score-sheet) svg .vf-measure")).toHaveCount(2, { timeout: 20_000 });
   const replaced = await storedScore(page, id);
   expect(Math.max(...replaced.notes.map((note) => note.startBeat + note.durationBeats))).toBe(8);
   expect(replaced.notes.some((note) => note.lyric || note.lyrics)).toBe(false);

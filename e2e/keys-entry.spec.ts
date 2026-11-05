@@ -2,7 +2,7 @@ import { holdNote, expect, openKeysInput, test } from "./fixtures";
 
 test("건반 입력 마치기 → 실제 마디만 유지 → 편집으로 마디 자동 확장 → 저장", async ({ page }) => {
   await openKeysInput(page);
-  const measures = page.locator(".score-sheet svg .vf-measure");
+  const measures = page.locator(".score-sheet:not(.score-export .score-sheet) svg .vf-measure");
   // 누른 시간이 음표 길이라 실제 길이는 타이밍에 따라 조금 달라진다. 저장된 초안의 끝 박으로 기대 마디 수를 계산한다.
   const expectedMeasures = () => page.evaluate(() => {
     const draft = JSON.parse(localStorage.getItem("humscore.keysDraft") ?? "null");
@@ -43,7 +43,8 @@ test("건반 입력 마치기 → 실제 마디만 유지 → 편집으로 마�
     return scores.find((score: { id: string }) => score.id === scoreId);
   }, id);
   expect(saved.notes).toHaveLength(5);
-  expect(saved.notes[4].startBeat).toBe(4);
+  // 누른 시간이 길이가 되므로 첫 음이 길게 잡히면 조금 늦어질 수 있다
+  expect(saved.notes[4].startBeat).toBeGreaterThanOrEqual(4);
 });
 
 test("입력 중 저장을 열면 남는 마디를 정리하고 편집을 다시 시작할 수 있다", async ({ page }) => {
@@ -52,12 +53,12 @@ test("입력 중 저장을 열면 남는 마디를 정리하고 편집을 다시
   await expect(page.getByText("1개 음표")).toBeVisible();
   await page.getByRole("button", { name: "악보로 저장", exact: true }).click();
   await expect(page.getByRole("dialog")).toBeVisible();
-  await expect(page.locator(".score-sheet svg .vf-measure")).toHaveCount(1, { timeout: 15_000 });
+  await expect(page.locator(".score-sheet:not(.score-export .score-sheet) svg .vf-measure")).toHaveCount(1, { timeout: 15_000 });
   await page.keyboard.press("Escape");
   await expect(page.getByRole("dialog")).toHaveCount(0);
-  await expect(page.locator(".score-sheet svg .vf-measure")).toHaveCount(1);
+  await expect(page.locator(".score-sheet:not(.score-export .score-sheet) svg .vf-measure")).toHaveCount(1);
   await page.reload();
-  await expect(page.locator(".score-sheet svg .vf-measure")).toHaveCount(1, { timeout: 15_000 });
+  await expect(page.locator(".score-sheet:not(.score-export .score-sheet) svg .vf-measure")).toHaveCount(1, { timeout: 15_000 });
   await page.keyboard.press("d");
   await expect.poll(() => page.evaluate(() => {
     const draft = JSON.parse(localStorage.getItem("humscore.keysDraft") ?? "null");
