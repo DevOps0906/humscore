@@ -26,6 +26,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { DurationPicker } from "@/components/note-editor";
 import { Play, Square } from "lucide-react";
 import { SustainSlider } from "@/components/sustain-slider";
+import { LyricsDialog } from "@/components/lyrics-dialog";
 import { PianoKeyboard } from "@/components/piano-keyboard";
 import { BASS_CLEF_PATH, CLEF_UNITS_PER_SPACE, TREBLE_CLEF_PATH } from "@/components/clef-glyphs";
 import { ScoreView } from "@/components/score-view";
@@ -36,6 +37,8 @@ import { useInstrument } from "@/hooks/use-instrument";
 import { useMidiInput } from "@/hooks/use-midi-input";
 import { getAudioContext, setAudioSessionType } from "@/lib/audio/context";
 import { playScore, type Playback } from "@/lib/audio/piano-synth";
+import { playInstrumentNote } from "@/lib/audio/instruments";
+import { TimbreSelect } from "@/components/timbre-select";
 import { ACOUSTIC_PIANOS, ELECTRIC_PIANOS, SYNTH_INSTRUMENTS, ORCHESTRA_GROUPS, type CreationMode, type InstrumentId } from "@/lib/music/instrument-catalog";
 import { appendNote, createBlankScore, deleteNote, scoreMeasureCount } from "@/lib/music/edit";
 import { PIANO_KEYS } from "@/lib/music/frequency";
@@ -450,6 +453,14 @@ function KeysPageInner() {
     setSelectedNote(null); setSelectedChordBeat(undefined); setNoteChordOpen(false);
     setPhase("input");
   }
+  const [lyricsOpen, setLyricsOpen] = useState(false);
+  /** 같은 악기 종류 안에서 음색만 바꾼다(새 악기 추가가 아님). 재생 중이면 새 음색으로 다시 시작하도록 멈추고, 고른 음색을 바로 들려준다. */
+  function changeTimbre(next: InstrumentId) {
+    if (playing) stopPlayback();
+    setInstrument(next);
+    const ctx = getAudioContext();
+    playInstrumentNote(ctx, next, next === "bassGuitar" || next === "bassGuitar5" ? 40 : 60, ctx.currentTime + 0.02, { duration: 0.7, velocity: 0.8 });
+  }
   function selectInstrument(nextMode: CreationMode, nextInstrument: InstrumentId) {
     if (!hasNotes && rootDraft.measureCount === undefined && !rootDraft.parts?.length) {
       selectPart(MAIN_PART_ID, { ...rootDraft, notation: nextMode, instrument: nextInstrument, chords: [] });
@@ -491,34 +502,9 @@ function KeysPageInner() {
         <div>
           <h1 className="text-2xl font-medium">{drums ? "드럼으로 악보생성" : creationMode === "guitarTab" ? "기타TAB로 악보생성" : creationMode === "orchestra" ? "오케스트라로 악보생성" : "피아노로 악보생성"}</h1>
         </div>
-        <div className="flex w-full min-w-0 max-w-full flex-wrap items-center justify-end gap-2 sm:w-auto">
-        <Button type="button" variant="outline" onClick={() => setTemplateOpen(true)} className="h-11 rounded-full px-4 text-sm lg:h-9">템플릿으로 시작하기</Button>
-        <Button
-          type="button"
-          variant="outline"
-          onClick={() => setPhase(keysToggleInput)}
-          aria-pressed={phase === "input"}
-          className={`h-11 rounded-full px-4 text-sm lg:h-9 ${phase === "input" ? "border-accent bg-accent/15 text-accent hover:bg-accent/20 hover:text-accent" : ""}`}
-        >
-          악보생성
-        </Button>
-        <Button
-          type="button"
-          variant="outline"
-          disabled={notes.length === 0 && rootDraft.measureCount === undefined}
-          onClick={() => { setArrangementView("individual"); setPhase("edit"); if (!drums) setChordEditorOpen(true); }}
-          title="음표를 이어서 입력하고 마디별 코드를 수정해요"
-          aria-pressed={phase === "edit"}
-          className={`h-11 rounded-full px-4 text-sm lg:h-9 ${phase === "edit" ? "border-accent bg-accent/15 text-accent hover:bg-accent/20 hover:text-accent" : ""}`}
-        >
-          악보 편집
-        </Button>
-        <Button type="button" variant="outline" disabled={!loaded || drums} onClick={openComposer} title={drums ? "드럼은 아래 리듬 격자에서 직접 입력하세요" : "현재 악보로 작곡 도구 열기"} className="h-11 rounded-full px-4 text-sm lg:h-9">
-          작곡하기
-        </Button>
-        </div>
       </header>
 
+      <LyricsDialog open={lyricsOpen} onOpenChange={setLyricsOpen} notes={notes} fromIndex={phase === "edit" && selectedNote !== null ? selectedNote : 0} onApply={(next) => { stopPlayback(); setNotes(next); }} />
       <Card className="gap-3 p-4">
         <CreationInstrumentSelector mode={creationMode} instrument={inputInstrument} onModeChange={changeMode} onInstrumentChange={(next) => selectInstrument(creationMode, next)} />
         {drums && <p className="text-xs text-ink-soft">드럼은 아래 격자에서 악기별 타격을 입력합니다. 멜로디 작곡과 코드 수정은 피아노·기타TAB·오케스트라에서 사용할 수 있어요.</p>}
@@ -707,11 +693,12 @@ function KeysPageInner() {
         </div>
       )}
       {!drums && (
-        <div className="flex justify-center">
+        <div className="flex flex-wrap items-center justify-center gap-3">
           <Button type="button" onClick={togglePlayback} disabled={notes.length === 0} aria-pressed={playing} aria-label={playing ? "재생 중지" : "재생"} className="h-11 gap-2 rounded-full px-6 text-sm">
             {playing ? <Square className="size-4" aria-hidden /> : <Play className="size-4" aria-hidden />}
             {playing ? "재생 중지" : "재생"}
           </Button>
+          <TimbreSelect mode={creationMode} value={inputInstrument} onChange={changeTimbre} />
         </div>
       )}
 
@@ -719,12 +706,13 @@ function KeysPageInner() {
       {showScore && <HeaderSettings score={rootDraft} onChange={(patch) => setBase((current) => ({ ...current, ...patch }))} />}
       {showScore && <ScoreArrangementTabs score={rootDraft} view={arrangementView} onViewChange={setArrangementView}>
         <section className="grid min-w-0 gap-3" aria-label="선택한 악기 악보">
-        <div className="rounded-xl bg-score-paper p-2"><ScoreHeader score={draftScore} /></div>
         {guitar && <div className="flex gap-2" aria-label="기타 악보 표시 방식">
           <Button type="button" variant="outline" aria-pressed={!showGuitarStaff} onClick={() => setShowGuitarStaff(false)} className={btn}>TAB</Button>
           <Button type="button" variant="outline" aria-pressed={showGuitarStaff} onClick={() => setShowGuitarStaff(true)} className={btn}>악보</Button>
         </div>}
-        {(!guitar || showGuitarStaff) && <ScoreView typography={scoreTypography(draftScore)} xml={xml} chordEditor={phase === "edit" && !drums ? {
+        <div data-testid="score-card" className="min-w-0 rounded-xl bg-score-paper p-2 shadow-md">
+        <ScoreHeader score={draftScore} />
+        {(!guitar || showGuitarStaff) && <ScoreView flat typography={scoreTypography(draftScore)} xml={xml} chordEditor={phase === "edit" && !drums ? {
           chords: draftScore.chords,
           onSelect: (startBeat) => {
             setSelectedChordBeat(startBeat);
@@ -742,8 +730,46 @@ function KeysPageInner() {
           onDragCommit: () => {},
         } : undefined} />}
         {guitar && <TabScoreView score={draftScore} instrument={tabInstrument} minMeasures={previewMinMeasures} />}
+        </div>
         </section>
       </ScoreArrangementTabs>}
+      {/* 악보 바로 아래 작업 막대: 템플릿 · 악보생성 · 악보 편집 · 가사 편집 · 작곡하기 */}
+      <section aria-label="악보 작업" className="grid grid-cols-2 gap-2 sm:grid-cols-5">
+        <Button type="button" variant="outline" onClick={() => setTemplateOpen(true)} className="h-11 w-full min-w-0 rounded-full px-2 text-sm lg:h-9">템플릿으로 시작하기</Button>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => setPhase(keysToggleInput)}
+          aria-pressed={phase === "input"}
+          className={`h-11 w-full min-w-0 rounded-full px-2 text-sm lg:h-9 ${phase === "input" ? "border-accent bg-accent/15 text-accent hover:bg-accent/20 hover:text-accent" : ""}`}
+        >
+          악보생성
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          disabled={notes.length === 0 && rootDraft.measureCount === undefined}
+          onClick={() => { setArrangementView("individual"); setPhase("edit"); if (!drums) setChordEditorOpen(true); }}
+          title="음표를 이어서 입력하고 마디별 코드를 수정해요"
+          aria-pressed={phase === "edit"}
+          className={`h-11 w-full min-w-0 rounded-full px-2 text-sm lg:h-9 ${phase === "edit" ? "border-accent bg-accent/15 text-accent hover:bg-accent/20 hover:text-accent" : ""}`}
+        >
+          악보 편집
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          disabled={drums || notes.filter((note) => note.midi !== null).length === 0}
+          onClick={() => setLyricsOpen(true)}
+          title={drums ? "드럼에는 가사를 붙일 수 없어요" : "음표에 절별 가사를 붙이고 고쳐요"}
+          className="h-11 w-full min-w-0 rounded-full px-2 text-sm lg:h-9"
+        >
+          가사 편집
+        </Button>
+        <Button type="button" variant="outline" disabled={!loaded || drums} onClick={openComposer} title={drums ? "드럼은 아래 리듬 격자에서 직접 입력하세요" : "현재 악보로 작곡 도구 열기"} className="h-11 w-full min-w-0 rounded-full px-2 text-sm lg:h-9">
+          작곡하기
+        </Button>
+      </section>
       {phase === "done" && !drums && (
         <p role="status" className="text-sm text-ink-soft">
           입력을 마쳤어요. 남은 빈 마디를 정리하고 마지막 마디에 마침줄을 넣었어요. 악보 편집을 누르면 이어서 입력하고 코드도 수정할 수 있어요.

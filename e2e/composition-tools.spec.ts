@@ -1,6 +1,6 @@
 import type { Page } from "@playwright/test";
 import type { Score } from "../src/lib/music/types";
-import { holdNote, expect, openKeysInput, test } from "./fixtures";
+import { confirmChordMisfit, holdNote, expect, openKeysInput, test } from "./fixtures";
 
 async function createScoreViaKeys(page: Page): Promise<string> {
   // 새 작곡 버튼이 헤더를 넓혀 모바일 클릭 좌표를 어긋나게 했던 회귀를 먼저 검증한다.
@@ -91,6 +91,7 @@ test("선택 음표 코드: 마디 중간의 정확한 위치·전조·잘못된
   await expect(input).toHaveAttribute("aria-invalid", "true");
   await input.fill("F#m7");
   await page.getByRole("button", { name: "음표에 코드 적용", exact: true }).click();
+  await confirmChordMisfit(page);
   await expect.poll(async () => (await storedScore(page, id)).chords.find((chord) => chord.startBeat === 1)?.symbol).toBe("F#m7");
   const sheet = page.locator(".score-sheet svg").first();
   const harmony = sheet.locator("text").filter({ hasText: /^F/ }).first();
@@ -103,6 +104,7 @@ test("선택 음표 코드: 마디 중간의 정확한 위치·전조·잘못된
   await page.getByRole("button", { name: "반음 올리기", exact: true }).click();
   await expect(input).toHaveValue("Gm7");
   await page.getByRole("button", { name: "음표에 코드 적용", exact: true }).click();
+  await confirmChordMisfit(page);
   expect((await storedScore(page, id)).chords.find((chord) => chord.startBeat === 1)?.symbol).toBe("F#m7");
   await page.getByRole("button", { name: "음표 코드 삭제", exact: true }).click();
   await expect.poll(async () => (await storedScore(page, id)).chords.filter((chord) => chord.startBeat === 1).length).toBe(0);

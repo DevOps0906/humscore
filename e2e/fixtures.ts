@@ -38,6 +38,15 @@ export async function holdNote(page: Page, key: string, ms = 667): Promise<void>
   await page.keyboard.up(key);
 }
 
+/** 멜로디와 어울리지 않는 코드로 바꾸면 뜨는 확인 창을 '그래도 변경'으로 넘긴다(없으면 아무 일도 하지 않는다). */
+export async function confirmChordMisfit(page: Page): Promise<void> {
+  const dialog = page.getByRole("alertdialog");
+  if (await dialog.waitFor({ state: "visible", timeout: 2500 }).then(() => true, () => false)) {
+    await dialog.getByRole("button", { name: "그래도 변경" }).click();
+    await expect(dialog).toHaveCount(0);
+  }
+}
+
 export async function openKeysInput(page: Page): Promise<void> {
   await page.addLocatorHandler(page.getByRole("button", { name: "세로로 그냥 보기" }), (b) => b.click());
   await page.goto("/keys");

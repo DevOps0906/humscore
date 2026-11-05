@@ -140,3 +140,60 @@ describe("멜로디를 유지하는 리하모니제이션", () => {
     expect(() => reharmonize(makeScore([{ midi: 60, startBeat: Number.NaN, durationBeats: 1 }]), "jazz")).toThrow();
   });
 });
+
+describe("작곡 멜로디의 자연스러움(코드와의 어울림)", () => {
+  const seeds = Array.from({ length: 24 }, (_, i) => i * 7 + 1);
+  const progressions = ["pop4", "two-five-one"];
+  const cases = progressions.flatMap((progressionId) => seeds.map((seed) => ({ progressionId, seed })));
+  const chordAt = (result: ReturnType<typeof composeMelody>, beat: number) => result.chords.filter((c) => c.startBeat <= beat + 1e-6).at(-1)!;
+
+  it("1박 이상 머무는 음은 모두 그 순간 코드의 구성음이다", () => {
+    for (const { progressionId, seed } of cases) {
+      const result = composeMelody(makeScore([]), { ...options, progressionId, seed, measures: 8 });
+      for (const note of result.notes.filter((n) => n.durationBeats >= 1)) {
+        expect(chordToMidi(chordAt(result, note.startBeat).symbol).map(pc)).toContain(pc(note.midi!));
+      }
+    }
+  });
+
+  it("코드음 반 음 위의 부딪치는 음(어보이드 노트)을 길게 두지 않는다", () => {
+    for (const { progressionId, seed } of cases) {
+      const result = composeMelody(makeScore([]), { ...options, progressionId, seed, measures: 8 });
+      for (const note of result.notes.filter((n) => n.durationBeats >= 0.75)) {
+        const tones = chordToMidi(chordAt(result, note.startBeat).symbol).map(pc);
+        const clash = !tones.includes(pc(note.midi!)) && tones.some((tone) => pc(tone + 1) === pc(note.midi!));
+        expect(clash).toBe(false);
+      }
+    }
+  });
+
+  it("큰 도약(완전5도 초과)은 드물고 대부분 순차·3도 진행이다", () => {
+    let leaps = 0;
+    let total = 0;
+    let large = 0;
+    for (const { progressionId, seed } of cases) {
+      const notes = composeMelody(makeScore([]), { ...options, progressionId, seed, measures: 8 }).notes;
+      for (let i = 1; i < notes.length; i++) {
+        const leap = Math.abs(notes[i].midi! - notes[i - 1].midi!);
+        total++;
+        if (leap > 7) large++;
+        if (leap > 4) leaps++;
+      }
+    }
+    expect(large / total).toBeLessThan(0.03);
+    expect(leaps / total).toBeLessThan(0.25);
+  });
+
+  it("4마디 악구는 코드 구성음의 긴 음으로 끝나고, 마지막 음은 으뜸음이다", () => {
+    for (const { progressionId, seed } of cases) {
+      const result = composeMelody(makeScore([]), { ...options, progressionId, seed, measures: 8 });
+      for (const measure of [3, 7]) {
+        const end = (measure + 1) * 4;
+        const last = result.notes.filter((n) => n.startBeat < end - 1e-6).at(-1)!;
+        expect(last.durationBeats).toBeGreaterThanOrEqual(2);
+        expect(chordToMidi(chordAt(result, last.startBeat).symbol).map(pc)).toContain(pc(last.midi!));
+      }
+      expect(pc(result.notes.at(-1)!.midi!)).toBe(0);
+    }
+  });
+});

@@ -107,14 +107,14 @@ function drawCreditLines(osmd: OpenSheetMusicDisplay, container: HTMLElement, li
   const top = (firstSystem?.PositionAndShape.AbsolutePosition.y ?? 12) * k;
   const textScale = clampItemFontSize(typography.creditSize, clampHeaderFontSize(typography.fontSize)) / 14;
   const lineHeight = 1.6 * k * textScale;
-  const x = svg.viewBox.baseVal.width / 2;
+  const x = svg.viewBox.baseVal.width - osmd.EngravingRules.PageRightMargin * k; // 작사·작곡·편곡자는 오른쪽 끝
   const group = document.createElementNS("http://www.w3.org/2000/svg", "g");
   group.dataset.scoreCredits = "true";
   lines.forEach((line, index) => {
     const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
     text.setAttribute("x", String(x));
     text.setAttribute("y", String(top - (lines.length - index) * lineHeight));
-    text.setAttribute("text-anchor", "middle");
+    text.setAttribute("text-anchor", "end");
     text.setAttribute("font-size", String(1.2 * k * textScale));
     text.setAttribute("fill", "#111");
     text.textContent = line;

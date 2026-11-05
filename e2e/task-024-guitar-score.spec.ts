@@ -1,6 +1,6 @@
 import type { Locator, Page } from "@playwright/test";
 import type { Score } from "../src/lib/music/types";
-import { holdNote, createScoreViaKeys, expect, openKeysInput, test } from "./fixtures";
+import { confirmChordMisfit, holdNote, createScoreViaKeys, expect, openKeysInput, test } from "./fixtures";
 
 async function savedScores(page: Page): Promise<Score[]> {
   return page.evaluate(() => JSON.parse(localStorage.getItem("humscore.scores.v1") ?? "[]"));
@@ -118,6 +118,7 @@ test("건반 악보 편집에서 음표와 코드 클릭·터치로 옵션을 �
   await dialog.getByLabel("코드 종류", { exact: true }).selectOption("m7");
   await expect(dialog.getByLabel("선택 음표 코드", { exact: true })).toHaveValue("Fm7");
   await dialog.getByRole("button", { name: "음표에 코드 적용", exact: true }).click();
+  await confirmChordMisfit(page);
   await page.keyboard.press("Escape");
   await expect(dialog).toHaveCount(0);
   const exactChord = page.locator('[data-testid="score-chord-target"][data-start-beat="1"]');
@@ -127,6 +128,7 @@ test("건반 악보 편집에서 음표와 코드 클릭·터치로 옵션을 �
   await dialog.getByLabel("코드 근음", { exact: true }).selectOption("G");
   await dialog.getByLabel("코드 종류", { exact: true }).selectOption("7");
   await dialog.getByRole("button", { name: "음표에 코드 적용", exact: true }).click();
+  await confirmChordMisfit(page);
   await page.keyboard.press("Escape");
   await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem("humscore.keysDraft") ?? "null")?.chords?.find((event: { startBeat: number }) => event.startBeat === 1)?.symbol)).toBe("G7");
   await page.reload();
@@ -143,6 +145,7 @@ test("저장된 악보의 코드를 직접 바꾸고, 피아노 악보에는 TAB
   await dialog.getByLabel("코드 근음", { exact: true }).selectOption("G");
   await dialog.getByLabel("코드 종류", { exact: true }).selectOption("7");
   await dialog.getByRole("button", { name: "음표에 코드 적용", exact: true }).click();
+  await confirmChordMisfit(page);
   await page.keyboard.press("Escape");
   // 대화상자가 닫혀 초안에 반영된 뒤 적용해야 저장된다(닫히는 중에 누르면 이전 초안이 저장될 수 있다).
   await expect(dialog).toHaveCount(0);
@@ -156,6 +159,7 @@ test("저장된 악보의 코드를 직접 바꾸고, 피아노 악보에는 TAB
   await page.getByLabel("코드 근음", { exact: true }).selectOption("F");
   await page.getByLabel("코드 종류", { exact: true }).selectOption("m7");
   await page.getByRole("button", { name: "음표에 코드 적용", exact: true }).click();
+  await confirmChordMisfit(page);
   await expect(async () => {
     await applyButton.click();
     expect((await savedScores(page)).find((score) => score.id === id)?.chords.find((event) => event.startBeat === 1)?.symbol).toBe("Fm7");

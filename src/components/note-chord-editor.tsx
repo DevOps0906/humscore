@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { isValidChordSymbol } from "@/lib/music/edit";
+import { useChordFitConfirm } from "@/components/use-chord-fit-confirm";
 import { transposeChordSymbol, transposeKey } from "@/lib/music/theory";
 import { pitchClassName } from "@/lib/music/frequency";
 import type { ChordEvent, Score } from "@/lib/music/types";
@@ -23,6 +24,7 @@ const EPS = 1e-6;
 
 function NoteChordForm({ score, startBeat, selected, onChange, commitOnBlur }: NoteChordEditorProps & { startBeat: number }) {
   const helpId = useId();
+  const fit = useChordFitConfirm(score);
   const exact = score.chords.find((chord) => Math.abs(chord.startBeat - startBeat) < EPS);
   const active = score.chords
     .filter((chord) => chord.startBeat <= startBeat + EPS)
@@ -43,11 +45,15 @@ function NoteChordForm({ score, startBeat, selected, onChange, commitOnBlur }: N
     if (!valid) return;
     const original = transposeChordSymbol(symbol, -score.transpose, score.key.fifths < 0);
     if (!isValidChordSymbol(original)) return;
-    onChange([
+    const next = [
       ...score.chords.filter((chord) => Math.abs(chord.startBeat - startBeat) >= EPS),
       { startBeat, symbol: original },
-    ].sort((left, right) => left.startBeat - right.startBeat));
-    if (!silent) toast.success("선택한 음표 위에 코드를 붙였어요");
+    ].sort((left, right) => left.startBeat - right.startBeat);
+    // 멜로디와 어울리지 않으면(대리코드 포함) 확인 모달을 먼저 띄운다.
+    fit.request(next, () => {
+      onChange(next);
+      if (!silent) toast.success("선택한 음표 위에 코드를 붙였어요");
+    });
   }
 
   function remove() {
@@ -57,8 +63,9 @@ function NoteChordForm({ score, startBeat, selected, onChange, commitOnBlur }: N
 
   return (
     <div className="grid gap-3" onBlur={(event) => {
-      if (commitOnBlur && !event.currentTarget.contains(event.relatedTarget) && valid && (!exact || shown(exact.symbol) !== symbol)) apply(true);
+      if (commitOnBlur && !fit.pending && !event.currentTarget.contains(event.relatedTarget) && valid && (!exact || shown(exact.symbol) !== symbol)) apply(true);
     }}>
+      {fit.dialog}
       <p className="text-sm text-ink-soft">{selected !== null ? `${selected + 1}번째 음표 · ` : ""}{measure}마디 {beat}박</p>
       <div className="grid grid-cols-2 gap-2">
         <label className="grid min-w-0 gap-1.5 text-sm">코드 근음

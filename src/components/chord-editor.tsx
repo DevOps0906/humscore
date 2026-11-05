@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ConfirmDialog } from "@/components/confirm-dialog";
+import { useChordFitConfirm } from "@/components/use-chord-fit-confirm";
 import { PROGRESSIONS, buildProgression } from "@/lib/music/progressions";
 import { usePianoSound } from "@/hooks/use-piano-sound";
 import {
@@ -45,6 +46,7 @@ export function ChordEditor({ score, onChange, commitOnBlur = false }: { score: 
   const [bass, setBass] = useState<number | null>(null);
   const [progId, setProgId] = useState(PROGRESSIONS[0].id);
   const [confirmApply, setConfirmApply] = useState(false);
+  const fit = useChordFitConfirm(score);
 
   const count = scoreMeasureCount(score);
   const shownAt = (m: number): string | null => {
@@ -76,8 +78,11 @@ export function ChordEditor({ score, onChange, commitOnBlur = false }: { score: 
     if (!keepOpen) preview();
     const orig = transposeChordSymbol(symbol, -transpose, score.key.fifths < 0);
     if (!isValidChordSymbol(orig)) return;
-    onChange(setChordAtMeasure(chords, measure, beatsPerMeasure, orig));
-    if (!keepOpen) setMeasure(null);
+    const next = setChordAtMeasure(chords, measure, beatsPerMeasure, orig);
+    fit.request(next, () => {
+      onChange(next);
+      if (!keepOpen) setMeasure(null);
+    });
   }
 
   function remove() {
@@ -90,12 +95,16 @@ export function ChordEditor({ score, onChange, commitOnBlur = false }: { score: 
   const preset = PROGRESSIONS.find((p) => p.id === progId) ?? PROGRESSIONS[0];
 
   function applyProgression() {
-    onChange(buildProgression(preset.id, score.key, count, beatsPerMeasure));
-    setMeasure(null);
+    const next = buildProgression(preset.id, score.key, count, beatsPerMeasure);
+    fit.request(next, () => {
+      onChange(next);
+      setMeasure(null);
+    });
   }
 
   return (
     <section className="no-print">
+      {fit.dialog}
       <div className="mb-4 grid grid-cols-[minmax(0,1fr)] gap-2 rounded-xl border border-line bg-surface p-3 text-sm">
         <p className="font-semibold">코드 진행 불러오기</p>
         <div className="flex flex-wrap items-center gap-2">

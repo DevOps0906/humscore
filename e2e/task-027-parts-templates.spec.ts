@@ -1,5 +1,5 @@
 import type { Page } from "@playwright/test";
-import { holdNote, createScoreViaKeys, expect, openKeysInput, test } from "./fixtures";
+import { confirmChordMisfit, holdNote, createScoreViaKeys, expect, openKeysInput, test } from "./fixtures";
 import { buildScoreTemplate, SCORE_TEMPLATES } from "../src/lib/music/score-templates";
 
 async function saved(page: Page) {
@@ -131,6 +131,9 @@ test("붙임줄·이음줄을 적용한 뒤 새로고침해도 표기가 남는�
   await page.keyboard.press("ArrowRight");
   await page.getByRole("button", { name: "이음줄", exact: true }).click();
   await page.getByRole("textbox", { name: "선택 음표 코드", exact: true }).fill("Gm");
+  // 멜로디와 어울리지 않는 코드는 확인 창을 거친다
+  await page.getByRole("textbox", { name: "선택 음표 코드", exact: true }).blur();
+  await confirmChordMisfit(page);
   await page.getByRole("group", { name: "악보 편집 적용과 저장", exact: true }).getByRole("button", { name: "적용", exact: true }).click();
   expect((await saved(page)).chords).toContainEqual({ startBeat: 1, symbol: "Gm" });
   await expect(page.getByRole("group", { name: "악보 편집 적용과 저장", exact: true })).toBeVisible();

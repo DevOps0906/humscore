@@ -90,7 +90,10 @@ export function composeMelody(score: Score, options: ComposeOptions): { notes: N
     lyrical: [[2, 1, 1], [1.5, 0.5, 2]],
     rhythmic: [[0.5, 0.5, 1, 0.5, 0.5, 1], [0.75, 0.25, 0.5, 0.5, 1, 1]],
   };
-  const rhythm = rhythms[options.style][Math.floor(random() * rhythms[options.style].length)];
+  const rhythmChoices = rhythms[options.style];
+  const rhythmIndex = Math.floor(random() * rhythmChoices.length);
+  const rhythm = rhythmChoices[rhythmIndex];
+  const alternateRhythm = rhythmChoices[(rhythmIndex + 1) % rhythmChoices.length];
   const motif = Array.from({ length: 4 }, () => Math.floor(random() * 5) - 2);
   const notes: NoteEvent[] = [];
   let previous = 67 + score.key.tonic % 5;
@@ -100,27 +103,51 @@ export function composeMelody(score: Score, options: ComposeOptions): { notes: N
     const measureEnd = measureStart + score.beatsPerMeasure;
     let beat = measureStart;
     let step = 0;
+    // 4마디를 한 악구로 본다: 앞 두 마디는 같은 리듬(동기 반복), 셋째 마디는 변화, 넷째 마디는 마침(긴 음)
+    const phraseMeasure = measure % 4;
+    const measureRhythm = phraseMeasure === 2 ? alternateRhythm : rhythm;
+    const cadenceMeasure = phraseMeasure === 3 || measure === options.measures - 1;
+    let previousLeap = 0;
     while (beat < measureEnd - EPS) {
       const chord = activeChord(chords, beat);
       const tones = chordToMidi(chord.symbol).map(pc);
       const local = beat - measureStart;
       const strong = local < EPS || (isCompoundMeter(score.meter) ? Math.abs(local % 1.5) < EPS || Math.abs(local % 1.5 - 1.5) < EPS : Math.abs(local % 2) < EPS);
       const chordChange = Math.abs(chord.startBeat - beat) < EPS;
-      const candidates = Array.from({ length: 25 }, (_, i) => 60 + i).filter((n) => (strong || chordChange ? tones : scale).includes(pc(n)));
-      // 2마디 동기를 반복하되 후반구에는 음역·방향을 조금 바꾼다.
-      const target = Math.max(62, Math.min(79, previous + motif[step % motif.length] + (measure % 4 === 2 ? 2 : 0)));
-      const ranked = candidates.map((midi) => ({ midi, cost: Math.abs(midi - target) + Math.abs(midi - previous) * 0.3 + random() * 2.5 })).sort((a, b) => a.cost - b.cost);
-      let midi = ranked[0].midi;
       const nextChord = chords.find((c) => c.startBeat > beat + EPS)?.startBeat ?? total;
       // 복합박의 두 번째 강박과 코드 변경 지점에도 새 음표를 시작한다.
       const nextStrong = isCompoundMeter(score.meter) ? Math.min(measureEnd, measureStart + (Math.floor(local / 1.5 + EPS) + 1) * 1.5) : measureEnd;
-      let durationBeats = Math.min(rhythm[step % rhythm.length], measureEnd - beat, nextChord - beat, nextStrong - beat);
-      if (measure === options.measures - 1 && measureEnd - beat <= 1 + EPS) {
-        const ending = Array.from({ length: 25 }, (_, i) => 60 + i).filter((n) => tones.includes(pc(n)));
-        midi = ending.sort((a, b) => Math.abs(a - previous) - Math.abs(b - previous))[0];
-        durationBeats = Math.min(durationBeats, measureEnd - beat);
-      }
+      let durationBeats = Math.min(measureRhythm[step % measureRhythm.length], measureEnd - beat, nextChord - beat, nextStrong - beat);
+      // 마침 마디의 마지막 두 박(짧은 박자는 마디 절반)은 한 음으로 길게 끝낸다.
+      const closing = cadenceMeasure && measureEnd - beat <= Math.min(2, score.beatsPerMeasure / 2) + EPS && nextChord >= measureEnd - EPS;
+      if (closing) durationBeats = measureEnd - beat;
+      const anchored = strong || chordChange || durationBeats >= 1 - EPS || closing;
+      const pool = Array.from({ length: 25 }, (_, i) => 60 + i).filter((n) => anchored ? tones.includes(pc(n)) : scale.includes(pc(n)) || tones.includes(pc(n)));
+      // 악구 모양: 올라갔다 내려오는 아치. 둘째 악구(5~8마디)는 한 단계 낮게 시작해 대답하는 느낌을 준다.
+      const progress = (phraseMeasure + local / score.beatsPerMeasure) / 4;
+      const arch = 69 + Math.sin(Math.PI * progress) * 4 - (Math.floor(measure / 4) % 2 === 1 ? 2 : 0);
+      const finalMeasure = measure === options.measures - 1 && closing;
+      const ranked = pool.map((midi) => {
+        const leap = Math.abs(midi - previous);
+        // 같은 음 반복과 큰 도약은 피하고 순차 진행·3도 도약을 선호한다.
+        let cost = leap === 0 ? 1.2 : leap <= 2 ? 0 : leap <= 4 ? 0.7 : leap === 5 ? 2 : leap <= 7 ? 3.5 : leap === 12 ? 5 : 9;
+        // 큰 도약 뒤에는 반대 방향 순차 진행으로 돌아온다.
+        if (Math.abs(previousLeap) > 4 && Math.sign(midi - previous) === Math.sign(previousLeap)) cost += 1.5;
+        cost += Math.abs(midi - arch) * 0.22;
+        cost += Math.abs((midi - previous) - motif[step % motif.length]) * 0.12;
+        const chordTone = tones.includes(pc(midi));
+        if (!chordTone) {
+          // 코드음 반 음 위의 음(어보이드 노트)은 길게 머물면 코드와 부딪친다. 짧은 경과음·이웃음만 허용.
+          if (tones.some((tone) => pc(tone + 1) === pc(midi))) cost += durationBeats >= 0.75 ? 5 : 1.2;
+          cost += leap <= 2 ? 0.4 : 4;
+        }
+        if (finalMeasure) cost += pc(midi) === score.key.tonic ? -6 : 0; // 마지막 음은 으뜸음으로
+        else if (closing) cost += pc(midi) === pc(chordToMidi(chord.symbol)[0]) ? -1.5 : 0; // 악구 끝은 코드 근음 선호
+        return { midi, cost: cost + random() * 0.8 };
+      }).sort((x, y) => x.cost - y.cost);
+      const midi = ranked[0].midi;
       notes.push({ midi, startBeat: beat, durationBeats });
+      previousLeap = midi - previous;
       previous = midi;
       beat += durationBeats;
       step++;

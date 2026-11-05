@@ -26,7 +26,7 @@ type HeaderScore = Pick<
   "title" | "bpm" | "beatsPerMeasure" | "meter" | "lyricist" | "composer" | "arranger" | "headerFont" | "headerFontSize" | "headerFontWeight"
 > & Partial<Pick<Score, TextSizeField>>;
 
-/** 악보 위 머리글: 제목 · 작사/작곡/편곡 · 빠르기말을 모두 가운데 정렬. 인쇄에도 포함, 색은 검정 */
+/** 악보 위 머리글: 제목은 가운데, 빠르기말·박자는 왼쪽, 작사/작곡/편곡은 오른쪽 끝. 인쇄에도 포함, 색은 검정 */
 export function ScoreHeader({ score }: { score: HeaderScore }) {
   const font = headerFontById(score.headerFont);
   const sizes = resolveTextSizes(score);
@@ -46,17 +46,20 @@ export function ScoreHeader({ score }: { score: HeaderScore }) {
       <h1 className="mx-auto max-w-full leading-tight break-words" style={{ fontSize: sizes.title, fontWeight: score.headerFontWeight ?? 700 }}>
         {score.title}
       </h1>
-      {credits.length > 0 && (
-        <div data-testid="score-header-credits" className="mt-2 grid justify-items-center gap-1 leading-snug" style={{ fontSize: sizes.credit }}>
-          {credits.map((credit) => <p key={credit} data-testid="score-credit-line">{credit}</p>)}
-        </div>
-      )}
-      <p data-testid="score-header-tempo" className="mt-2 leading-snug">
-        {formatTempo(tempoTerm(score.bpm), score.bpm)}
-        <span className="ml-2" style={{ fontSize: "0.8em" }}>
-          {ts.beats}/{ts.beatType}
-        </span>
-      </p>
+      {/* 빠르기·박자는 왼쪽, 작사·작곡·편곡자는 오른쪽 끝에 둔다 */}
+      <div className="mt-2 flex items-start justify-between gap-4 text-left">
+        <p data-testid="score-header-tempo" className="min-w-0 leading-snug">
+          {formatTempo(tempoTerm(score.bpm), score.bpm)}
+          <span className="ml-2" style={{ fontSize: "0.8em" }}>
+            {ts.beats}/{ts.beatType}
+          </span>
+        </p>
+        {credits.length > 0 && (
+          <div data-testid="score-header-credits" className="grid min-w-0 justify-items-end gap-1 text-right leading-snug" style={{ fontSize: sizes.credit }}>
+            {credits.map((credit) => <p key={credit} data-testid="score-credit-line">{credit}</p>)}
+          </div>
+        )}
+      </div>
     </header>
   );
 }
