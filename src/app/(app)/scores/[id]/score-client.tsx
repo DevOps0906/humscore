@@ -333,7 +333,7 @@ function ScoreEditor({ id, entry }: { id: string; entry?: ScoreEntry }) {
         const result = addScorePart(draftRef.current ?? rootScore!, notation, selectedInstrument);
         draftRef.current = result.score; setDraftRoot(result.score); setActivePartId(result.partId);
         setEditMode(true); setEditNotes(true); setArrangementView("individual"); resetSelection(); setShowTab(false); setLayout(null);
-      }} onRemove={(partId) => applyPartChange(removeScorePart(draftRef.current ?? rootScore!, partId))} onMerge={(fromId, intoId) => applyPartChange(mergeScoreParts(draftRef.current ?? rootScore!, fromId, intoId))} />
+      }} onRemove={(partId) => applyPartChange(removeScorePart(draftRef.current ?? rootScore!, partId))} onRestore={(restored, activeId) => applyPartChange({ score: restored, activePartId: activeId })} onMerge={(fromId, intoId) => applyPartChange(mergeScoreParts(draftRef.current ?? rootScore!, fromId, intoId))} />
       {editMode && <div role="group" aria-label="악보 편집 적용과 저장" className="no-print sticky top-0 z-20 flex flex-wrap items-center gap-2 rounded-xl border border-line bg-surface p-3">
         <p className="mr-auto text-sm text-ink-soft">{INSTRUMENT_LABELS[instrument]} 편집 중 · 저장하면 편집을 마칩니다.</p>
         <Button type="button" variant="outline" disabled={saving} onClick={() => void applyEdits()} className="h-11 px-5">적용</Button>

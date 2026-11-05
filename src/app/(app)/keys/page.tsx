@@ -24,6 +24,7 @@ import { NoteChordEditor } from "@/components/note-chord-editor";
 import { TabScoreView } from "@/components/tab-score-view";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { DurationPicker } from "@/components/note-editor";
+import { Play, Square } from "lucide-react";
 import { PianoKeyboard } from "@/components/piano-keyboard";
 import { BASS_CLEF_PATH, CLEF_UNITS_PER_SPACE, TREBLE_CLEF_PATH } from "@/components/clef-glyphs";
 import { ScoreView } from "@/components/score-view";
@@ -522,7 +523,7 @@ function KeysPageInner() {
         {drums && <p className="text-xs text-ink-soft">드럼은 아래 격자에서 악기별 타격을 입력합니다. 멜로디 작곡과 코드 수정은 피아노·기타TAB·오케스트라에서 사용할 수 있어요.</p>}
       </Card>
 
-      <ScorePartsPanel score={rootDraft} activePartId={activePartId} onSelect={(partId) => selectPart(partId)} onAdd={selectInstrument} onRemove={(partId) => { const r = removeScorePart(rootDraft, partId); selectPart(r.activePartId, r.score); }} onMerge={(fromId, intoId) => { const r = mergeScoreParts(rootDraft, fromId, intoId); selectPart(r.activePartId, r.score); }} />
+      <ScorePartsPanel score={rootDraft} activePartId={activePartId} onSelect={(partId) => selectPart(partId)} onAdd={selectInstrument} onRemove={(partId) => { const r = removeScorePart(rootDraft, partId); selectPart(r.activePartId, r.score); }} onRestore={(restored, activeId) => selectPart(activeId, restored)} onMerge={(fromId, intoId) => { const r = mergeScoreParts(rootDraft, fromId, intoId); selectPart(r.activePartId, r.score); }} />
 
       {!drums && <MidiConnectButton
         status={midi.supported ? midi.status : "unsupported"}
@@ -699,6 +700,14 @@ function KeysPageInner() {
       {!drums && (guitar
         ? <GuitarFretboard instrument={guitar} active={active} onPress={(m) => handler.current(m)} />
         : <PianoKeyboard active={active} pressed={pressed} onPress={pianoPress} />)}
+      {!drums && (
+        <div className="flex justify-center">
+          <Button type="button" onClick={togglePlayback} disabled={notes.length === 0} aria-pressed={playing} aria-label={playing ? "재생 중지" : "재생"} className="h-11 gap-2 rounded-full px-6 text-sm">
+            {playing ? <Square className="size-4" aria-hidden /> : <Play className="size-4" aria-hidden />}
+            {playing ? "재생 중지" : "재생"}
+          </Button>
+        </div>
+      )}
 
       {/* 악보 미리보기 (건반 바로 아래) */}
       {showScore && <HeaderSettings score={rootDraft} onChange={(patch) => setBase((current) => ({ ...current, ...patch }))} />}
