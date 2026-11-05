@@ -28,6 +28,13 @@ export { expect };
  * "세로로 그냥 보기"를 눌러 닫는다(언제 떠도 처리되도록 locator handler 등록).
  * 주의: 같은 버튼을 직접 click 하지 말 것 — handler 가 먼저 닫아 버려 그 click 이 무한 대기한다.
  */
+/** 건반을 누른 시간이 음표 길이가 되므로, 4분음표(기본 bpm 90 기준 약 667ms)만큼 눌렀다 뗀다 */
+export async function holdNote(page: Page, key: string, ms = 600): Promise<void> {
+  await page.keyboard.down(key);
+  await page.waitForTimeout(ms);
+  await page.keyboard.up(key);
+}
+
 export async function openKeysInput(page: Page): Promise<void> {
   await page.addLocatorHandler(page.getByRole("button", { name: "세로로 그냥 보기" }), (b) => b.click());
   await page.goto("/keys");
@@ -42,7 +49,7 @@ export async function openKeysInput(page: Page): Promise<void> {
 /** /keys 에서 PC 키보드(A,S,D)로 음 3개를 입력하고 저장 → /scores/<id> 로 이동. id 반환 */
 export async function createScoreViaKeys(page: Page): Promise<string> {
   await openKeysInput(page);
-  for (const k of ["a", "s", "d"]) await page.keyboard.press(k);
+  for (const k of ["a", "s", "d"]) await holdNote(page, k);
   await expect(page.getByText("3개 음표")).toBeVisible();
   await page.getByRole("button", { name: "악보로 저장" }).click();
   // 제목 대화상자: 기본 제목으로 저장

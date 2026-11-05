@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useId, useMemo } from "react";
-import { headerFontById, clampHeaderFontSize } from "@/lib/music/header-fonts";
+import { headerFontById, resolveTextSizes } from "@/lib/music/header-fonts";
 import { ensureFontStylesheet } from "@/components/score-header-logic";
 import { Card } from "@/components/ui/card";
 import { scoreMeasureCount } from "@/lib/music/edit";
@@ -19,7 +19,9 @@ const LABELS: Record<GuitarInstrumentId, string> = {
 export function TabScoreView({ score, instrument, minMeasures = 1 }: { score: Score; instrument: GuitarInstrumentId; minMeasures?: number }) {
   const titleId = useId();
   const font = headerFontById(score.headerFont);
-  const textScale = clampHeaderFontSize(score.headerFontSize) / 14;
+  const sizes = resolveTextSizes(score);
+  const textScale = sizes.base / 14;
+  const chordScale = sizes.chord / 14;
   useEffect(() => { ensureFontStylesheet(font); }, [font]);
   const notes = useMemo(() => scoreToTab(score, instrument), [score, instrument]);
   const tuning = GUITAR_TUNINGS[instrument];
@@ -65,7 +67,7 @@ export function TabScoreView({ score, instrument, minMeasures = 1 }: { score: Sc
                     <g key={measure} data-testid="tab-measure" data-measure={measure + 1}>
                       <text x={x + 4} y={top - 24} fontSize={12 * textScale} fill="currentColor">{measure + 1}</text>
                       <line x1={x} x2={x} y1={top} y2={top + (tuning.length - 1) * 24} stroke="currentColor" />
-                      {chords.map((chord) => <text key={chord.startBeat} x={x + 16 + (chord.startBeat - start) / score.beatsPerMeasure * (lineWidth - 32)} y={top - 8} fontSize={13 * textScale} fill="currentColor">{transposeChordSymbol(chord.symbol, score.transpose, flats)}</text>)}
+                      {chords.map((chord) => <text key={chord.startBeat} x={x + 16 + (chord.startBeat - start) / score.beatsPerMeasure * (lineWidth - 32)} y={top - 8} fontSize={13 * chordScale} fill="currentColor">{transposeChordSymbol(chord.symbol, score.transpose, flats)}</text>)}
                       {!measureNotes.length && <text x={x + lineWidth / 2} y={top + 28} fontSize={14 * textScale} textAnchor="middle" fill="currentColor">쉼</text>}
                       {measureNotes.map((note) => {
                         const segmentStart = Math.max(start, note.startBeat);

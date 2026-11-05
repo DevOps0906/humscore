@@ -30,3 +30,45 @@ export function addScorePart(score: Score, notation: CreationMode, instrument: I
   for (let suffix = 2; used.has(partId); suffix++) partId = `part-${instrument}-${suffix}`;
   return { score: { ...score, parts: [...(score.parts ?? []), { id: partId, notation, instrument, notes: [], chords: [] }] }, partId };
 }
+
+/** 악기(파트)를 제거한다. 마지막 하나 남은 악기는 제거할 수 없고, 주 파트를 지우면 다음 파트가 주 파트가 된다. */
+export function removeScorePart(score: Score, partId: string): { score: Score; activePartId: string } {
+  const parts = getScoreParts(score);
+  if (parts.length <= 1 || !parts.some((part) => part.id === partId)) return { score, activePartId: partId };
+  if (partId !== MAIN_PART_ID) {
+    return { score: { ...score, parts: score.parts?.filter((part) => part.id !== partId) }, activePartId: MAIN_PART_ID };
+  }
+  const [next, ...rest] = score.parts ?? [];
+  const { id: _id, ...fields } = next;
+  void _id;
+  return {
+    score: { ...score, ...fields, partName: next.partName, clef: next.clef, accompaniment: next.accompaniment, dynamics: next.dynamics, parts: rest.length ? rest : undefined },
+    activePartId: MAIN_PART_ID,
+  };
+}
+
+/** 한 악기의 음표·코드를 다른 악기에 합치고 원래 악기는 제거한다. 같은 위치·음높이 음표는 한 번만 둔다. */
+export function mergeScoreParts(score: Score, fromId: string, intoId: string): { score: Score; activePartId: string } {
+  if (fromId === intoId) return { score, activePartId: intoId };
+  const parts = getScoreParts(score);
+  const from = parts.find((part) => part.id === fromId);
+  const into = parts.find((part) => part.id === intoId);
+  if (!from || !into) return { score, activePartId: intoId };
+  const seen = new Set<string>();
+  const notes = [...into.notes, ...from.notes].filter((note) => {
+    const key = `${note.startBeat}:${note.midi}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  }).sort((a, b) => a.startBeat - b.startBeat);
+  const chordKeys = new Set<string>();
+  const chords = [...into.chords, ...from.chords].filter((chord) => {
+    const key = `${chord.startBeat}:${chord.symbol}`;
+    if (chordKeys.has(key)) return false;
+    chordKeys.add(key);
+    return true;
+  }).sort((a, b) => a.startBeat - b.startBeat);
+  const merged = updateScorePart(score, intoId, { notes, chords });
+  const removed = removeScorePart(merged, fromId);
+  return { score: removed.score, activePartId: getScoreParts(removed.score).some((part) => part.id === intoId) ? intoId : MAIN_PART_ID };
+}

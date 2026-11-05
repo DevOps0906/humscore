@@ -648,7 +648,7 @@ function MiniStaff({ w = 360 }: { w?: number }) {
     <svg viewBox={`0 0 ${w} 92`} className={styles.miniStaff}>
       <g transform="translate(0,20)" fill="currentColor" stroke="currentColor">
         {[0, 1, 2, 3, 4].map((i) => (
-          <line key={i} x1={10} x2={w - 10} y1={20 + i * 10} y2={20 + i * 10} strokeWidth={1} opacity={0.7} />
+          <line key={i} className="hs-staff-line" style={order(i)} x1={10} x2={w - 10} y1={20 + i * 10} y2={20 + i * 10} strokeWidth={1} opacity={0.7} />
         ))}
         <text x={12} y={58} fontSize={52} fontFamily="serif" stroke="none">
           𝄞
@@ -658,7 +658,7 @@ function MiniStaff({ w = 360 }: { w?: number }) {
           const up = n.y >= 40;
           const sx = up ? x + 5.4 : x - 5.4;
           return (
-            <g key={i}>
+            <g key={i} className="hs-note" style={order(i)}>
               <ellipse cx={x} cy={n.y} rx={6.2} ry={4.6} transform={`rotate(-20 ${x} ${n.y})`} stroke="none" />
               <line x1={sx} x2={sx} y1={n.y} y2={up ? n.y - 28 : n.y + 28} strokeWidth={1.2} />
               {i % 3 === 0 && i > 0 && <line x1={x - st / 2 - 2} x2={x - st / 2 - 2} y1={20} y2={60} strokeWidth={1} />}
@@ -666,6 +666,7 @@ function MiniStaff({ w = 360 }: { w?: number }) {
           );
         })}
         <line x1={w - 12} x2={w - 12} y1={20} y2={60} strokeWidth={2.2} />
+        <line className="hs-playhead" style={{ "--hs-travel": `${w - x0 - 30}px` } as React.CSSProperties} x1={x0 - 8} x2={x0 - 8} y1={14} y2={66} strokeWidth={1.5} opacity={0} />
       </g>
     </svg>
   );

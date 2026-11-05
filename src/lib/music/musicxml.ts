@@ -5,7 +5,7 @@ import { buildAccompanimentNotes } from "./accompaniment";
 import { chordToMidi, tempoTerm, transposeChordSymbol, transposeKey } from "./theory";
 import { splitForNotation, type NotationPiece } from "./notation";
 import { AccidentalTracker, spellPitch, type AccidentalName, type SpelledPitch } from "./spelling";
-import { timeSignatureOf } from "./meter";
+import { isCompoundMeter, timeSignatureOf } from "./meter";
 import { hasUnmatchedRepeatStart } from "./form";
 import { lyricForVerse, lyricText, syllabicOf, type Syllabic } from "./lyrics";
 import type { MeasureMarkKind, Score } from "./types";
@@ -178,6 +178,44 @@ export interface MusicXmlOptions {
   measuresPerSystem?: number;
   /** true 면 빠르기말·메트로놈·제목·작사/작곡/편곡자를 출력하지 않음(화면 머리글을 HTML 이 따로 그림). 기본 false */
   externalHeader?: boolean;
+  /**
+   * 혼성 4성부(소프라노·알토 높은음자리, 테너·베이스 낮은음자리, 모두 choir)가 맨 앞에 있으면
+   * 소프라노·알토를 한 보표(줄기 위/아래 두 성부), 테너·베이스를 한 보표로 묶고
+   * 두 보표를 대괄호로 연결한 찬송가 큰보표로 그린다. false 면 성부마다 보표를 따로 그린다. 기본 true
+   */
+  satbGrandStaff?: boolean;
+}
+
+const SATB_CLEFS = ["treble", "treble", "bass", "bass"] as const;
+
+/** 파트 목록 맨 앞 4개가 choir 혼성 4성부(S·A 높은음자리, T·B 낮은음자리)인지 */
+function hasSatbGroup(score: Score): boolean {
+  const parts = getScoreParts(score);
+  return parts.length >= 4 && SATB_CLEFS.every((clef, index) => parts[index].instrument === "choir" && parts[index].clef === clef && parts[index].notation !== "drums");
+}
+
+/** 윗성부 한 파트 XML과 아랫성부 한 파트 XML을 한 보표의 두 성부(1: 줄기 위, 2: 줄기 아래)로 합친 문서 */
+function mergeVoicesXml(upper: string, lower: string, measureDivs: number, bracket: "start" | "stop"): string {
+  const bodies = (xml: string) => [...xml.matchAll(/<measure number="\d+">([\s\S]*?)<\/measure>/g)].map((match) => match[1]);
+  const pitched = (note: string) => note.includes("<pitch>");
+  const stem = (note: string, direction: "up" | "down") => pitched(note) ? note.replace("<staff>1</staff>", `<stem>${direction}</stem><staff>1</staff>`) : note;
+  const lowerBodies = bodies(lower);
+  const merged = bodies(upper).map((top, index) => {
+    const second = (lowerBodies[index] ?? "").match(/<note>[\s\S]*?<\/note>/g) ?? [];
+    if (!second.some(pitched)) return top;
+    const withStems = top.replace(/<note>[\s\S]*?<\/note>/g, (note) => stem(note, "up"));
+    const end = withStems.lastIndexOf("</note>") + "</note>".length;
+    const voice = second.map((note) => stem(note.replace("<voice>1</voice>", "<voice>2</voice>").replace(/<lyric\b[\s\S]*?<\/lyric>/g, ""), "down")).join("");
+    return `${withStems.slice(0, end)}<backup><duration>${measureDivs}</duration></backup>${voice}${withStems.slice(end)}`;
+  });
+  const head = upper.slice(0, upper.indexOf("<part-list>"));
+  const scorePart = (upper.match(/<score-part\b[\s\S]*?<\/score-part>/)?.[0] ?? "")
+    .replace(/<part-name[^>]*>[\s\S]*?<\/part-name>/, "<part-name></part-name>")
+    .replace(/<part-abbreviation[^>]*>[\s\S]*?<\/part-abbreviation>/, "<part-abbreviation></part-abbreviation>");
+  const group = bracket === "start"
+    ? `<part-group type="start" number="1"><group-symbol>bracket</group-symbol><group-barline>yes</group-barline></part-group>${scorePart}`
+    : `${scorePart}<part-group type="stop" number="1"/>`;
+  return `${head}<part-list>${group}</part-list><part id="P1">${merged.map((body, index) => `<measure number="${index + 1}">${body}</measure>`).join("\n")}</part></score-partwise>`;
 }
 
 /** 손·발 두 성부와 동시 타격 화음으로 읽기 쉬운 드럼 세트를 표기한다. */
@@ -219,7 +257,7 @@ function drumMusicXML(score: Score, opts: MusicXmlOptions): string {
         const hiddenRest = rest && note.measureRest && !(index === 0 && silentMeasure);
         const ties = (note.tieStop ? `<tie type="stop"/>` : "") + (note.tieStart ? `<tie type="start"/>` : "");
         const tied = (note.tieStop ? `<tied type="stop"/>` : "") + (note.tieStart ? `<tied type="start"/>` : "");
-        const beams = drumBeamXml(pieces, pieceIndex, score.meter === "6/8");
+        const beams = drumBeamXml(pieces, pieceIndex, isCompoundMeter(score.meter));
         const chordMidis = rest ? [null] : note.midis;
         chordMidis.forEach((midi, chordIndex) => {
           const piece = midi === null ? undefined : percussionPiece(midi);
@@ -247,11 +285,17 @@ export function scoreToMusicXML(score: Score, layout: ScoreLayout = "lead", opts
     const measures = Math.max(scoreMeasureCount(score), opts.minMeasures ?? 1);
     let nextChannel = 0;
     const channels = [1, 2, 3, 4, 5, 6, 7, 8, 9, 11, 12, 13, 14, 15, 16];
-    const documents = getScoreParts(score).map((part, index) => {
+    const sources = getScoreParts(score).map((part) => {
       const single = scoreForPart(score, part.id);
-      const partLayout = part.notation === "piano" ? layout : "lead";
+      return scoreToMusicXML(single, part.notation === "piano" ? layout : "lead", { ...opts, minMeasures: measures });
+    });
+    const measureDivs = score.beatsPerMeasure * DIVISIONS;
+    const raw = opts.satbGrandStaff !== false && hasSatbGroup(score)
+      ? [mergeVoicesXml(sources[0], sources[1], measureDivs, "start"), mergeVoicesXml(sources[2], sources[3], measureDivs, "stop"), ...sources.slice(4)]
+      : sources;
+    const documents = raw.map((source, index) => {
       const channelMap = new Map<string, { channel: number; port: number }>();
-      return scoreToMusicXML(single, partLayout, { ...opts, minMeasures: measures })
+      return source
         .replace(/\bid="([^"]+)"/g, (_, id: string) => `id="M${index + 1}-${id}"`)
         .replace(/<midi-instrument id="([^"]+)">([\s\S]*?)<\/midi-instrument>/g, (_, id: string, body: string) => {
           const original = body.match(/<midi-channel>(\d+)<\/midi-channel>/)?.[1] ?? "1";

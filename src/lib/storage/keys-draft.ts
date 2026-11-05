@@ -4,6 +4,7 @@ import { fifthsFor } from "../music/theory";
 import { PROGRESSIONS } from "../music/progressions";
 import { isValidChordSymbol } from "../music/edit";
 import type { ChordEvent, KeyInfo, Meter, NoteEvent, ScorePart } from "../music/types";
+import { METER_IDS } from "../music/meter";
 import { isCreationMode, isInstrumentId, type CreationMode, type InstrumentId } from "../music/instrument-catalog";
 import { isArpeggioPatternId, type AccompanimentSettings } from "../music/accompaniment";
 
@@ -11,6 +12,10 @@ import { isArpeggioPatternId, type AccompanimentSettings } from "../music/accomp
 export interface KeysDraft {
   headerFont?: string;
   headerFontSize?: number;
+  titleFontSize?: number;
+  creditFontSize?: number;
+  lyricFontSize?: number;
+  chordFontSize?: number;
   headerFontWeight?: number;
   partName?: string;
   clef?: "treble" | "bass";
@@ -40,7 +45,7 @@ export interface KeysDraft {
 export const AUTO_PROGRESSION = "auto";
 export const DEFAULT_KEYS_KEY: KeyInfo = { tonic: 0, mode: "major", fifths: 0 };
 
-const METER_IDS: readonly Meter[] = ["3/4", "4/4", "6/8"];
+
 const BPM_MIN = 30;
 const BPM_MAX = 240;
 const notesSchema = z.array(noteEventSchema).max(6_000);
@@ -64,6 +69,10 @@ export function parseKeysDraft(raw: string | null): KeysDraft | null {
   const settings = {
     ...(typeof o.headerFont === "string" && o.headerFont.length <= 40 ? { headerFont: o.headerFont } : {}),
     ...(typeof o.headerFontSize === "number" && Number.isInteger(o.headerFontSize) && o.headerFontSize >= 10 && o.headerFontSize <= 48 ? { headerFontSize: o.headerFontSize } : {}),
+    ...Object.fromEntries((["titleFontSize", "creditFontSize", "lyricFontSize", "chordFontSize"] as const).flatMap((field) => {
+      const value = o[field];
+      return typeof value === "number" && Number.isInteger(value) && value >= 10 && value <= 48 ? [[field, value]] : [];
+    })),
     ...(typeof o.headerFontWeight === "number" && o.headerFontWeight >= 100 && o.headerFontWeight <= 900 && o.headerFontWeight % 100 === 0 ? { headerFontWeight: o.headerFontWeight } : {}),
     ...(typeof o.partName === "string" && o.partName.trim() && o.partName.length <= 80 ? { partName: o.partName.trim() } : {}),
     ...(o.clef === "treble" || o.clef === "bass" ? { clef: o.clef as "treble" | "bass" } : {}),
@@ -92,7 +101,9 @@ export function parseKeysDraft(raw: string | null): KeysDraft | null {
     ? (o.meter as Meter)
     : o.beatsPerMeasure === 3
       ? "3/4"
-      : "4/4";
+      : o.beatsPerMeasure === 2
+        ? "2/4"
+        : "4/4";
 
   let key: KeyInfo = DEFAULT_KEYS_KEY;
   const k = o.key as Record<string, unknown> | undefined;

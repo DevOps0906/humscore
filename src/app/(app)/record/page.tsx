@@ -12,7 +12,7 @@ import { loadManualLatencyMs, saveManualLatencyMs } from "@/lib/audio/latency";
 import { MIN_RMS, startPitchTracking, type TrackerSession } from "@/lib/audio/pitch-tracker";
 import { getAudioContext } from "@/lib/audio/context";
 import { centsOff, freqToNearestMidi, freqToMidiFloat, midiToName } from "@/lib/music/frequency";
-import { METERS, beatsPerMeasureOf } from "@/lib/music/meter";
+import { METERS, METER_IDS, beatsPerMeasureOf, isCompoundMeter } from "@/lib/music/meter";
 import { createLiveFramesCache, liveAriaSummary, liveSummaryFromRaw, liveSummaryIncremental, type LiveFramesCache, type LiveSummary } from "@/lib/audio/live-notes";
 import { buildScoreFromFrames, buildScoreFromRawNotes } from "@/lib/music/pipeline";
 import { midiEventsToRawNotes, startMetronomeSession, type MetronomeSession } from "@/lib/audio/midi-recorder";
@@ -25,6 +25,11 @@ import { saveScore } from "@/lib/storage/scores";
 import { loadScoreDefaults } from "@/lib/storage/preferences";
 import type { Meter, PitchFrame, Score } from "@/lib/music/types";
 import { TitleDialog } from "@/components/title-dialog";
+import { filterInstrumentFrames } from "@/lib/music/voice-filter";
+import { INSTRUMENT_LABELS, instrumentMode, type InstrumentId } from "@/lib/music/instrument-catalog";
+
+/** 마이크로 채보할 수 있는 음높이 악기(드럼 제외) */
+const PITCHED_INSTRUMENTS = (Object.keys(INSTRUMENT_LABELS) as InstrumentId[]).filter((id) => instrumentMode(id) !== "drums");
 
 type Status = "idle" | "countin" | "recording" | "processing";
 
@@ -33,7 +38,7 @@ const METER_KEY = "humscore.record.meter";
 function loadMeter(): Meter {
   try {
     const v = localStorage.getItem(METER_KEY);
-    if (v === "3/4" || v === "4/4" || v === "6/8") return v;
+    if ((METER_IDS as readonly string[]).includes(v ?? "")) return v as Meter;
     if (v === "3") return "3/4";
   } catch {
     /* 저장소 사용 불가 */
@@ -86,6 +91,12 @@ function RecordPageInner() {
   const meter = useRef<HTMLDivElement>(null);
   const [source, setSource] = useState<RecordSource>("voice");
   const sourceRef = useRef<RecordSource>("voice");
+  /** 악기 소리 채보 시 이 악기의 파트로 저장한다 */
+  const [targetInstrument, setTargetInstrument] = useState<InstrumentId>("piano");
+  const targetInstrumentRef = useRef<InstrumentId>("piano");
+  /** 악기 소리 채보 시 목소리로 판단되는 구간은 제외 */
+  const [rejectVoice, setRejectVoice] = useState(true);
+  const rejectVoiceRef = useRef(true);
   const [heldMidi, setHeldMidi] = useState<number | null>(null);
   const midiSession = useRef<MetronomeSession | null>(null);
   const midiEvents = useRef<MidiEvent[]>([]);
@@ -302,7 +313,7 @@ function RecordPageInner() {
       halfTimer.current = null;
     }
     setHalfLit(false);
-    if (c.meter === "6/8" && b >= 0 && ((b % c.beats) + c.beats) % c.beats === 1) {
+    if (isCompoundMeter(c.meter) && b >= 0 && ((b % c.beats) + c.beats) % c.beats % 3 === 1) {
       halfTimer.current = setTimeout(() => setHalfLit(true), (60 / c.bpm) * 500);
     }
   }
@@ -420,20 +431,28 @@ function RecordPageInner() {
       return;
     }
     setStatus("processing");
-    const built = buildScoreFromFrames(frames, {
+    const instrumentMode_ = sourceRef.current === "instrument";
+    const usable = instrumentMode_ && rejectVoiceRef.current ? filterInstrumentFrames(frames) : frames;
+    const built = buildScoreFromFrames(usable, {
       bpm: fixed.bpm,
       beatsPerMeasure: fixed.beats,
-      range: sourceRef.current === "instrument" ? "instrument" : "voice",
+      range: instrumentMode_ ? "instrument" : "voice",
     });
-    const score: Score = { ...built.score, meter: fixed.meter };
+    const score: Score = {
+      ...built.score, meter: fixed.meter,
+      ...(instrumentMode_ ? { instrument: targetInstrumentRef.current, notation: instrumentMode(targetInstrumentRef.current) } : {}),
+    };
     if (!score.notes.some((n) => n.midi !== null)) {
       setStatus("idle");
+      const removedVoice = instrumentMode_ && rejectVoiceRef.current && buildScoreFromFrames(frames, { bpm: fixed.bpm, beatsPerMeasure: fixed.beats, range: "instrument" }).score.notes.some((n) => n.midi !== null);
       setError(
         interrupted
           ? "마이크 연결이 끊겼어요. 음이 감지되지 않아 저장하지 못했어요."
-          : sourceRef.current === "instrument"
-            ? "음이 감지되지 않았어요. 조용한 곳에서 한 음씩 또렷하게 연주해 주세요."
-            : "음이 감지되지 않았어요. 조용한 곳에서 '라~' 또는 '음~'으로 또렷하게 불러 주세요.",
+          : removedVoice
+            ? "목소리로 판단되어 제외했어요. 악기 소리만 들리게 하거나 '목소리 제외'를 꺼 주세요."
+            : sourceRef.current === "instrument"
+              ? "음이 감지되지 않았어요. 조용한 곳에서 한 음씩 또렷하게 연주해 주세요."
+              : "음이 감지되지 않았어요. 조용한 곳에서 '라~' 또는 '음~'으로 또렷하게 불러 주세요.",
       );
       return;
     }
@@ -466,7 +485,7 @@ function RecordPageInner() {
   const locked = recording || status === "processing";
   const isMidi = source === "midi";
   const midiBlocked = isMidi && midi.status !== "connected";
-  const dots = meterId === "6/8" ? 2 : beats;
+  const dots = isCompoundMeter(meterId) ? Math.ceil(beats / 1.5) : beats;
   const noun = source === "voice" ? "부르는" : "연주하는";
 
   return (
@@ -485,8 +504,21 @@ function RecordPageInner() {
         {source === "instrument" && (
           <p className="mt-2 flex items-center gap-1.5 text-xs text-ink-soft">
             <Piano className="size-4 shrink-0" aria-hidden />
-            피아노·신디 소리를 한 음씩 연주하세요 (화음은 인식하지 않아요)
+            악기 소리를 한 음씩 연주하세요 (화음은 인식하지 않아요)
           </p>
+        )}
+        {source === "instrument" && (
+          <div className="mt-2 grid gap-2 sm:grid-cols-2">
+            <label className="grid gap-1 text-xs text-ink-soft">채보할 악기
+              <select aria-label="채보할 악기" value={targetInstrument} onChange={(event) => { const id = event.target.value as InstrumentId; setTargetInstrument(id); targetInstrumentRef.current = id; }} className="h-11 rounded-md border border-line bg-surface px-2 text-sm text-ink">
+                {PITCHED_INSTRUMENTS.map((id) => <option key={id} value={id}>{INSTRUMENT_LABELS[id]}</option>)}
+              </select>
+            </label>
+            <label className="flex min-h-11 items-center gap-2 text-sm">
+              <input type="checkbox" aria-label="목소리 제외" checked={rejectVoice} onChange={(event) => { setRejectVoice(event.target.checked); rejectVoiceRef.current = event.target.checked; }} className="size-4" />
+              목소리는 제외하고 악기 소리만 채보
+            </label>
+          </div>
         )}
         {isMidi && (
           <div className="mt-3">
@@ -544,7 +576,7 @@ function RecordPageInner() {
       <div className="flex items-center justify-center gap-3">
         {Array.from({ length: dots }, (_, i) => {
           const q = beat !== null ? ((beat % beats) + beats) % beats : 0;
-          const cur = meterId === "6/8" ? (q === 2 || (q === 1 && halfLit) ? 1 : 0) : q;
+          const cur = isCompoundMeter(meterId) ? Math.floor((q + (halfLit && q % 3 === 1 ? 0.5 : 0)) / 1.5) : q;
           const on = beat !== null && cur === i && recording;
           return <span key={i} className={`h-3 w-3 rounded-full ${on ? (i === 0 ? "bg-accent" : "bg-ink") : "bg-line"}`} />;
         })}

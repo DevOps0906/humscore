@@ -331,3 +331,33 @@ h3 {
     @apply font-sans;
   }
 }
+
+/* 랜딩 오선 모션: 오선 반짝임 · 음표 순차 강조 · 재생선 이동 (CSS 전용) */
+@keyframes hs-staff-shimmer {
+  from { opacity: 0.45; }
+  to { opacity: 0.85; }
+}
+@keyframes hs-note-glow {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.55; }
+}
+@keyframes hs-playhead-sweep {
+  0% { transform: translateX(0); opacity: 0; }
+  8%, 92% { opacity: 0.8; }
+  100% { transform: translateX(var(--hs-travel, 240px)); opacity: 0; }
+}
+.hs-staff-line { animation: hs-staff-shimmer 3.6s ease-in-out infinite alternate; animation-delay: calc(var(--k, 0) * 0.35s); }
+.hs-note { animation: hs-note-glow 3.6s ease-in-out infinite; animation-delay: calc(var(--k, 0) * 0.4s); }
+.hs-playhead { animation: hs-playhead-sweep 7s linear infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .hs-staff-line, .hs-note, .hs-playhead { animation: none; }
+  .hs-playhead { opacity: 0; }
+}
+
+/* 템플릿 미리보기처럼 바깥 종이 카드가 따로 있을 때: 악보 블록은 내용 크기 그대로 가운데 */
+.score-sheet.score-sheet-flat {
+  background: transparent;
+  box-shadow: none;
+  border-radius: 0;
+  padding: 0;
+}

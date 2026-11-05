@@ -1,4 +1,5 @@
 import { isValidChordSymbol, scoreMeasureCount } from "./edit";
+import { isCompoundMeter } from "./meter";
 import { pitchClassName } from "./frequency";
 import { buildProgression } from "./progressions";
 import { chordToMidi } from "./theory";
@@ -103,7 +104,7 @@ export function composeMelody(score: Score, options: ComposeOptions): { notes: N
       const chord = activeChord(chords, beat);
       const tones = chordToMidi(chord.symbol).map(pc);
       const local = beat - measureStart;
-      const strong = local < EPS || (score.meter === "6/8" ? Math.abs(local - 1.5) < EPS : Math.abs(local % 2) < EPS);
+      const strong = local < EPS || (isCompoundMeter(score.meter) ? Math.abs(local % 1.5) < EPS || Math.abs(local % 1.5 - 1.5) < EPS : Math.abs(local % 2) < EPS);
       const chordChange = Math.abs(chord.startBeat - beat) < EPS;
       const candidates = Array.from({ length: 25 }, (_, i) => 60 + i).filter((n) => (strong || chordChange ? tones : scale).includes(pc(n)));
       // 2마디 동기를 반복하되 후반구에는 음역·방향을 조금 바꾼다.
@@ -112,7 +113,7 @@ export function composeMelody(score: Score, options: ComposeOptions): { notes: N
       let midi = ranked[0].midi;
       const nextChord = chords.find((c) => c.startBeat > beat + EPS)?.startBeat ?? total;
       // 복합박의 두 번째 강박과 코드 변경 지점에도 새 음표를 시작한다.
-      const nextStrong = score.meter === "6/8" && local < 1.5 - EPS ? measureStart + 1.5 : measureEnd;
+      const nextStrong = isCompoundMeter(score.meter) ? Math.min(measureEnd, measureStart + (Math.floor(local / 1.5 + EPS) + 1) * 1.5) : measureEnd;
       let durationBeats = Math.min(rhythm[step % rhythm.length], measureEnd - beat, nextChord - beat, nextStrong - beat);
       if (measure === options.measures - 1 && measureEnd - beat <= 1 + EPS) {
         const ending = Array.from({ length: 25 }, (_, i) => 60 + i).filter((n) => tones.includes(pc(n)));

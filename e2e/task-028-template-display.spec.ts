@@ -9,7 +9,9 @@ for (const width of [390, 900, 1440]) test(`${width}px 빈 템플릿과 제작�
   await dialog.getByRole("button", { name: /밴드 스코어/ }).click();
   const left = await dialog.getByRole("region", { name: "악보 형식 선택" }).boundingBox();
   const right = await dialog.getByRole("region", { name: "템플릿 미리보기" }).boundingBox();
-  expect(right!.x).toBeGreaterThan(left!.x + left!.width - 1);
+  // 좁은 화면(~767)은 미리보기가 악보 크기를 충분히 쓰도록 형식 목록 아래에, 넓은 화면은 오른쪽에 둔다.
+  if (width < 768) expect(right!.y).toBeGreaterThan(left!.y + left!.height - 1);
+  else expect(right!.x).toBeGreaterThan(left!.x + left!.width - 1);
   await page.screenshot({ path: `.nomad/task-028/${width}-template.png`, fullPage: true });
   await dialog.getByRole("button", { name: "다음", exact: true }).click();
   await dialog.getByRole("button", { name: "다음", exact: true }).click();

@@ -31,9 +31,9 @@ for (const width of [390, 900, 1440]) test(`${width}px 4/4·8마디 형식과 SA
   await expect(title).toBeVisible();
   expect(Number(await title.evaluate((element) => getComputedStyle(element).fontWeight))).toBeGreaterThanOrEqual(700);
   await expect(paper.locator("[aria-busy]")).toHaveAttribute("aria-busy", "false");
-  await expect(paper.locator(".vf-measure")).toHaveCount(32);
+  // 소프라노·알토 / 테너·베이스가 두 보표(큰보표)로 묶여 한 줄에 마디 4개씩 2줄 = 16마디
+  await expect(paper.locator(".vf-measure")).toHaveCount(16);
   const scoreText = (await paper.locator("svg text").allTextContents()).join(" ");
-  for (const voice of ["소프라노", "알토", "테너", "베이스"]) expect(scoreText).toContain(voice);
   for (const verse of [1, 2, 3, 4]) expect(scoreText).toContain(`${verse}절`);
   await page.screenshot({ path: `.nomad/task-029/${width}-hymn-template.png`, fullPage: true });
 

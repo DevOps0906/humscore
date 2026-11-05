@@ -1,11 +1,11 @@
-import { expect, openKeysInput, test } from "./fixtures";
+import { holdNote, expect, openKeysInput, test } from "./fixtures";
 
 for (const width of [390, 900, 1440]) {
   test(`${width}px 글꼴·크기·굵기가 악보와 출력에 적용되고 저장된다`, async ({ page }) => {
     test.setTimeout(120_000);
     await page.setViewportSize({ width, height: 1000 });
     await openKeysInput(page);
-    for (const key of ["a", "s", "d"]) await page.keyboard.press(key);
+    for (const key of ["a", "s", "d"]) await holdNote(page, key);
     await page.getByRole("button", { name: "글꼴·크기·굵기 설정", exact: true }).click();
     await page.getByLabel("머리글 글꼴", { exact: true }).filter({ visible: true }).selectOption("classic-serif");
     const size = page.getByLabel("머리글 글자 크기", { exact: true });

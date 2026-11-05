@@ -1,5 +1,5 @@
 import type { Page } from "@playwright/test";
-import { createScoreViaKeys, expect, openKeysInput, test } from "./fixtures";
+import { holdNote, createScoreViaKeys, expect, openKeysInput, test } from "./fixtures";
 import { buildScoreTemplate, SCORE_TEMPLATES } from "../src/lib/music/score-templates";
 
 async function saved(page: Page) {
@@ -10,7 +10,7 @@ test.beforeEach(() => test.setTimeout(120_000));
 
 test("악기 전환으로 독립 악보를 추가하고 초안과 저장 악보에 모든 음표를 보존한다", async ({ page }) => {
   await openKeysInput(page);
-  for (const key of ["a", "s", "d"]) await page.keyboard.press(key);
+  for (const key of ["a", "s", "d"]) await holdNote(page, key);
   await page.getByLabel("악기 선택", { exact: true }).selectOption("guitarTab");
   await page.getByLabel("음색 선택", { exact: true }).selectOption("bassGuitar5");
   await page.getByRole("region", { name: "베이스 기타 지판", exact: true }).locator("button[data-fret='0']").first().click();
@@ -120,7 +120,7 @@ test("관현악 총보를 A4 비율로 인쇄하며 모든 악기와 마디를 �
 
 test("붙임줄·이음줄을 적용한 뒤 새로고침해도 표기가 남는다", async ({ page }) => {
   await openKeysInput(page);
-  for (const key of ["a", "a", "d"]) await page.keyboard.press(key);
+  for (const key of ["a", "a", "d"]) await holdNote(page, key);
   await page.getByRole("button", { name: "악보로 저장", exact: true }).click();
   await page.getByRole("dialog").getByRole("button", { name: "저장", exact: true }).click();
   await expect(page).toHaveURL(/\/scores\//);

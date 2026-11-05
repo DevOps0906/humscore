@@ -1,5 +1,6 @@
 import { z } from "zod";
 import type { Score } from "../music/types";
+import { METERS } from "../music/meter";
 import { isInstrumentId } from "../music/instrument-catalog";
 import { isArpeggioPatternId } from "../music/accompaniment";
 
@@ -85,8 +86,12 @@ export const scoreSchema = z.object({
   arranger: z.string().max(200).optional(),
   headerFont: z.string().max(40).optional(),
   headerFontSize: z.number().int().min(10).max(48).optional(),
+  titleFontSize: z.number().int().min(10).max(48).optional(),
+  creditFontSize: z.number().int().min(10).max(48).optional(),
+  lyricFontSize: z.number().int().min(10).max(48).optional(),
+  chordFontSize: z.number().int().min(10).max(48).optional(),
   headerFontWeight: z.number().int().min(100).max(900).multipleOf(100).optional(),
-  meter: z.enum(["3/4", "4/4", "6/8"]).optional(),
+  meter: z.enum(["2/4", "3/4", "4/4", "2/2", "6/8", "12/8"]).optional(),
   bpm: z.number().finite().min(1).max(400),
   beatsPerMeasure: z.number().int().min(1).max(32),
   beatUnit: z.literal(4),
@@ -98,9 +103,9 @@ export const scoreSchema = z.object({
   transpose: z.number().int().min(-24).max(24),
   createdAt: isoDate,
   updatedAt: isoDate,
-}).refine((s) => s.meter !== "6/8" || s.beatsPerMeasure === 3, {
+}).refine((s) => !s.meter || METERS.find((m) => m.id === s.meter)?.beatsPerMeasure === s.beatsPerMeasure, {
   // 6/8 은 내부적으로 4분음표 3박 — 다른 값이면 박자표와 마디 길이가 어긋난다
-  message: "meter 6/8 은 beatsPerMeasure 3 과 함께여야 합니다",
+  message: "meter 와 beatsPerMeasure(4분음표 수)가 맞아야 합니다 (6/8=3, 12/8=6, 2/2=4)",
   path: ["meter"],
 });
 

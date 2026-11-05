@@ -5,7 +5,7 @@ import type { OpenSheetMusicDisplay } from "opensheetmusicdisplay";
 import { ChevronDown } from "lucide-react";
 import { LoadingSpinner } from "@/components/loading-spinner";
 import { ensureFontStylesheet, fontLinkId, formatCreditLines } from "@/components/score-header-logic";
-import { clampHeaderFontSize, headerFontById } from "@/lib/music/header-fonts";
+import { clampHeaderFontSize, clampItemFontSize, headerFontById } from "@/lib/music/header-fonts";
 import { beatKey, dragSteps, hitTestMarks, noteIndexByStart, type MarkRect } from "@/components/score-cursor";
 import type { ChordEvent, NoteEvent } from "@/lib/music/types";
 
@@ -17,12 +17,17 @@ export interface ScoreTypography {
   fontId?: string;
   fontSize?: number;
   fontWeight?: number;
+  /** 제목·제작자·가사·코드 글자 크기(px). 생략하면 기본 크기를 따른다. */
+  titleSize?: number;
+  creditSize?: number;
+  lyricSize?: number;
+  chordSize?: number;
 }
 
 /** SVG의 원본 좌표는 그대로 두고 화면에 놓이는 종이만 비례 축소한다. */
-function fitPages(container: HTMLElement, enabled: boolean) {
+function fitPages(container: HTMLElement, enabled: boolean, fitHeight = true) {
   if (!enabled) return;
-  const maxHeight = window.innerHeight * 0.74;
+  const maxHeight = fitHeight ? window.innerHeight * 0.74 : Infinity;
   container.style.minWidth = "";
   container.style.width = "100%";
   const available = container.clientWidth;
@@ -65,17 +70,32 @@ function configureTypography(osmd: OpenSheetMusicDisplay, typography: ScoreTypog
   const rules = osmd.EngravingRules;
   const font = headerFontById(typography.fontId);
   ensureFontStylesheet(font);
-  const scale = clampHeaderFontSize(typography.fontSize) / 14;
+  const base = clampHeaderFontSize(typography.fontSize);
+  const scale = base / 14;
+  const lyricScale = clampItemFontSize(typography.lyricSize, base) / 14;
+  const chordScale = clampItemFontSize(typography.chordSize, base) / 14;
+  const titleSize = clampItemFontSize(typography.titleSize, Math.round(base * 1.7));
   rules.DefaultFontFamily = font.stack.includes("var(") ? getComputedStyle(document.body).fontFamily : font.stack;
   rules.DefaultFontStyle = (typography.fontWeight ?? 400) >= 600 ? 1 : 0;
-  rules.LyricsHeight = 2 * scale;
-  rules.ChordSymbolTextHeight = 2 * scale;
+  rules.LyricsHeight = 2 * lyricScale;
+  rules.ChordSymbolTextHeight = 2 * chordScale;
   rules.InstrumentLabelTextHeight = 2 * scale;
-  rules.MeasureNumberLabelHeight = 1.5 * scale;
-  rules.SheetTitleHeight = 2 * scale;
+  rules.MeasureNumberLabelHeight = 1.8 * scale;
+  rules.SheetTitleHeight = titleSize / 11.9; // 기본(14px 기준 23.8px)에서 2.0
   rules.InstantaneousTempoTextHeight = 2.3 * scale;
   rules.ContinuousTempoTextHeight = 2.3 * scale;
   rules.UnknownTextHeight = 2 * scale;
+  // 머리글과 첫 줄, 줄과 줄, 보표와 보표 사이에 여유를 둔다(compacttight 기본값은 붙어 보인다).
+  rules.PageTopMargin = 5;
+  rules.PageTopMarginNarrow = 5;
+  rules.PageBottomMargin = 3;
+  rules.StaffDistance = 5.5;
+  rules.BetweenStaffDistance = 4.5;
+  rules.MinimumDistanceBetweenSystems = 6;
+  rules.MinSkyBottomDistBetweenSystems = 3;
+  rules.MinSkyBottomDistBetweenStaves = 2;
+  rules.VerticalBetweenLyricsDistance = 0.6 + 0.4 * lyricScale;
+  rules.LyricsYOffsetToStaffHeight = 1.4 + 0.6 * lyricScale;
 }
 
 /** OSMD의 합쳐진 저작자 행 대신 역할별로 독립된 텍스트 행을 그린다. */
@@ -85,16 +105,16 @@ function drawCreditLines(osmd: OpenSheetMusicDisplay, container: HTMLElement, li
   const firstSystem = osmd.GraphicSheet?.MusicPages[0]?.MusicSystems[0];
   const k = 10 * osmd.zoom;
   const top = (firstSystem?.PositionAndShape.AbsolutePosition.y ?? 12) * k;
-  const textScale = clampHeaderFontSize(typography.fontSize) / 14;
+  const textScale = clampItemFontSize(typography.creditSize, clampHeaderFontSize(typography.fontSize)) / 14;
   const lineHeight = 1.6 * k * textScale;
-  const x = svg.viewBox.baseVal.width - osmd.EngravingRules.PageRightMargin * k;
+  const x = svg.viewBox.baseVal.width / 2;
   const group = document.createElementNS("http://www.w3.org/2000/svg", "g");
   group.dataset.scoreCredits = "true";
   lines.forEach((line, index) => {
     const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
     text.setAttribute("x", String(x));
     text.setAttribute("y", String(top - (lines.length - index) * lineHeight));
-    text.setAttribute("text-anchor", "end");
+    text.setAttribute("text-anchor", "middle");
     text.setAttribute("font-size", String(1.2 * k * textScale));
     text.setAttribute("fill", "#111");
     text.textContent = line;
@@ -301,6 +321,8 @@ export function ScoreView({
   showHeader = false,
   printLayout = true,
   fitToPage = true,
+  fitHeight = true,
+  flat = false,
   typography,
   header,
   onHandle,
@@ -316,6 +338,10 @@ export function ScoreView({
   printLayout?: boolean;
   /** 화면의 한 페이지를 가로·세로에 맞춘다. 인쇄/PDF 원본은 false를 사용한다. */
   fitToPage?: boolean;
+  /** fitToPage 일 때 한 페이지를 화면 높이에도 맞춘다. false 면 폭에만 맞추고 높이는 악보 내용을 따른다. */
+  fitHeight?: boolean;
+  /** 종이 배경·그림자·안쪽 여백을 없애 바깥 카드가 악보 크기에 맞게 한다. */
+  flat?: boolean;
   /** 악보의 문자만 설정한다. 음표·음자리표 글리프는 바꾸지 않는다. */
   typography?: ScoreTypography;
   /** 악보(종이) 맨 위, OSMD 그림 앞에 놓는 HTML 머리글 (인쇄에 포함됨) */
@@ -326,6 +352,10 @@ export function ScoreView({
   const fontId = typography?.fontId;
   const fontSize = typography?.fontSize;
   const fontWeight = typography?.fontWeight;
+  const titleSize = typography?.titleSize;
+  const creditSize = typography?.creditSize;
+  const lyricSize = typography?.lyricSize;
+  const chordSize = typography?.chordSize;
   const [fontRevision, setFontRevision] = useState(0);
   useEffect(() => {
     const font = headerFontById(fontId);
@@ -421,7 +451,7 @@ export function ScoreView({
               drawTitle: showHeader,
               drawComposer: false,
               drawPartNames: false,
-              pageFormat: printLayout ? "A4_P" : "Endless",
+              pageFormat: printLayout ? "A4_P" : "Endless", // Endless 는 높이가 악보 내용에 맞는다
               drawingParameters: "compacttight",
               autoGenerateMultipleRestMeasuresFromRestMeasures: false, // 빈 마디를 "7" 식 다중쉼표로 합치지 않음 (8마디 미리보기)
               stretchLastSystemLine: false, // 마지막 1~3마디도 기존 마디 폭 유지
@@ -430,8 +460,8 @@ export function ScoreView({
             osmdRef.current.EngravingRules.NewPartAndSystemAfterFinalBarline = false;
           }
           const osmd = osmdRef.current;
-          const textStyle = { fontId, fontSize, fontWeight };
-          const textKey = JSON.stringify([fontId, fontSize, fontWeight, fontRevision]);
+          const textStyle = { fontId, fontSize, fontWeight, titleSize, creditSize, lyricSize, chordSize };
+          const textKey = JSON.stringify([fontId, fontSize, fontWeight, titleSize, creditSize, lyricSize, chordSize, fontRevision]);
           configureTypography(osmd, textStyle);
           const multipleInstruments = xml.includes('id="M1-');
           osmd.setOptions({ drawTitle: showHeader, drawComposer: false, drawLyricist: false, drawPartNames: multipleInstruments, drawPartAbbreviations: multipleInstruments });
@@ -439,7 +469,7 @@ export function ScoreView({
             // 기본값은 제목이 너무 커서 긴 제목이 잘림 → 작게
             osmd.EngravingRules.SheetComposerHeight = 1.2;
             osmd.EngravingRules.TitleTopDistance = 1.5;
-            osmd.EngravingRules.TitleBottomDistance = 2 + creditLines(xml).length * 1.6 * clampHeaderFontSize(fontSize) / 14;
+            osmd.EngravingRules.TitleBottomDistance = 3 + creditLines(xml).length * 1.6 * clampItemFontSize(creditSize, clampHeaderFontSize(fontSize)) / 14;
           }
           if (loadedXml.current !== xml || loadedTypography.current !== textKey) {
             loadedXml.current = null; // load 도중 상태 불명 → 완료 전까지 null
@@ -453,7 +483,7 @@ export function ScoreView({
           renderFourMeasureLines(osmd, ref.current);
           if (showHeader) drawCreditLines(osmd, ref.current, creditLines(xml), textStyle);
           styleScoreText(ref.current, xml, textStyle);
-          fitPages(ref.current, fitToPage);
+          fitPages(ref.current, fitToPage, fitHeight);
           setError(null);
           if (isLatest()) updateMarks();
         } catch (e) {
@@ -468,7 +498,7 @@ export function ScoreView({
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [xml, zoom, updateMarks, showHeader, printLayout, fitToPage, fontId, fontSize, fontWeight, fontRevision]);
+  }, [xml, zoom, updateMarks, showHeader, printLayout, fitToPage, fitHeight, fontId, fontSize, fontWeight, titleSize, creditSize, lyricSize, chordSize, fontRevision]);
 
   useEffect(() => {
     const sheet = sheetRef.current;
@@ -486,10 +516,10 @@ export function ScoreView({
         if (osmdRef.current && ref.current && loadedXml.current) {
           if (fitToPage) ref.current.style.width = `${Math.max(720, sheet.clientWidth)}px`;
           renderFourMeasureLines(osmdRef.current, ref.current);
-          const textStyle = { fontId, fontSize, fontWeight };
+          const textStyle = { fontId, fontSize, fontWeight, titleSize, creditSize, lyricSize, chordSize };
           if (showHeader) drawCreditLines(osmdRef.current, ref.current, creditLines(loadedXml.current), textStyle);
           styleScoreText(ref.current, loadedXml.current, textStyle);
-          fitPages(ref.current, fitToPage);
+          fitPages(ref.current, fitToPage, fitHeight);
           updateMarks();
         }
       }, DEBOUNCE_MS);
@@ -498,7 +528,7 @@ export function ScoreView({
     observer.observe(sheet);
     window.addEventListener("resize", resize);
     return () => { observer.disconnect(); window.removeEventListener("resize", resize); clearTimeout(timer); };
-  }, [updateMarks, fitToPage, showHeader, fontId, fontSize, fontWeight]);
+  }, [updateMarks, fitToPage, fitHeight, showHeader, fontId, fontSize, fontWeight, titleSize, creditSize, lyricSize, chordSize]);
 
   // 커서 모드: OSMD 가 자체적으로 다시 그릴 때(창 크기 변경 등)도 위치 재계산
   useEffect(() => {
@@ -653,7 +683,7 @@ export function ScoreView({
   return (
     <div
       ref={sheetRef}
-      className={`score-sheet relative overflow-x-auto p-2 ${hasCursor ? "cursor-pointer pt-6 outline-none focus-visible:ring-3 focus-visible:ring-ring/60" : ""} ${className}`}
+      className={`score-sheet relative overflow-x-auto p-2 ${flat ? "score-sheet-flat " : ""}${hasCursor ? "cursor-pointer pt-6 outline-none focus-visible:ring-3 focus-visible:ring-ring/60" : ""} ${className}`}
       {...(hasCursor
         ? { tabIndex: 0, role: "application", "aria-label": "악보 편집 — 방향키로 음표 이동", onClick: onSheetClick }
         : {})}

@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { ScoreArrangementTabs } from "@/components/score-arrangement-tabs";
 import { ScorePartsPanel } from "@/components/score-parts-panel";
-import { MAIN_PART_ID, scoreForPart, updateScorePart, addScorePart } from "@/lib/music/parts";
+import { MAIN_PART_ID, scoreForPart, updateScorePart, addScorePart, removeScorePart, mergeScoreParts } from "@/lib/music/parts";
 import { canTie } from "@/lib/music/articulation";
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
@@ -28,7 +28,7 @@ import { ScoreEditToolbar } from "@/components/score-edit-toolbar";
 import { applyEditKey, describeInterval, describeNote, dragTargetMidi } from "@/components/score-cursor";
 import { ScoreHeader, HeaderSettings } from "@/components/score-header";
 import { formatCreditLines } from "@/components/score-header-logic";
-import { scoreTypography } from "@/lib/music/header-fonts";
+import { resolveTextSizes, scoreTypography } from "@/lib/music/header-fonts";
 import { usePianoSound } from "@/hooks/use-piano-sound";
 import { useInstrument } from "@/hooks/use-instrument";
 import { useScoreEditKeys } from "@/hooks/use-score-edit-keys";
@@ -125,6 +125,10 @@ function ScoreEditor({ id, entry }: { id: string; entry?: ScoreEntry }) {
 
   useEffect(() => clearPlayback, [clearPlayback]);
 
+  function applyPartChange(result: { score: Score; activePartId: string }) {
+    draftRef.current = result.score; setDraftRoot(result.score); setActivePartId(result.activePartId);
+    setEditMode(true); setEditNotes(true); setArrangementView("individual"); resetSelection(); setShowTab(false); setLayout(null);
+  }
   function resetSelection() {
     clearPlayback(); setPlaying(false); setSelected(null); setToolbarOpen(false); setChordEditingBeat(null);
     setLyricsOpen(false); setAudioOpen(false);
@@ -269,7 +273,7 @@ function ScoreEditor({ id, entry }: { id: string; entry?: ScoreEntry }) {
       if (view.container.getAttribute("aria-busy") === "true") throw new Error("악보를 그리는 중이에요. 잠시 후 다시 시도해 주세요.");
       if (!isNativeApp()) { window.print(); return; }
       // 음표 선택 표시는 SVG 밖(HTML)이라 PDF에 들어가지 않는다. OSMD가 제목을 이미 그렸다면 직접 머리글은 생략
-      const bytes = await sheetToPdf(view.container, view.drawsTitle ? [] : [score.title, ...credits], view.systemSpans());
+      const bytes = await sheetToPdf(view.container, view.drawsTitle ? [] : [score.title, ...credits], view.systemSpans(), { titleSize: resolveTextSizes(rootScore!).title, creditSize: resolveTextSizes(rootScore!).credit });
       await exportFile(`${base}.pdf`, bytes, "application/pdf");
     } catch (e) {
       const msg = e instanceof Error ? e.message : "";
@@ -329,7 +333,7 @@ function ScoreEditor({ id, entry }: { id: string; entry?: ScoreEntry }) {
         const result = addScorePart(draftRef.current ?? rootScore!, notation, selectedInstrument);
         draftRef.current = result.score; setDraftRoot(result.score); setActivePartId(result.partId);
         setEditMode(true); setEditNotes(true); setArrangementView("individual"); resetSelection(); setShowTab(false); setLayout(null);
-      }} />
+      }} onRemove={(partId) => applyPartChange(removeScorePart(draftRef.current ?? rootScore!, partId))} onMerge={(fromId, intoId) => applyPartChange(mergeScoreParts(draftRef.current ?? rootScore!, fromId, intoId))} />
       {editMode && <div role="group" aria-label="악보 편집 적용과 저장" className="no-print sticky top-0 z-20 flex flex-wrap items-center gap-2 rounded-xl border border-line bg-surface p-3">
         <p className="mr-auto text-sm text-ink-soft">{INSTRUMENT_LABELS[instrument]} 편집 중 · 저장하면 편집을 마칩니다.</p>
         <Button type="button" variant="outline" disabled={saving} onClick={() => void applyEdits()} className="h-11 px-5">적용</Button>
@@ -514,7 +518,7 @@ function ScoreEditor({ id, entry }: { id: string; entry?: ScoreEntry }) {
           <Button
             type="button"
             variant="outline"
-            onClick={() => exportFile(`${base}.musicxml`, scoreToMusicXML(rootScore!, layout), "application/vnd.recordare.musicxml+xml")}
+            onClick={() => exportFile(`${base}.musicxml`, scoreToMusicXML(rootScore!, layout, { satbGrandStaff: false }), "application/vnd.recordare.musicxml+xml")}
             className="h-11 rounded-full px-4 lg:h-9"
           >
             <FileMusic aria-hidden /> MusicXML

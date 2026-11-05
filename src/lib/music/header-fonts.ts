@@ -49,7 +49,50 @@ export function clampHeaderFontSize(size: number | undefined): number {
   return Math.min(HEADER_FONT_SIZE_MAX, Math.max(HEADER_FONT_SIZE_MIN, Math.round(size)));
 }
 
-/** 음악 글리프와 구분하여 악보의 텍스트에만 적용하는 표시 설정. */
-export function scoreTypography(score: { headerFont?: string; headerFontSize?: number; headerFontWeight?: number }) {
-  return { fontId: score.headerFont, fontSize: score.headerFontSize, fontWeight: score.headerFontWeight };
+/** 항목별 글자 크기(제목·제작자·가사·코드) 허용 범위 — score-schema 와 같은 10~48px */
+export const ITEM_FONT_SIZE_MIN = 10;
+export const ITEM_FONT_SIZE_MAX = 48;
+/** 제목 기본 크기 = 기본 글자 크기의 1.7배 */
+export const TITLE_SIZE_RATIO = 1.7;
+
+export type TextSizeField = "titleFontSize" | "creditFontSize" | "lyricFontSize" | "chordFontSize";
+
+export interface TextSizeSettings {
+  headerFontSize?: number;
+  titleFontSize?: number;
+  creditFontSize?: number;
+  lyricFontSize?: number;
+  chordFontSize?: number;
 }
+
+/** 항목별 크기를 허용 범위로 맞춘다. 값이 없으면 fallback */
+export function clampItemFontSize(size: number | undefined, fallback: number): number {
+  if (size === undefined || !Number.isFinite(size)) return fallback;
+  return Math.min(ITEM_FONT_SIZE_MAX, Math.max(ITEM_FONT_SIZE_MIN, Math.round(size)));
+}
+
+/** 제목·제작자·가사·코드의 실제 글자 크기(px). 마디 번호·빠르기말은 base 를 따른다 */
+export function resolveTextSizes(score: TextSizeSettings) {
+  const base = clampHeaderFontSize(score.headerFontSize);
+  return {
+    base,
+    title: clampItemFontSize(score.titleFontSize, Math.round(base * TITLE_SIZE_RATIO)),
+    credit: clampItemFontSize(score.creditFontSize, base),
+    lyric: clampItemFontSize(score.lyricFontSize, base),
+    chord: clampItemFontSize(score.chordFontSize, base),
+  };
+}
+
+/** 음악 글리프와 구분하여 악보의 텍스트에만 적용하는 표시 설정. */
+export function scoreTypography(score: TextSizeSettings & { headerFont?: string; headerFontWeight?: number }) {
+  return {
+    fontId: score.headerFont,
+    fontSize: score.headerFontSize,
+    fontWeight: score.headerFontWeight,
+    titleSize: score.titleFontSize,
+    creditSize: score.creditFontSize,
+    lyricSize: score.lyricFontSize,
+    chordSize: score.chordFontSize,
+  };
+}
+

@@ -1,4 +1,5 @@
 import type { Meter } from "@/lib/music/types";
+import { METER_IDS } from "@/lib/music/meter";
 
 /** 새 악보 기본값 (이 기기 localStorage). 저장소를 못 쓰면 기본값 90 BPM · 4/4. */
 export interface ScoreDefaults {
@@ -11,7 +12,7 @@ export const DEFAULT_BPM_MIN = 40;
 export const DEFAULT_BPM_MAX = 200;
 export const SCORE_DEFAULTS: ScoreDefaults = { bpm: 90, meter: "4/4" };
 
-const isMeter = (v: unknown): v is Meter => v === "3/4" || v === "4/4" || v === "6/8";
+const isMeter = (v: unknown): v is Meter => (METER_IDS as readonly unknown[]).includes(v);
 
 /** 템포를 40~200 정수로. 숫자가 아니면 기본값 */
 export function clampDefaultBpm(v: unknown): number {

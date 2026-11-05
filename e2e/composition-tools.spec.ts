@@ -1,12 +1,12 @@
 import type { Page } from "@playwright/test";
 import type { Score } from "../src/lib/music/types";
-import { expect, openKeysInput, test } from "./fixtures";
+import { holdNote, expect, openKeysInput, test } from "./fixtures";
 
 async function createScoreViaKeys(page: Page): Promise<string> {
   // 새 작곡 버튼이 헤더를 넓혀 모바일 클릭 좌표를 어긋나게 했던 회귀를 먼저 검증한다.
   await openKeysInput(page);
   await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-  for (const key of ["a", "s", "d"]) await page.keyboard.press(key);
+  for (const key of ["a", "s", "d"]) await holdNote(page, key);
   await expect(page.getByText("3개 음표")).toBeVisible();
   await page.getByRole("button", { name: "악보로 저장", exact: true }).click();
   await page.getByRole("dialog").getByRole("button", { name: "저장", exact: true }).click();

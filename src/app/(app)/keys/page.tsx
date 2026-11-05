@@ -5,7 +5,7 @@ import { ScoreTemplateDialog } from "@/components/score-template-dialog";
 import { ScoreArrangementTabs } from "@/components/score-arrangement-tabs";
 import { ScoreHeader, HeaderSettings } from "@/components/score-header";
 import { scoreTypography } from "@/lib/music/header-fonts";
-import { MAIN_PART_ID, getScoreParts, scoreForPart, updateScorePart, addScorePart } from "@/lib/music/parts";
+import { MAIN_PART_ID, getScoreParts, scoreForPart, updateScorePart, addScorePart, removeScorePart, mergeScoreParts } from "@/lib/music/parts";
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -38,7 +38,8 @@ import { ACOUSTIC_PIANOS, ELECTRIC_PIANOS, SYNTH_INSTRUMENTS, ORCHESTRA_GROUPS, 
 import { appendNote, createBlankScore, deleteNote, scoreMeasureCount } from "@/lib/music/edit";
 import { PIANO_KEYS } from "@/lib/music/frequency";
 import { keysCanAppend, keysPreviewMinMeasures, keysShowsScore, keysToggleInput, type KeysScorePhase } from "@/lib/music/keys-entry";
-import { beatsPerMeasureOf, METERS } from "@/lib/music/meter";
+import { beatsPerMeasureOf, durationLabel, METERS } from "@/lib/music/meter";
+import { heldMsToBeats, quantizeHeldDuration } from "@/lib/music/key-duration";
 import { buildProgression, PROGRESSIONS } from "@/lib/music/progressions";
 import { scoreToMusicXML } from "@/lib/music/musicxml";
 import { fifthsFor, keyName, suggestChords } from "@/lib/music/theory";
@@ -264,6 +265,7 @@ function KeysPageInner() {
         measureCount: rootDraft.measureCount, lyricist: rootDraft.lyricist, composer: rootDraft.composer, arranger: rootDraft.arranger,
         partName: rootDraft.partName, clef: rootDraft.clef,
         headerFont: rootDraft.headerFont, headerFontSize: rootDraft.headerFontSize, headerFontWeight: rootDraft.headerFontWeight,
+        titleFontSize: rootDraft.titleFontSize, creditFontSize: rootDraft.creditFontSize, lyricFontSize: rootDraft.lyricFontSize, chordFontSize: rootDraft.chordFontSize,
       }));
     } catch { /* storage unavailable */ }
   }, [loaded, hasContent, rootDraft, bpm, meter, progressionId, activePartId]);
@@ -274,14 +276,87 @@ function KeysPageInner() {
   );
 
   // PC 키보드/건반 핸들러가 최신 상태를 보도록 ref 사용
+  // handler: 길이를 잴 수 없는 입력(건반 접근성 활성화·기타 지판)은 고른 음 길이(dur)로 즉시 추가
   const handler = useRef<(midi: number) => void>(() => {});
+  // holdStart/holdEnd: 누른 시간으로 길이를 정하는 입력(PC 키·MIDI·화면 건반 포인터)
+  const holdStart = useRef<(id: string, midi: number, downAt?: number) => void>(() => {});
+  const holdEnd = useRef<(id: string, at?: number) => void>(() => {});
+  const holds = useRef(new Map<string, { midi: number; downAt: number; append: boolean }>());
+  const pointerSessions = useRef(new Map<number, { midi: number; downAt: number; type: string }>());
+  const [heldView, setHeldView] = useState<{ id: string; midi: number; downAt: number }[]>([]);
+  const [nowMs, setNowMs] = useState(0);
   useEffect(() => {
+    const canEnter = () => !drums && canAppend && !titleOpen && !composerOpen && !noteChordOpen;
     handler.current = (midi: number) => {
       setActive(midi);
       playNote(midi);
-      if (!drums && canAppend && !titleOpen && !composerOpen && !noteChordOpen) setNotes((n) => appendNote(n, midi, dur));
+      if (canEnter()) setNotes((n) => appendNote(n, midi, dur));
+    };
+    holdStart.current = (id, midi, downAt = performance.now()) => {
+      if (holds.current.has(id)) return;
+      const append = canEnter();
+      holds.current.set(id, { midi, downAt, append });
+      setActive(midi);
+      playNote(midi);
+      if (append) {
+        setNowMs(performance.now());
+        setHeldView((v) => [...v, { id, midi, downAt }]);
+      }
+    };
+    holdEnd.current = (id, at = performance.now()) => {
+      const h = holds.current.get(id);
+      if (!h) return;
+      holds.current.delete(id);
+      setHeldView((v) => v.filter((x) => x.id !== id));
+      if (h.append) {
+        const d = quantizeHeldDuration(at - h.downAt, bpm, meter);
+        setNotes((n) => appendNote(n, h.midi, d));
+      }
     };
   });
+
+  // 누르는 동안 진행 표시를 갱신
+  const holding = heldView.length > 0;
+  useEffect(() => {
+    if (!holding) return;
+    const t = setInterval(() => setNowMs(performance.now()), 50);
+    return () => clearInterval(t);
+  }, [holding]);
+
+  // 화면 건반: 포인터 누름 시각을 직접 기록하고(터치는 PianoKeyboard 가 뗄 때만 onPress 를 부름), 뗄 때 길이를 확정
+  useEffect(() => {
+    const onDown = (e: PointerEvent) => {
+      if (e.pointerType === "mouse" && e.button !== 0) return;
+      const el = e.target instanceof Element ? e.target.closest<HTMLElement>("[data-midi]") : null;
+      if (!el || !el.closest('[data-testid="piano-scroller"]')) return;
+      pointerSessions.current.set(e.pointerId, { midi: Number(el.dataset.midi), downAt: performance.now(), type: e.pointerType });
+    };
+    const onEnd = (e: PointerEvent) => {
+      if (!pointerSessions.current.delete(e.pointerId)) return;
+      holdEnd.current(`ptr:${e.pointerId}`);
+    };
+    const onBlur = () => { for (const id of [...holds.current.keys()]) holdEnd.current(id); };
+    document.addEventListener("pointerdown", onDown, true);
+    window.addEventListener("pointerup", onEnd);
+    window.addEventListener("pointercancel", onEnd);
+    window.addEventListener("blur", onBlur);
+    return () => {
+      document.removeEventListener("pointerdown", onDown, true);
+      window.removeEventListener("pointerup", onEnd);
+      window.removeEventListener("pointercancel", onEnd);
+      window.removeEventListener("blur", onBlur);
+    };
+  }, []);
+
+  function pianoPress(midi: number) {
+    let found: [number, { midi: number; downAt: number; type: string }] | undefined;
+    for (const entry of pointerSessions.current) if (entry[1].midi === midi) found = entry;
+    if (!found) { handler.current(midi); return; }
+    const [pid, s] = found;
+    holdStart.current(`ptr:${pid}`, midi, s.downAt);
+    // 터치·펜: onPress 가 뗄 때 불리므로 여기서 바로 길이 확정 (누른 시각은 pointerdown 기준)
+    if (s.type !== "mouse") holdEnd.current(`ptr:${pid}`);
+  }
 
   // 외부 MIDI 건반: 화면 건반을 누른 것과 같은 경로(handler)로 처리
   const midi = useMidiInput({
@@ -293,9 +368,10 @@ function KeysPageInner() {
       if (e.midi < 21 || e.midi > 108) return;
       if (e.type === "on") {
         setPressed((p) => new Set([...p, e.midi]));
-        handler.current(e.midi);
+        holdStart.current(`midi:${e.midi}`, e.midi);
       } else {
         setPressed((p) => { const n = new Set(p); n.delete(e.midi); return n; });
+        holdEnd.current(`midi:${e.midi}`);
       }
     },
   });
@@ -314,12 +390,15 @@ function KeysPageInner() {
       const m = PC_MAP[e.key.toLowerCase()];
       if (m && !e.repeat) {
         setPressed((p) => new Set([...p, m]));
-        handler.current(m);
+        holdStart.current(`kb:${m}`, m);
       }
     };
     const up = (e: KeyboardEvent) => {
       const m = PC_MAP[e.key.toLowerCase()];
-      if (m) setPressed((p) => { const n = new Set(p); n.delete(m); return n; });
+      if (m) {
+        setPressed((p) => { const n = new Set(p); n.delete(m); return n; });
+        holdEnd.current(`kb:${m}`);
+      }
     };
     window.addEventListener("keydown", down);
     window.addEventListener("keyup", up);
@@ -441,7 +520,7 @@ function KeysPageInner() {
         {drums && <p className="text-xs text-ink-soft">드럼은 아래 격자에서 악기별 타격을 입력합니다. 멜로디 작곡과 코드 수정은 피아노·기타TAB·오케스트라에서 사용할 수 있어요.</p>}
       </Card>
 
-      <ScorePartsPanel score={rootDraft} activePartId={activePartId} onSelect={(partId) => selectPart(partId)} onAdd={selectInstrument} />
+      <ScorePartsPanel score={rootDraft} activePartId={activePartId} onSelect={(partId) => selectPart(partId)} onAdd={selectInstrument} onRemove={(partId) => { const r = removeScorePart(rootDraft, partId); selectPart(r.activePartId, r.score); }} onMerge={(fromId, intoId) => { const r = mergeScoreParts(rootDraft, fromId, intoId); selectPart(r.activePartId, r.score); }} />
 
       {!drums && <MidiConnectButton
         status={midi.supported ? midi.status : "unsupported"}
@@ -485,8 +564,8 @@ function KeysPageInner() {
             {phase === "edit"
               ? "건반을 누르면 마지막 음 뒤에 추가돼요. 마디가 차면 다음 마디가 자동으로 늘어나요. BPM 아래 코드수정하기에서 마디별 코드도 바꿀 수 있어요."
               : notes.length === 0
-              ? "먼저 조를 고른 뒤 건반을 눌러 입력하세요. 음 길이를 고르면 악보에 추가돼요."
-              : "음 길이를 고르고 건반을 누르면 악보에 추가돼요. 조를 바꿔도 음높이는 그대로예요."}
+              ? "먼저 조를 고른 뒤 건반을 눌러 입력하세요. 건반을 누르고 있던 시간(BPM·박자 기준)이 가장 가까운 음 길이로 정해져요."
+              : "건반을 누르고 있던 만큼 음 길이가 정해져 악보에 추가돼요. 아래 음 길이는 쉼표와 기타 지판 입력에 쓰여요. 조를 바꿔도 음높이는 그대로예요."}
           </p>
           <DurationPicker value={dur} onChange={setDur} />
           <div className="flex flex-wrap items-center gap-2 text-sm">
@@ -595,9 +674,29 @@ function KeysPageInner() {
       />
 
       {/* 선택한 악기의 입력 화면 */}
+      {!drums && canAppend && (
+        <div className="flex min-h-9 flex-wrap items-center gap-3 text-sm" role="status" aria-live="off">
+          {heldView.length === 0
+            ? <span className="text-ink-soft">건반을 누르고 있는 길이만큼 음표 길이가 정해져요</span>
+            : heldView.map((h) => {
+              const ms = Math.max(0, nowMs - h.downAt);
+              const raw = heldMsToBeats(ms, bpm);
+              const q = quantizeHeldDuration(ms, bpm, meter);
+              return (
+                <span key={h.id} className="flex min-w-0 items-center gap-2 tabular-nums">
+                  <span className="font-semibold text-accent">{PIANO_KEYS[h.midi - 21]?.name}</span>
+                  <span className="h-2 w-32 overflow-hidden rounded-full bg-section" aria-hidden>
+                    <span className="block h-full rounded-full bg-accent" style={{ width: `${Math.min(100, (raw / beats) * 100)}%` }} />
+                  </span>
+                  <span>{durationLabel(q)}음표</span>
+                </span>
+              );
+            })}
+        </div>
+      )}
       {!drums && (guitar
         ? <GuitarFretboard instrument={guitar} active={active} onPress={(m) => handler.current(m)} />
-        : <PianoKeyboard active={active} pressed={pressed} onPress={(m) => handler.current(m)} />)}
+        : <PianoKeyboard active={active} pressed={pressed} onPress={pianoPress} />)}
 
       {/* 악보 미리보기 (건반 바로 아래) */}
       {showScore && <HeaderSettings score={rootDraft} onChange={(patch) => setBase((current) => ({ ...current, ...patch }))} />}

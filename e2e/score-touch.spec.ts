@@ -1,4 +1,4 @@
-import { createScoreViaKeys, expect, openKeysInput, test } from "./fixtures";
+import { holdNote, createScoreViaKeys, expect, openKeysInput, test } from "./fixtures";
 import type { Page } from "@playwright/test";
 
 async function enterEditMode(page: Page) {
@@ -135,7 +135,7 @@ test("제목·작곡자: 악보에 그려지고 Enter/Esc 로 편집", async ({ 
 
 test("TitleDialog: 작곡자 입력이 악보에 저장되고 대화상자가 남지 않음", async ({ page }) => {
   await openKeysInput(page);
-  for (const k of ["a", "s"]) await page.keyboard.press(k);
+  for (const k of ["a", "s"]) await holdNote(page, k);
   await expect(page.getByText("2개 음표")).toBeVisible();
   await page.getByRole("button", { name: "악보로 저장" }).click();
   const dlg = page.getByRole("dialog");

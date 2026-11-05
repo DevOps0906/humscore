@@ -1,6 +1,6 @@
 import type { Locator, Page } from "@playwright/test";
 import type { Score } from "../src/lib/music/types";
-import { createScoreViaKeys, expect, openKeysInput, test } from "./fixtures";
+import { holdNote, createScoreViaKeys, expect, openKeysInput, test } from "./fixtures";
 
 async function savedScores(page: Page): Promise<Score[]> {
   return page.evaluate(() => JSON.parse(localStorage.getItem("humscore.scores.v1") ?? "[]"));
@@ -96,7 +96,7 @@ test("기타 4종은 실제 지판으로 바뀌고 피아노·TAB 보기와 6줄
 
 test("건반 악보 편집에서 음표와 코드 클릭·터치로 옵션을 열어 해당 박의 코드만 고친다", async ({ page }, testInfo) => {
   await openKeysInput(page);
-  for (const key of ["a", "s", "d"]) await page.keyboard.press(key);
+  for (const key of ["a", "s", "d"]) await holdNote(page, key);
   await page.getByRole("button", { name: "입력 마치기", exact: true }).click();
   await page.getByRole("button", { name: "악보 편집", exact: true }).click();
   const heads = page.locator(".score-sheet .vf-notehead");

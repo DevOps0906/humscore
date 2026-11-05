@@ -1,4 +1,4 @@
-import { createScoreViaKeys, expect, openKeysInput, test } from "./fixtures";
+import { holdNote, createScoreViaKeys, expect, openKeysInput, test } from "./fixtures";
 
 test("악보 커서 편집: → ↑ 2 키로 선택·음높이·길이 변경", async ({ page, isMobile }) => {
   await createScoreViaKeys(page);
@@ -62,7 +62,7 @@ test("로고는 소개 페이지(/)로 연결", async ({ page }) => {
 
 test("건반 저장 시 입력한 제목이 악보 제목이 됨", async ({ page }) => {
   await openKeysInput(page);
-  for (const k of ["a", "s", "d"]) await page.keyboard.press(k);
+  for (const k of ["a", "s", "d"]) await holdNote(page, k);
   await expect(page.getByText("3개 음표")).toBeVisible();
   await page.getByRole("button", { name: "악보로 저장" }).click();
   const dlg = page.getByRole("dialog");

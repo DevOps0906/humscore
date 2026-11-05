@@ -74,7 +74,7 @@ export interface MeasureMark {
 }
 
 /** 선택 가능한 박자표. 6/8 은 내부적으로 4분음표 3박(beatsPerMeasure=3)이며 표기·묶음만 다르다 */
-export type Meter = "3/4" | "4/4" | "6/8";
+export type Meter = "2/4" | "3/4" | "4/4" | "2/2" | "6/8" | "12/8";
 
 /** 추가 악기 파트. 박자·조성·템포·반복 기호는 곡을 공유하고 음표·코드는 독립 보관한다. */
 export interface ScorePart {
@@ -115,6 +115,14 @@ export interface Score {
   headerFont?: string;
   /** 악보 머리글 글자 크기(px, 10~48). 생략하면 기본 크기 */
   headerFontSize?: number;
+  /** 제목 글자 크기(px, 10~48). 생략하면 headerFontSize의 1.7배 */
+  titleFontSize?: number;
+  /** 작사·작곡·편곡자 글자 크기(px, 10~48). 생략하면 headerFontSize */
+  creditFontSize?: number;
+  /** 가사 글자 크기(px, 10~48). 생략하면 headerFontSize */
+  lyricFontSize?: number;
+  /** 코드 기호 글자 크기(px, 10~48). 생략하면 headerFontSize */
+  chordFontSize?: number;
   /** 제목·가사·코드·제작자 글자 굵기. 생략하면 제목700/본문400을 사용한다. */
   headerFontWeight?: number;
   /** 박자표. 생략하면 beatsPerMeasure/4 (3→3/4, 4→4/4). 6/8 만 beatsPerMeasure=3 과 함께 명시한다 */

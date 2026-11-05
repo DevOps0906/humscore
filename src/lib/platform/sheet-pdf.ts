@@ -55,8 +55,9 @@ const toJpeg = (c: HTMLCanvasElement) =>
  * @param container OSMD 가 SVG 를 그린 컨테이너 (그 안의 svg 만 사용)
  * @param headerLines 머리글 — [제목, "작사 ○○ · 작곡 ○○"] 처럼 위에서 아래로. OSMD 가 제목을 이미 그렸다면 빈 배열
  * @param pageSystems SVG(페이지)별 시스템의 세로 범위(px, SVG 위쪽 기준). 길이가 SVG 수와 다르면 무시하고 고정 분할
+ * @param style 머리글 글자 크기(px): 제목(titleSize)·제작자(creditSize). 생략하면 22px/14px
  */
-export async function sheetToPdf(container: HTMLElement, headerLines: string[], pageSystems: Span[][] = []): Promise<Uint8Array> {
+export async function sheetToPdf(container: HTMLElement, headerLines: string[], pageSystems: Span[][] = [], style: { titleSize?: number; creditSize?: number } = {}): Promise<Uint8Array> {
   const svgs = [...container.querySelectorAll<SVGSVGElement>("svg")].filter((s) => s.getBoundingClientRect().width > 50);
   if (svgs.length === 0) throw new Error("내보낼 악보가 없어요");
   const pieces: Piece[] = [];
@@ -64,7 +65,10 @@ export async function sheetToPdf(container: HTMLElement, headerLines: string[], 
 
   const cssW = Math.max(...pieces.map((p) => p.w));
   const lines = headerLines.filter(Boolean);
-  const headH = lines.length ? 24 + lines.length * 26 : 0;
+  const titleSize = style.titleSize ?? 22;
+  const creditSize = style.creditSize ?? 14;
+  const rowHeight = (i: number) => Math.round((i === 0 ? titleSize : creditSize) * 1.25) + 6;
+  const headH = lines.length ? 24 + lines.reduce((sum, _, i) => sum + rowHeight(i), 0) : 0;
   const totalH = headH + pieces.reduce((a, p) => a + p.h, 0);
 
   // A4 내용 영역 비율로 한 페이지 높이(CSS px)
@@ -97,9 +101,11 @@ export async function sheetToPdf(container: HTMLElement, headerLines: string[], 
 
       ctx.fillStyle = "#111";
       ctx.textAlign = "center";
+      let textY = 12;
       lines.forEach((t, i) => {
-        ctx.font = i === 0 ? `600 22px ${FONT}` : `14px ${FONT}`;
-        ctx.fillText(t, cssW / 2, 32 + i * 26, cssW - 32);
+        ctx.font = i === 0 ? `600 ${titleSize}px ${FONT}` : `${creditSize}px ${FONT}`;
+        textY += rowHeight(i);
+        ctx.fillText(t, cssW / 2, textY, cssW - 32);
       });
       let y = headH;
       for (const p of pieces) {

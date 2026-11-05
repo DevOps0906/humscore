@@ -1,18 +1,24 @@
-import { expect, openKeysInput, test } from "./fixtures";
+import { holdNote, expect, openKeysInput, test } from "./fixtures";
 
 test("건반 입력 마치기 → 실제 마디만 유지 → 편집으로 마디 자동 확장 → 저장", async ({ page }) => {
   await openKeysInput(page);
   const measures = page.locator(".score-sheet svg .vf-measure");
+  // 누른 시간이 음표 길이라 실제 길이는 타이밍에 따라 조금 달라진다. 저장된 초안의 끝 박으로 기대 마디 수를 계산한다.
+  const expectedMeasures = () => page.evaluate(() => {
+    const draft = JSON.parse(localStorage.getItem("humscore.keysDraft") ?? "null");
+    const last = draft.notes.at(-1);
+    return Math.max(1, Math.ceil((last.startBeat + last.durationBeats) / 4 - 1e-9));
+  });
   await expect(measures).toHaveCount(8, { timeout: 15_000 });
   await expect(page.getByRole("button", { name: "악보 편집", exact: true })).toBeVisible();
 
-  for (const key of ["a", "s", "d", "f"]) await page.keyboard.press(key);
+  for (const key of ["a", "s", "d", "f"]) await holdNote(page, key);
   await expect(page.getByText("4개 음표")).toBeVisible();
   await page.getByRole("button", { name: "입력 마치기", exact: true }).click();
-  await expect(measures).toHaveCount(1, { timeout: 15_000 });
+  await expect(measures).toHaveCount(await expectedMeasures(), { timeout: 15_000 });
 
   // 완료 뒤에는 소리만 내고 악보에는 음을 추가하지 않는다.
-  await page.keyboard.press("g");
+  await holdNote(page, "g");
   await expect.poll(() => page.evaluate(() => {
     const draft = JSON.parse(localStorage.getItem("humscore.keysDraft") ?? "null");
     return draft?.notes.length;
@@ -20,11 +26,11 @@ test("건반 입력 마치기 → 실제 마디만 유지 → 편집으로 마�
 
   await page.getByRole("button", { name: "악보 편집", exact: true }).click();
   await expect(page.getByRole("button", { name: "악보 편집", exact: true })).toHaveAttribute("aria-pressed", "true");
-  await page.keyboard.press("g");
+  await holdNote(page, "g");
   await expect(page.getByText("5개 음표")).toBeVisible();
-  await expect(measures).toHaveCount(2, { timeout: 15_000 });
+  await expect(measures).toHaveCount(await expectedMeasures(), { timeout: 15_000 });
   await page.getByRole("button", { name: "편집 마치기", exact: true }).click();
-  await expect(measures).toHaveCount(2);
+  await expect(measures).toHaveCount(await expectedMeasures());
 
   await page.getByRole("button", { name: "악보로 저장", exact: true }).click();
   await page.getByRole("dialog").getByRole("button", { name: "저장", exact: true }).click();

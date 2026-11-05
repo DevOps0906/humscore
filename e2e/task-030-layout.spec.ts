@@ -51,7 +51,7 @@ for (const width of [390, 900, 1440]) test(`${width}px SATB 가사와 글꼴 크
     await page.goto(`/scores/${id}`);
     const output = page.locator(".score-export");
     await expect(output.locator("[aria-busy]")).toHaveAttribute("aria-busy", "false");
-    await expect(output.locator(".vf-measure")).toHaveCount(32);
+    await expect(output.locator(".vf-measure")).toHaveCount(16);
     const positions = await output.locator(".vf-measure").evaluateAll((elements) => elements.map((element) => {
       const rect = element.querySelector(":scope > path")!.getBoundingClientRect();
       return { x: rect.x, y: rect.y, width: rect.width };
