@@ -37,7 +37,7 @@ export function ScoreTemplateDialog({ onClose, onCreate, replacing }: { onClose:
   const [arranger, setArranger] = useState("");
   const [textStyle, setTextStyle] = useState<Partial<HeaderPatch>>({});
   const preview = useMemo(() => buildScoreTemplate({ template, instruments, title, bpm, meter, measures, tonic, lyricist, composer, arranger }), [template, instruments, title, bpm, meter, measures, tonic, lyricist, composer, arranger]);
-  const sample = useMemo(() => buildScoreTemplate({ template, instruments, title: template === "hymn" ? "주 하나님 지으신 모든 세계" : title, bpm, meter: "4/4", measures: template === "orchestra" ? 4 : 8, tonic, lyricist, composer, arranger, previewSample: true }), [template, instruments, title, bpm, tonic, lyricist, composer, arranger]);
+  const sample = useMemo(() => buildScoreTemplate({ template, instruments, title: template === "hymn" ? "주 하나님 지으신 모든 세계" : title, bpm, meter: "4/4", measures: template === "orchestra" ? 4 : template === "drums" ? 20 : 8, tonic, lyricist, composer, arranger, previewSample: true }), [template, instruments, title, bpm, tonic, lyricist, composer, arranger]);
   const visibleScore = useMemo(() => ({ ...(step === 1 ? sample : preview), ...textStyle }), [step, sample, preview, textStyle]);
   const tabInstrument = instruments.length === 1 && isGuitarInstrument(instruments[0]) ? instruments[0] : null;
   const xml = useMemo(() => scoreToMusicXML(visibleScore, "piano", { measuresPerSystem: 4, externalHeader: true }), [visibleScore]);
@@ -52,7 +52,7 @@ export function ScoreTemplateDialog({ onClose, onCreate, replacing }: { onClose:
       {step === 1 && <div className="grid min-w-0 grid-cols-1 items-start gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,2fr)] md:gap-4">
         <section aria-label="악보 형식 선택" className="grid min-w-0 grid-cols-2 gap-2 md:grid-cols-1">
         {SCORE_TEMPLATES.map((entry) => <Button key={entry.id} type="button" variant="outline" aria-pressed={entry.id === template} onClick={() => {
-          setTemplate(entry.id); setInstruments([...entry.instruments]); setTitle(entry.id === "hymn" ? "주 하나님 지으신 모든 세계" : entry.title); setBpm(entry.bpm); setMeter(entry.meter); setMeasures(8);
+          setTemplate(entry.id); setInstruments([...entry.instruments]); setTitle(entry.id === "hymn" ? "주 하나님 지으신 모든 세계" : entry.title); setBpm(entry.bpm); setMeter(entry.meter); setMeasures(entry.id === "drums" ? 20 : 8);
         }} className={`h-auto min-h-11 min-w-0 flex-col items-start gap-2 whitespace-normal p-2 text-left md:p-4 ${entry.id === template ? "border-accent bg-accent/15 text-accent" : ""}`}>
           <span className="text-xs font-semibold md:text-sm">{entry.title}</span><span className="hidden text-xs text-ink-soft md:block">{entry.detail}</span>
         </Button>)}
@@ -76,7 +76,7 @@ export function ScoreTemplateDialog({ onClose, onCreate, replacing }: { onClose:
           <label className="col-span-2 grid gap-1 text-sm">악보 제목<Input aria-label="템플릿 악보 제목" value={title} maxLength={100} onChange={(event) => setTitle(event.target.value)} className="h-11" /></label>
           <label className="grid gap-1 text-sm">빠르기 BPM<Input aria-label="템플릿 BPM" type="number" min={30} max={240} value={bpm} onChange={(event) => setBpm(Math.max(30, Math.min(240, Number(event.target.value) || 84)))} className="h-11" /></label>
           <label className="grid gap-1 text-sm">박자<select aria-label="템플릿 박자" value={meter} onChange={(event) => setMeter(event.target.value as Meter)} className={field}>{METER_IDS.map((value) => <option key={value}>{value}</option>)}</select></label>
-          <label className="grid gap-1 text-sm">마디 수<select aria-label="템플릿 마디 수" value={measures} onChange={(event) => setMeasures(Number(event.target.value))} className={field}>{[4, 8, 16, 32].map((value) => <option key={value} value={value}>{value}마디</option>)}</select></label>
+          <label className="grid gap-1 text-sm">마디 수<select aria-label="템플릿 마디 수" value={measures} onChange={(event) => setMeasures(Number(event.target.value))} className={field}>{[4, 8, 16, 20, 32].map((value) => <option key={value} value={value}>{value}마디</option>)}</select></label>
           <label className="grid gap-1 text-sm">조성<select aria-label="템플릿 조성" value={tonic} onChange={(event) => setTonic(Number(event.target.value))} className={field}>{["C", "Db", "D", "Eb", "E", "F", "Gb", "G", "Ab", "A", "Bb", "B"].map((value, index) => <option key={value} value={index}>{value}장조</option>)}</select></label>
         </div>
         <fieldset className="grid min-w-0 gap-3">

@@ -3,6 +3,7 @@ import { instrumentMode, ORCHESTRAL_DRUM_NOTES, type InstrumentId } from "./inst
 import { beatsPerMeasureOf } from "./meter";
 import { fifthsFor } from "./theory";
 import { hymnVoiceParts } from "./hymn-preview";
+import { drumShowcaseMeasure } from "./drum-pattern";
 import type { Meter, NoteEvent, Score, ScorePart } from "./types";
 
 export const SCORE_TEMPLATES = [
@@ -60,6 +61,9 @@ export function buildScoreTemplate(options: TemplateOptions): Score {
       const root = (bass ? instrument === "bassGuitar5" ? 28 : 36 : instrument === "viola" || instrument === "frenchHorn" ? 48 : 60) + tonic + intervals[m % 8];
       if (percussion && instrument !== "drumKit") {
         notes.push({ midi: ORCHESTRAL_DRUM_NOTES[instrument] ?? 38, startBeat: start, durationBeats: 1 });
+      } else if (percussion && beats === 4) {
+        // 4/4 드럼 예시: 하이햇·킥·스네어 변주와 필인, 쉼표 마디가 섞인 한 곡 분량의 악보
+        for (const note of drumShowcaseMeasure(m, measures)) notes.push({ ...note, startBeat: start + note.startBeat });
       } else if (percussion) {
         for (let step = 0; step < beats * 2; step++) {
           const at = start + step / 2;
@@ -93,5 +97,6 @@ export function buildScoreTemplate(options: TemplateOptions): Score {
     return value ? [[field, value]] : [];
   }));
   return { ...createBlankScore(), ...first, ...credits, id: createBlankScore().id, title: options.title.trim() || preset.title, bpm: Math.min(240, Math.max(30, options.bpm)), meter: options.meter, measureCount: measures,
+    ...(options.template === "drums" ? { headerFont: "classic-serif" } : {}),
     beatsPerMeasure: beats, key: { tonic, mode: "major", fifths: fifthsFor(tonic, "major") }, parts: additional.length ? additional : undefined };
 }

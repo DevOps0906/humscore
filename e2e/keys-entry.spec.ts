@@ -43,7 +43,9 @@ test("건반 입력 마치기 → 실제 마디만 유지 → 편집으로 마�
     return scores.find((score: { id: string }) => score.id === scoreId);
   }, id);
   expect(saved.notes).toHaveLength(5);
-  expect(saved.notes[4].startBeat).toBe(4);
+  // 다섯째 음은 앞 네 음이 끝난 자리에서 시작한다(누른 시간이 길이가 되므로 합계는 타이밍에 따라 조금 달라질 수 있다)
+  const firstFour = saved.notes.slice(0, 4).reduce((sum: number, note: { durationBeats: number }) => sum + note.durationBeats, 0);
+  expect(saved.notes[4].startBeat).toBe(firstFour);
 });
 
 test("입력 중 저장을 열면 남는 마디를 정리하고 편집을 다시 시작할 수 있다", async ({ page }) => {

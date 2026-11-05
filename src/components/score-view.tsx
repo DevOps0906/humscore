@@ -124,7 +124,7 @@ function drawCreditLines(osmd: OpenSheetMusicDisplay, container: HTMLElement, li
 }
 
 /** 음표가 빽빽하거나 화면이 좁아도 네 마디가 한 줄에 남도록 종이의 최소 폭을 구한다. */
-function renderFourMeasureLines(osmd: OpenSheetMusicDisplay, container: HTMLElement) {
+function renderFourMeasureLines(osmd: OpenSheetMusicDisplay, container: HTMLElement, trimHeight = false) {
   container.style.minWidth = "";
   const rules = osmd.EngravingRules;
   rules.FixedMeasureWidth = false;
@@ -178,6 +178,18 @@ function renderFourMeasureLines(osmd: OpenSheetMusicDisplay, container: HTMLElem
     const width = svg.width.baseVal.value;
     const height = svg.height.baseVal.value;
     if (width > 0 && height > 0) svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
+  }
+  // OSMD 종이는 A4 세로 비율이라 내용 아래가 크게 비어 있다. 화면용(fitToPage)은 마지막 줄 아래까지만 두어
+  // 오선이 작아지지 않고 아래에 빈 종이가 남지 않게 한다(좌표 원점·폭은 그대로).
+  if (trimHeight) {
+    const k = 10 * osmd.zoom;
+    for (const svg of container.querySelectorAll("svg")) {
+      const { width, height } = svg.viewBox.baseVal;
+      if (!width || !height) continue;
+      const box = svg.getBBox();
+      const trimmed = Math.ceil(box.y + box.height + 2 * k);
+      if (trimmed > 0 && trimmed < height) svg.setAttribute("viewBox", `0 0 ${width} ${trimmed}`);
+    }
   }
 }
 
@@ -463,8 +475,11 @@ export function ScoreView({
           const textStyle = { fontId, fontSize, fontWeight, titleSize, creditSize, lyricSize, chordSize };
           const textKey = JSON.stringify([fontId, fontSize, fontWeight, titleSize, creditSize, lyricSize, chordSize, fontRevision]);
           configureTypography(osmd, textStyle);
-          const multipleInstruments = xml.includes('id="M1-');
+          const multipleInstruments = xml.includes('id="M1-') || xml.includes("<part-abbreviation>Drs.</part-abbreviation>"); // 드럼은 악보 왼쪽에 Drumset / Drs. 이름을 단다
           osmd.setOptions({ drawTitle: showHeader, drawComposer: false, drawLyricist: false, drawPartNames: multipleInstruments, drawPartAbbreviations: multipleInstruments });
+          const drumLabels = xml.includes("<part-abbreviation>Drs.</part-abbreviation>");
+          osmd.EngravingRules.RenderMeasureNumbersOnlyAtSystemStart = drumLabels; // 드럼 악보: 줄 첫머리에만 마디 번호
+          osmd.EngravingRules.RenderPartAbbreviationsForSingleStaff = drumLabels; // 둘째 줄부터 Drs.
           if (showHeader) {
             // 기본값은 제목이 너무 커서 긴 제목이 잘림 → 작게
             osmd.EngravingRules.SheetComposerHeight = 1.2;
@@ -480,7 +495,7 @@ export function ScoreView({
           }
           osmd.zoom = zoom;
           if (fitToPage) ref.current.style.width = `${Math.max(720, sheetRef.current?.clientWidth ?? 720)}px`;
-          renderFourMeasureLines(osmd, ref.current);
+          renderFourMeasureLines(osmd, ref.current, fitToPage);
           if (showHeader) drawCreditLines(osmd, ref.current, creditLines(xml), textStyle);
           styleScoreText(ref.current, xml, textStyle);
           fitPages(ref.current, fitToPage, fitHeight);
@@ -515,7 +530,7 @@ export function ScoreView({
       timer = setTimeout(() => {
         if (osmdRef.current && ref.current && loadedXml.current) {
           if (fitToPage) ref.current.style.width = `${Math.max(720, sheet.clientWidth)}px`;
-          renderFourMeasureLines(osmdRef.current, ref.current);
+          renderFourMeasureLines(osmdRef.current, ref.current, fitToPage);
           const textStyle = { fontId, fontSize, fontWeight, titleSize, creditSize, lyricSize, chordSize };
           if (showHeader) drawCreditLines(osmdRef.current, ref.current, creditLines(loadedXml.current), textStyle);
           styleScoreText(ref.current, loadedXml.current, textStyle);

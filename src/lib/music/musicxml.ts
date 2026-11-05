@@ -277,7 +277,7 @@ function drumMusicXML(score: Score, opts: MusicXmlOptions): string {
   const instruments = midis.map((midi) => `<score-instrument id="D${midi}"><instrument-name>${esc(partName === "드럼" ? percussionPiece(midi)?.label ?? `드럼 ${midi}` : partName)}</instrument-name></score-instrument>`).join("");
   const midi = midis.map((midi) => `<midi-instrument id="D${midi}"><midi-channel>10</midi-channel><midi-unpitched>${midi + 1}</midi-unpitched></midi-instrument>`).join("");
   const creators = external ? "" : (["lyricist", "composer", "arranger"] as const).map((kind) => score[kind]?.trim() ? `<creator type="${kind}">${esc(score[kind]!.trim())}</creator>` : "").join("");
-  return `<?xml version="1.0" encoding="UTF-8"?>\n<score-partwise version="4.0">${external ? "" : `<work><work-title>${esc(score.title)}</work-title></work>`}<identification>${creators}<encoding><software>HumScore</software></encoding></identification><part-list><score-part id="P1"><part-name>${esc(partName)}</part-name>${instruments}${midi}</score-part></part-list><part id="P1">${body.join("")}</part></score-partwise>`;
+  return `<?xml version="1.0" encoding="UTF-8"?>\n<score-partwise version="4.0">${external ? "" : `<work><work-title>${esc(score.title)}</work-title></work>`}<identification>${creators}<encoding><software>HumScore</software></encoding></identification><part-list><score-part id="P1">${partName === "드럼" ? `<part-name>Drumset</part-name><part-abbreviation>Drs.</part-abbreviation>` : `<part-name>${esc(partName)}</part-name>`}${instruments}${midi}</score-part></part-list><part id="P1">${body.join("")}</part></score-partwise>`;
 }
 
 export function scoreToMusicXML(score: Score, layout: ScoreLayout = "lead", opts: MusicXmlOptions = {}): string {
