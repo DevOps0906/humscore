@@ -66,6 +66,12 @@ const PATCHES: Partial<Record<InstrumentId, Patch>> = {
   vibraphone: { wave: "sine", attack: 0.003, release: 0.35, level: 0.26, cutoff: 6500, decay: 2.7, fm: { ratio: 3.99, depth: 0.3, decay: 1.6 }, tremolo: { rate: 5.5, depth: 0.28 } },
 };
 
+/** 스스로 감쇠하지 않고 길이만큼 이어지는 소리인지(관악·현악·패드·오르간 등) */
+export function isHeldPatch(instrument: InstrumentId): boolean {
+  const patch = PATCHES[instrument];
+  return !!patch && patch.decay === undefined && !patch.pattern;
+}
+
 const finite = (value: number | undefined, fallback: number, min: number, max: number) =>
   typeof value === "number" && Number.isFinite(value) ? Math.min(max, Math.max(min, value)) : fallback;
 

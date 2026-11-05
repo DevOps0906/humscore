@@ -2,7 +2,8 @@ import { midiToFreq } from "../music/frequency";
 import type { InstrumentId } from "../music/instrument-catalog";
 import type { GuitarInstrumentId } from "../music/tablature";
 import { playPianoNote, type PlayNoteOptions } from "./piano-synth";
-import { playExtendedInstrumentNote } from "./extended-instruments";
+import { isHeldPatch, playExtendedInstrumentNote } from "./extended-instruments";
+import { getSustainRatio, heldDuration } from "./sustain";
 import { playDrumNote } from "./percussion";
 
 /**
@@ -364,6 +365,13 @@ function playGuitar(ctx: AudioContext, instrument: GuitarInstrumentId, midi: num
   };
 }
 
+const WIND_BRASS: ReadonlySet<string> = new Set(["flute", "piccolo", "oboe", "englishHorn", "clarinet", "bassoon", "frenchHorn", "trumpet", "trombone", "bassTrombone", "tuba"]);
+export const isWindOrBrass = (instrument: InstrumentId) => WIND_BRASS.has(instrument);
+/** 길이만큼 이어지는 지속음 악기인지 */
+export function isHeldInstrument(instrument: InstrumentId): boolean {
+  return Object.prototype.hasOwnProperty.call(SPECS, instrument) || isHeldPatch(instrument);
+}
+
 /**
  * 선택한 악기로 한 음을 재생. piano 는 기존 playPianoNote.
  * 지속음 악기는 duration 동안 서스테인 후 릴리즈(없으면 0.8초).
@@ -402,6 +410,8 @@ export function playInstrumentNote(
       playDrumNote(ctx, 81, when, opts);
       return;
     default: {
+      // 길게 이어지는 소리는 슬라이더 비율과 목관·금관의 숨 자리를 반영해 길이를 줄인다.
+      if (isHeldInstrument(instrument)) opts = { ...opts, duration: heldDuration(opts.duration, getSustainRatio(), isWindOrBrass(instrument)) };
       if (playExtendedInstrumentNote(ctx, instrument, midi, when, opts)) return;
       const spec = Object.prototype.hasOwnProperty.call(SPECS, instrument) ? SPECS[instrument as SustainedInstrument] : undefined;
       if (!spec) {

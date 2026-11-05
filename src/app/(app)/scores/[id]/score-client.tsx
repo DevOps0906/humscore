@@ -1,6 +1,7 @@
 "use client";
 import Link from "next/link";
 import { ScoreArrangementTabs } from "@/components/score-arrangement-tabs";
+import { SustainSlider } from "@/components/sustain-slider";
 import { ScorePartsPanel } from "@/components/score-parts-panel";
 import { MAIN_PART_ID, scoreForPart, updateScorePart, addScorePart, removeScorePart, mergeScoreParts } from "@/lib/music/parts";
 import { canTie } from "@/lib/music/articulation";
@@ -590,6 +591,7 @@ function ScoreEditor({ id, entry }: { id: string; entry?: ScoreEntry }) {
                 <option key={id} value={id}>{INSTRUMENT_LABELS[id]}</option>
               ))}
             </select>
+            {!isDrums && <SustainSlider className="mb-2 max-w-md" />}
             {isDrums ? <p className="text-xs text-ink-soft">드럼은 전조 없이 재생합니다.</p> : <TransposeBar originalKey={score.key} transpose={score.transpose} onChange={(t) => update({ transpose: t })} />}
           </div>
         </div>

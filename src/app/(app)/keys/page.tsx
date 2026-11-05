@@ -25,6 +25,7 @@ import { TabScoreView } from "@/components/tab-score-view";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { DurationPicker } from "@/components/note-editor";
 import { Play, Square } from "lucide-react";
+import { SustainSlider } from "@/components/sustain-slider";
 import { PianoKeyboard } from "@/components/piano-keyboard";
 import { BASS_CLEF_PATH, CLEF_UNITS_PER_SPACE, TREBLE_CLEF_PATH } from "@/components/clef-glyphs";
 import { ScoreView } from "@/components/score-view";
@@ -700,6 +701,11 @@ function KeysPageInner() {
       {!drums && (guitar
         ? <GuitarFretboard instrument={guitar} active={active} onPress={(m) => handler.current(m)} />
         : <PianoKeyboard active={active} pressed={pressed} onPress={pianoPress} />)}
+      {!drums && (
+        <div className="mx-auto flex w-full max-w-md flex-col items-center gap-1">
+          <SustainSlider className="w-full" />
+        </div>
+      )}
       {!drums && (
         <div className="flex justify-center">
           <Button type="button" onClick={togglePlayback} disabled={notes.length === 0} aria-pressed={playing} aria-label={playing ? "재생 중지" : "재생"} className="h-11 gap-2 rounded-full px-6 text-sm">
