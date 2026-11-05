@@ -11,6 +11,7 @@ async function createScoreViaKeys(page: Page): Promise<string> {
   await page.getByRole("button", { name: "악보로 저장", exact: true }).click();
   await page.getByRole("dialog").getByRole("button", { name: "저장", exact: true }).click();
   await page.waitForURL(/\/scores\/[^/]+$/);
+  await page.getByRole("button", { name: "편집모드", exact: true }).click();
   return page.url().split("/scores/")[1];
 }
 

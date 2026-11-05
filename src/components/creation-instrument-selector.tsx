@@ -54,14 +54,21 @@ export function CreationInstrumentSelector({ mode, instrument, onModeChange, onI
           {ORCHESTRA_GROUPS.map((entry) => <option key={entry.id} value={entry.id}>{entry.label}</option>)}
         </select>
       </label>}
-      {(mode === "guitarTab" || mode === "orchestra") && <label className="grid min-w-0 gap-1.5 text-sm">{mode === "orchestra" ? "세부 악기·음색 선택" : "기타 종류 선택"}
+      {mode === "guitarTab" && <label className="grid min-w-0 gap-1.5 text-sm">기타 종류 선택
         <select aria-label="음색 선택" value={instrument} onChange={(event) => {
           if (isInstrumentId(event.target.value)) onInstrumentChange(event.target.value);
         }} className={field}>
-          {mode === "guitarTab" && options(GUITAR_INSTRUMENTS)}
-          {mode === "orchestra" && options(group.instruments)}
+          {options(GUITAR_INSTRUMENTS)}
         </select>
       </label>}
+      {mode === "orchestra" && <details key={group.id} open className="min-w-0 rounded-lg border border-line bg-surface px-3 md:col-span-2 lg:col-span-3">
+        <summary className="cursor-pointer py-3 text-sm focus-visible:outline-ring">세부 악기·음색 선택 · {INSTRUMENT_LABELS[instrument]}</summary>
+        <div className="flex min-w-0 flex-wrap gap-2 pb-3" role="group" aria-label={`${group.label} 음색 프리셋`}>
+          {group.instruments.map((id) => <Button key={id} type="button" variant={instrument === id ? "default" : "outline"} aria-pressed={instrument === id} onClick={() => onInstrumentChange(id)} className="min-h-11 max-w-full whitespace-normal px-3 py-2">
+            {INSTRUMENT_LABELS[id]}
+          </Button>)}
+        </div>
+      </details>}
       {mode === "piano" && <details className="min-w-0 rounded-lg border border-line bg-surface px-3 md:col-span-2 lg:col-span-3">
         <summary className="cursor-pointer py-3 text-sm focus-visible:outline-ring">음색 프리셋 · {INSTRUMENT_LABELS[instrument]}</summary>
         <div className="flex min-w-0 flex-wrap gap-2 pb-3" role="group" aria-label={`${pianoGroup.label} 음색 프리셋`}>

@@ -1,15 +1,16 @@
 # NOW — 재진입 스냅샷 (30줄 이내, 매 작업 끝에 덮어쓴다)
 
 - 갱신: 2026-11-05
-- 현재 작업: task-026 진행 — 드럼 그림·오케스트라 음색 버튼·악보 편집모드·반주 선택과 아르페지오 10종
-- task-026 1단계: 반주 설정 모델·검증·초안 복원과 10패턴 생성, 전체/공연 재생·MIDI·MusicXML 반주 연결. 단위 1519개·린트·타입 통과. 2단계 UI 통합·3구간 E2E 검증 중
+- 현재 작업: task-026 완료 — 드럼 그림·오케스트라 음색 버튼·악보 편집모드·반주 선택과 아르페지오 10종
+- task-026 1단계: 반주 설정 모델·검증·초안 복원과 10패턴 생성, 전체/공연 재생·MIDI·MusicXML 연결. 58bb41d 커밋·main 푸시
+- task-026 검증: 단위 1519개 통과·32개 건너뜀, 린트·타입·프로덕션 빌드·코드 리뷰 통과. desktop 통합 E2E 33개 통과, 신규 UI·터치 desktop/mobile 25개 통과·모바일 마우스 드래그 1개 건너뜀. 390·900·1440px 12 PNG 검수, 반주 선택시 보표 자동 표시. Next16 숨겨진 이전 화면 DOM은 E2E :visible로 구분
 - task-025 1단계: 전체 음색 연결·5현 베이스·오케스트라 타악·초안 복원, 단위 831개 통과 후 c8c6c5c 커밋·main 푸시
 - 마지막으로 한 일: 전체 단위 1508 통과·32 건너뜀. 린트·타입·프로덕션 빌드 통과, 선택 UI E2E 3개·기존 제목 회귀 2개 통과. 390·900·1440px 12 PNG, 드럼 실제 음표와 넘침 검수
 - 다음 한 걸음: 실제 기기의 음색 청취·iOS/Safari 재생 확인. PDF의 레이어·패치 시트·총보 자동 편곡은 별도 확장. task-005 실기기 결과로 task-016 조정, task-020 운영 마이그레이션은 별도 배포
 - 미확인: rAF 누수 수정은 코드로만(브라우저 실측 필요). OSMD 시스템 경계 단위(task-001)
 - 열린 결정: task-004 실녹음 no-go 이후 재개 여부 · task-011 재계획. 스파이크 worktree(.claude/worktrees/agent-aa9849d89ba9916a9) 정리 여부
 - 주의: 영역은 `.claude/rules/delegation.md` ①표 + `npm run agents:check -- <팀원>`. 푸시는 사용자 지시가 있을 때만. `.serena/`는 커밋하지 않음.
-- SDLC 단계: task-025 구현·검증 완료. main 푸시 후 CI·Vercel 운영 배포 결과는 별도 확인. 사용자가 단계별 커밋·푸시와 한국어 지시·질문·보고 요청
+- SDLC 단계: task-026 구현·검증 완료. main 푸시 후 CI·Vercel 운영 배포 결과는 별도 확인. 사용자가 단계별 커밋·푸시와 한국어 지시·질문·보고 요청
 - 담당 모델/역할: Codex scout·builder·music-logic-coder·tester·codex-reviewer는 부모 모델·추론 설정 상속. 기존 Claude 위임 지시: Opus 기본, astra 금지
 - 수정 파일: keys/score-client/welcome·composition-dialog·score-view·note-chord-editor·guitar-fretboard·tab-score-view·tablature·midi·instruments·keys-draft·단위/E2E·README·tasks. 새 의존성·DB·Score 모델 변경 없음. 기존 미추적 파일 보존
 - task-022 검증: Vitest746 통과·32 건너뜀, 신규E2E10·기존회귀E2E12 통과, 3구간 PNG6장 검수. lint·tsc·코드리뷰·프로덕션빌드 확인. agents:check는 팀장 전용 types/tasks 및 기존로컬파일 탓 전체실패, 구현/테스트파일 통과

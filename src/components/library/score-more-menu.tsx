@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Copy, MoreHorizontal, Trash2 } from "lucide-react";
+import Link from "next/link";
+import { Copy, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -34,6 +35,9 @@ export function ScoreMoreMenu({ score }: { score: Score }) {
           <MoreHorizontal aria-hidden />
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
+          <DropdownMenuItem asChild className="min-h-11">
+            <Link href={`/scores/${score.id}?edit=1`}><Pencil aria-hidden /> 편집모드</Link>
+          </DropdownMenuItem>
           <DropdownMenuItem className="min-h-11" onSelect={() => void duplicate()}>
             <Copy aria-hidden /> 복제
           </DropdownMenuItem>

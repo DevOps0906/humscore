@@ -5,6 +5,7 @@ test("악보 커서 편집: → ↑ 2 키로 선택·음높이·길이 변경", 
   await expect(page.locator(".score-sheet svg").first()).toBeVisible({ timeout: 15_000 });
 
   const toggle = page.getByRole("button", { name: "음표 편집" });
+  await page.getByRole("button", { name: "편집모드", exact: true }).click();
   await expect(async () => {
     if ((await toggle.getAttribute("aria-pressed")) !== "true") await toggle.click();
     await expect(toggle).toHaveAttribute("aria-pressed", "true", { timeout: 500 });
@@ -66,5 +67,5 @@ test("건반 저장 시 입력한 제목이 악보 제목이 됨", async ({ page
   await dlg.getByLabel("제목").fill("테스트 노래");
   await dlg.getByRole("button", { name: "저장", exact: true }).click();
   await page.waitForURL(/\/scores\/[^/]+$/);
-  await expect(page.getByLabel("악보 제목")).toHaveValue("테스트 노래");
+  await expect(page.getByTestId("score-header").getByRole("heading", { name: "테스트 노래", exact: true })).toBeVisible();
 });

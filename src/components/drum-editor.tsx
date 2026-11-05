@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { DrumKitDiagram } from "@/components/drum-kit-diagram";
 import { DRUM_PIECES } from "@/lib/music/drums";
 import { scoreMeasureCount } from "@/lib/music/edit";
 import type { NoteEvent, Score } from "@/lib/music/types";
@@ -18,13 +19,18 @@ export function DrumEditor({ score, onChange, onPreview }: DrumEditorProps) {
   const [measure, setMeasure] = useState(0);
   const [resolution, setResolution] = useState(2);
   const [extraMeasures, setExtraMeasures] = useState(1);
+  const [selectedMidi, setSelectedMidi] = useState(DRUM_PIECES[0].midi);
   const count = Math.max(extraMeasures, scoreMeasureCount(score));
   const current = Math.min(measure, count - 1);
   const stepDuration = 1 / resolution;
   const steps = Math.round(score.beatsPerMeasure * resolution);
   const start = current * score.beatsPerMeasure;
+  const activePieces = DRUM_PIECES.filter((piece) => score.notes.some((note) => note.midi === piece.midi && note.startBeat >= start && note.startBeat < start + score.beatsPerMeasure));
+  const selectedPiece = DRUM_PIECES.find((piece) => piece.midi === selectedMidi) ?? DRUM_PIECES[0];
+  function selectPiece(midi: number) { setSelectedMidi(midi); onPreview(midi); }
   const isHit = (midi: number, beat: number) => score.notes.some((note) => note.midi === midi && Math.abs(note.startBeat - beat) < 1e-6);
   function toggle(midi: number, beat: number) {
+    setSelectedMidi(midi);
     const exists = isHit(midi, beat);
     const notes = score.notes.filter((note) => !(note.midi === midi && Math.abs(note.startBeat - beat) < 1e-6));
     if (!exists) { notes.push({ midi, startBeat: beat, durationBeats: stepDuration }); onPreview(midi); }
@@ -48,7 +54,12 @@ export function DrumEditor({ score, onChange, onPreview }: DrumEditorProps) {
           </label>
         </div>
       </div>
-      <p className="text-xs text-ink-soft">악기 이름을 누르면 소리를 듣고, 박자 칸을 누르면 타격을 추가해요. 같은 박에 킥·스네어·하이햇을 함께 놓을 수 있어요.</p>
+      <p className="text-xs text-ink-soft">드럼 그림을 선택하면 악기 이름과 소리를 확인해요. 아래 박자 칸을 눌러 타격을 추가하고 같은 박에 여러 악기를 함께 놓을 수 있어요.</p>
+      <DrumKitDiagram selectedMidi={selectedMidi} activeMidis={activePieces.map((piece) => piece.midi)} onSelect={selectPiece} />
+      <div className="rounded-xl border border-line bg-paper p-3 text-sm" role="status" aria-live="polite">
+        <p>선택한 드럼 구성: <strong>{selectedPiece.label}</strong> · {selectedPiece.head === "x" ? "X형 음표" : "일반 음표"}</p>
+        <p className="mt-1 text-xs text-ink-soft">{current + 1}마디 구성: {activePieces.length ? activePieces.map((piece) => piece.label).join(" · ") : "아직 입력한 악기가 없어요"}</p>
+      </div>
       <div className="min-w-0 overflow-x-auto rounded-xl border border-line">
         <table className="w-full border-collapse text-sm">
           <thead><tr>
@@ -56,8 +67,8 @@ export function DrumEditor({ score, onChange, onPreview }: DrumEditorProps) {
             {Array.from({ length: steps }, (_, step) => <th key={step} className="min-w-11 px-1 py-2 text-center text-xs font-normal text-ink-soft">{Number((step / resolution + 1).toFixed(2))}박</th>)}
           </tr></thead>
           <tbody>{DRUM_PIECES.map((piece) => <tr key={piece.id}>
-            <th className="whitespace-nowrap border-t border-line bg-surface p-1 text-left">
-              <Button type="button" variant="ghost" className="h-11 justify-start px-2 text-xs" onClick={() => onPreview(piece.midi)} aria-label={`${piece.label} 소리 듣기`}>{piece.label}</Button>
+            <th className={`whitespace-nowrap border-t border-line p-1 text-left ${selectedMidi === piece.midi ? "bg-accent/15 text-accent" : "bg-surface"}`}>
+              <Button type="button" variant="ghost" className="h-11 justify-start px-2 text-xs" onClick={() => selectPiece(piece.midi)} aria-label={`${piece.label} 소리 듣기`}>{piece.label}</Button>
             </th>
             {Array.from({ length: steps }, (_, step) => {
               const beat = start + step / resolution;

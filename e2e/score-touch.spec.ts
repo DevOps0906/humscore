@@ -4,6 +4,7 @@ import type { Page } from "@playwright/test";
 async function enterEditMode(page: Page) {
   await expect(page.locator(".score-sheet svg").first()).toBeVisible({ timeout: 15_000 });
   const toggle = page.getByRole("button", { name: "음표 편집" });
+  await page.getByRole("button", { name: "편집모드", exact: true }).click();
   await expect(async () => {
     if ((await toggle.getAttribute("aria-pressed")) !== "true") await toggle.click();
     await expect(toggle).toHaveAttribute("aria-pressed", "true", { timeout: 500 });
@@ -99,6 +100,7 @@ test("드래그: 선택한 음표를 위로 끌면 반음 단위로 올라감", 
 
 test("제목·작곡자: 악보에 그려지고 Enter/Esc 로 편집", async ({ page }) => {
   await createScoreViaKeys(page);
+  await page.getByRole("button", { name: "편집모드", exact: true }).click();
   await expect(page.locator(".score-sheet svg").first()).toBeVisible({ timeout: 15_000 });
 
   const title = page.getByLabel("악보 제목");
@@ -119,6 +121,7 @@ test("제목·작곡자: 악보에 그려지고 Enter/Esc 로 편집", async ({ 
 
   // 새로고침 후 유지
   await page.reload();
+  await page.getByRole("button", { name: "편집모드", exact: true }).click();
   await expect(page.getByLabel("작곡자", { exact: true })).toHaveValue("홍길동");
 });
 
@@ -132,6 +135,7 @@ test("TitleDialog: 작곡자 입력이 악보에 저장되고 대화상자가 �
   await dlg.getByLabel("작곡 (선택)").fill("김작곡");
   await dlg.getByRole("button", { name: "저장", exact: true }).click();
   await page.waitForURL(/\/scores\/[^/]+$/);
+  await page.getByRole("button", { name: "편집모드", exact: true }).click();
   await expect(page.getByLabel("작곡자", { exact: true })).toHaveValue("김작곡");
   await expect(page.getByRole("dialog")).toHaveCount(0); // (숨겨진 이전 화면의 노드는 제외)
 });

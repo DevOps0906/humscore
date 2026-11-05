@@ -67,18 +67,18 @@ for (const width of [390, 900, 1440]) {
     const group = page.getByLabel("악기군 선택", { exact: true });
     await expect(group.locator("option")).toHaveText(["현악", "목관", "금관", "팀파니", "타악기", "하프"]);
     for (const entry of [
-      ["strings", "violin"], ["woodwinds", "flute"], ["brass", "frenchHorn"],
-      ["timpani", "timpani"], ["percussion", "orchestralSnare"], ["harp", "harp"],
+      ["strings", "violin", "현악", "바이올린 I"], ["woodwinds", "flute", "목관", "플루트"], ["brass", "frenchHorn", "금관", "호른"],
+      ["timpani", "timpani", "팀파니", "팀파니"], ["percussion", "orchestralSnare", "타악기", "스네어 드럼"], ["harp", "harp", "하프", "하프"],
     ]) {
       await group.selectOption(entry[0]);
-      await expect(sound).toHaveValue(entry[1]);
+      await expect(page.getByRole("group", { name: `${entry[2]} 음색 프리셋`, exact: true }).getByRole("button", { name: entry[3], exact: true })).toHaveAttribute("aria-pressed", "true");
       await expectDraftInstrument(page, entry[1]);
     }
     await capture(page, width, "orchestra");
     await page.reload();
     await expect(mode).toHaveValue("orchestra");
     await expect(group).toHaveValue("harp");
-    await expect(sound).toHaveValue("harp");
+    await expect(page.getByRole("group", { name: "하프 음색 프리셋", exact: true }).getByRole("button", { name: "하프", exact: true })).toHaveAttribute("aria-pressed", "true");
 
     await mode.selectOption("drums");
     await page.getByRole("button", { name: "새 악보로 시작", exact: true }).click();

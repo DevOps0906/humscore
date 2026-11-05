@@ -11,6 +11,8 @@ import { ChordEditor } from "@/components/chord-editor";
 import { CompositionDialog } from "@/components/composition-dialog";
 import { CreationInstrumentSelector } from "@/components/creation-instrument-selector";
 import { DrumEditor } from "@/components/drum-editor";
+import { AccompanimentSettingsPanel } from "@/components/accompaniment-settings";
+import type { AccompanimentSettings } from "@/lib/music/accompaniment";
 import { GuitarFretboard } from "@/components/guitar-fretboard";
 import { NoteChordEditor } from "@/components/note-chord-editor";
 import { TabScoreView } from "@/components/tab-score-view";
@@ -181,6 +183,7 @@ function KeysPageInner() {
   const [mode, setMode] = useState<"major" | "minor">("major");
   const [progressionId, setProgressionId] = useState(AUTO_PROGRESSION);
   const [customChords, setCustomChords] = useState<ChordEvent[] | undefined>();
+  const [accompaniment, setAccompaniment] = useState<AccompanimentSettings>({ mode: "block", pattern: "ascending" });
   const [chordEditorOpen, setChordEditorOpen] = useState(false);
   const [dur, setDur] = useState(1);
   const [loaded, setLoaded] = useState(false);
@@ -207,6 +210,7 @@ function KeysPageInner() {
         setMode(d.key.mode);
         setProgressionId(d.progressionId);
         setCustomChords(d.chords);
+        setAccompaniment(d.accompaniment ?? saved?.accompaniment ?? { mode: "block", pattern: "ascending" });
         setCreationMode(d.notation ?? saved?.notation ?? "piano");
         if (d.instrument ?? saved?.instrument) setInstrument((d.instrument ?? saved?.instrument)!);
         // 복원한 악보는 마침줄과 함께 보여 주고, 편집 버튼으로 입력을 재개한다.
@@ -229,27 +233,27 @@ function KeysPageInner() {
       else {
         localStorage.setItem(
           DRAFT_KEY,
-          serializeKeysDraft({ notes, bpm, meter, key: { tonic, mode, fifths: fifthsFor(tonic, mode) }, progressionId, chords: customChords, scoreId: base.id, notation: creationMode, instrument: inputInstrument }),
+          serializeKeysDraft({ notes, bpm, meter, key: { tonic, mode, fifths: fifthsFor(tonic, mode) }, progressionId, chords: customChords, scoreId: base.id, notation: creationMode, instrument: inputInstrument, accompaniment }),
         );
       }
     } catch {
       /* 저장 불가 환경 무시 */
     }
-  }, [notes, bpm, meter, tonic, mode, progressionId, customChords, loaded, base.id, creationMode, inputInstrument]);
+  }, [notes, bpm, meter, tonic, mode, progressionId, customChords, loaded, base.id, creationMode, inputInstrument, accompaniment]);
 
   // 조는 사용자가 고른 값 그대로 (음을 눌러도 조표가 바뀌지 않음)
   const draftScore = useMemo(() => {
     const key: KeyInfo = { tonic, mode, fifths: fifthsFor(tonic, mode) };
-    const score = { ...base, notes, bpm, meter, beatsPerMeasure: beats, key, notation: creationMode, instrument: inputInstrument, transpose: drums ? 0 : base.transpose };
+    const score = { ...base, notes, bpm, meter, beatsPerMeasure: beats, key, notation: creationMode, instrument: inputInstrument, accompaniment, transpose: drums ? 0 : base.transpose };
     const measures = scoreMeasureCount(score);
     const chords = drums ? [] : customChords ?? (progressionId === AUTO_PROGRESSION
       ? suggestChords(notes, key, beats, measures)
       : buildProgression(progressionId, key, measures, beats));
     return { ...score, chords };
-  }, [base, notes, bpm, meter, beats, tonic, mode, progressionId, customChords, creationMode, inputInstrument, drums]);
+  }, [base, notes, bpm, meter, beats, tonic, mode, progressionId, customChords, creationMode, inputInstrument, drums, accompaniment]);
   const xml = useMemo(
-    () => (showScore ? scoreToMusicXML(draftScore, "lead", { minMeasures: drums ? 1 : keysPreviewMinMeasures(phase), measuresPerSystem: 4 }) : ""),
-    [showScore, phase, draftScore, drums],
+    () => (showScore ? scoreToMusicXML(draftScore, accompaniment.mode === "arpeggio" ? "piano" : "lead", { minMeasures: drums ? 1 : keysPreviewMinMeasures(phase), measuresPerSystem: 4 }) : ""),
+    [showScore, phase, draftScore, drums, accompaniment.mode],
   );
 
   // PC 키보드/건반 핸들러가 최신 상태를 보도록 ref 사용
@@ -602,6 +606,7 @@ function KeysPageInner() {
       )}
 
       {/* 오선지 + 정보 카드 */}
+      {!drums && <AccompanimentSettingsPanel value={accompaniment} onChange={(next) => { stopPlayback(); setAccompaniment(next); }} />}
       {!drums && <Card className="flex-row items-center gap-4 p-4">
         <NoteStaff midi={active} forceBass={guitar === "bassGuitar" || guitar === "bassGuitar5"} />
         <div className="flex min-w-0 flex-col gap-1">

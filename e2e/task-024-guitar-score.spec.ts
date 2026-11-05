@@ -47,10 +47,12 @@ test("작곡하기는 건반에서 바로 열리고 취소·저장·새로고침
 test("기타 4종은 실제 지판으로 바뀌고 피아노·TAB 보기와 6줄·4줄 튜닝을 표시한다", async ({ page }, testInfo) => {
   await openKeysInput(page);
   const touch = testInfo.project.name === "mobile";
-  const instrument = page.getByLabel("악기 음색", { exact: true });
-  await expect(instrument.locator("option")).toHaveCount(5);
+  const mode = page.getByLabel("악기 선택", { exact: true });
+  const instrument = page.getByLabel("음색 선택", { exact: true });
   const tab = page.getByRole("region", { name: "TAB 악보", exact: true });
   await expect(tab).toHaveCount(0);
+  await mode.selectOption("guitarTab");
+  await expect(instrument.locator("option")).toHaveCount(5);
   for (const value of ["classicalGuitar", "electricGuitar", "acousticGuitar", "bassGuitar"]) {
     await instrument.selectOption(value);
     const bass = value === "bassGuitar";
@@ -60,7 +62,6 @@ test("기타 4종은 실제 지판으로 바뀌고 피아노·TAB 보기와 6줄
     await activate(fretboard.locator('button[data-string="1"][data-fret="0"]'), touch);
   }
   await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem("humscore.keysDraft") ?? "null")?.notes?.map((note: { midi: number }) => note.midi))).toEqual([64, 64, 64, 43]);
-  await page.getByRole("button", { name: "TAB", exact: true }).click();
   await expect(tab).toBeVisible();
   await expect(tab.getByRole("heading")).toContainText("베이스");
   await expect(tab.getByTestId("tab-note")).toHaveCount(4);
@@ -84,7 +85,7 @@ test("기타 4종은 실제 지판으로 바뀌고 피아노·TAB 보기와 6줄
     await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     await page.screenshot({ path: `.nomad/task-024-guitar-${testInfo.project.name}-${width}.png`, fullPage: true });
   }
-  await instrument.selectOption("piano");
+  await mode.selectOption("piano");
   await expect(tab).toHaveCount(0);
   await expect(page.getByRole("region", { name: "기타 지판", exact: true })).toHaveCount(0);
   await expect(normal).toHaveCount(1);
@@ -122,6 +123,7 @@ test("건반 악보 편집에서 음표와 코드 클릭·터치로 옵션을 �
 
 test("저장된 악보의 코드를 직접 바꾸고 TAB를 일반 악보 아래에 추가한다", async ({ page }, testInfo) => {
   const id = await createScoreViaKeys(page);
+  await page.getByRole("button", { name: "편집모드", exact: true }).click();
   await page.getByRole("button", { name: "음표 편집", exact: true }).click();
   await activate(page.getByTestId("score-chord-target").first(), testInfo.project.name === "mobile");
   const dialog = page.getByRole("dialog", { name: "코드 변경", exact: true });

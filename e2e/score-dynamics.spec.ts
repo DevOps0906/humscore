@@ -4,6 +4,7 @@ import type { Page } from "@playwright/test";
 async function enterEditMode(page: Page) {
   await expect(page.locator(".score-sheet svg").first()).toBeVisible({ timeout: 15_000 });
   const toggle = page.getByRole("button", { name: "음표 편집" });
+  await page.getByRole("button", { name: "편집모드", exact: true }).click();
   await expect(async () => {
     if ((await toggle.getAttribute("aria-pressed")) !== "true") await toggle.click();
     await expect(toggle).toHaveAttribute("aria-pressed", "true", { timeout: 500 });

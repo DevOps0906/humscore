@@ -45,6 +45,7 @@ test("가사 등록: 직접 입력 → 적용하면 악보에 가사 표시, 지
   });
   await createScoreViaKeys(page);
   await expect(page.locator(".score-sheet svg").first()).toBeVisible({ timeout: 15_000 });
+  await page.getByRole("button", { name: "편집모드", exact: true }).click();
   await page.getByRole("button", { name: "가사 등록" }).click();
   const dialog = page.getByRole("dialog");
   await expect(dialog.getByText(/이 기기에서는 음성 가사 입력을 지원하지 않아요/)).toBeVisible();
@@ -64,6 +65,7 @@ test("가사 등록: 직접 입력 → 적용하면 악보에 가사 표시, 지
 
 test("음원 등록: 합성 WAV 업로드 → 음표 교체", async ({ page }) => {
   await createScoreViaKeys(page);
+  await page.getByRole("button", { name: "편집모드", exact: true }).click();
   await expect(page.locator(".score-sheet svg").first()).toBeVisible({ timeout: 15_000 });
   const heads = page.locator(".score-sheet .vf-notehead");
   const before = await heads.count();

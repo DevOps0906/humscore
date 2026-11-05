@@ -18,6 +18,8 @@ describe("formatCredits", () => {
     expect(formatCredits({ composer: "B" })).toBe("작곡 B");
     expect(formatCredits({ lyricist: " ", composer: "B", arranger: "" })).toBe("작곡 B");
     expect(formatCredits({})).toBe("");
+    expect(formatCredits({ lyricist: " \t ", composer: "\n", arranger: "  " })).toBe("");
+    expect(formatCredits({ lyricist: " 첫째 ", composer: " 둘째 ", arranger: " 셋째 " })).toBe("작사 첫째 · 작곡 둘째 · 편곡 셋째");
   });
 });
 

@@ -71,6 +71,10 @@
 
 음색은 브라우저의 Web Audio로 합성합니다. 선택한 악기는 초안과 악보에 저장되며 MIDI·MusicXML에도 악기 정보를 전달합니다. 외부 재생기는 표준 GM 음색으로 재생하므로 브라우저의 합성 프리셋과 소리가 다를 수 있습니다. PDF 안내서의 다중 레이어·구간별 패치 시트·자동 오케스트라 편곡은 이번 단일 악기 음색 모듈과 별도의 확장 기능입니다.
 
+드럼 입력에서는 악기 그림을 눌러 소리와 선택한 구성을 확인하고, 현재 마디에 들어간 악기 목록을 볼 수 있습니다. 오케스트라 세부 음색은 악기군을 고른 뒤 버튼으로 선택합니다. 내 악보의 더보기 메뉴에서 편집모드로 바로 들어가거나, 악보 하단의 작곡 옆 편집모드를 열어 고급 리하모니제이션·음표 편집·가사 등록을 사용할 수 있습니다. 작사·작곡·편곡은 입력한 값만 악보와 인쇄물에 표시합니다.
+
+반주는 온음악보(동시 화음)와 아르페지오를 선택합니다. 아르페지오 템플릿은 상행 8분·하행 8분·상행/하행·하행/상행·알베르티 베이스·알베르티 변형·넓은 분산화음·옥타브 물결·3박 분산형·흐르는 16분의 10종입니다. [Puget Sound 음악이론 교재의 분산화음·알베르티 원리](https://musictheory.pugetsound.edu/mt21c/ArpeggiatedAccompaniments.html)를 참고해 앱용 변형을 구성했습니다. 반주 선택은 저장·복원되며 재생·MIDI·피아노 보표 및 MusicXML 반주에 반영됩니다.
+
 ### 수익 모델
 
 | 플랜 | 가격 | 포함 |
@@ -99,7 +103,7 @@
 | 오디오 | Web Audio · pitchy(MIT) · 배음 합성 피아노 | `src/lib/audio/` |
 | 악보 렌더 | OpenSheetMusicDisplay(BSD-3) | `src/components/` |
 | 배포·CI | Vercel(main → 운영 자동 배포) · GitHub Actions(CI · DB migrate) | `.github/workflows/` |
-| 테스트 | Vitest(1508 통과 · 32 건너뜀) · Playwright(e2e, desktop + mobile) | `**/*.test.ts` · `e2e/` |
+| 테스트 | Vitest(1519 통과 · 32 건너뜀) · Playwright(e2e, desktop + mobile) | `**/*.test.ts` · `e2e/` |
 
 ## 3. 구조도
 

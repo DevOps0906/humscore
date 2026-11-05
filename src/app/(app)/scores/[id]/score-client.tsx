@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { AudioLines, Download, FileMusic, Play, Printer, Share2, Square, Trash2, Type } from "lucide-react";
 import { toast } from "sonner";
 import { AudioImportDialog } from "@/components/audio-import-dialog";
+import { AccompanimentSettingsPanel } from "@/components/accompaniment-settings";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { LyricsDialog } from "@/components/lyrics-dialog";
 import { CompositionDialog, type CompositionMode } from "@/components/composition-dialog";
@@ -22,6 +23,7 @@ import { InlineField } from "@/components/inline-field";
 import { ScoreEditToolbar } from "@/components/score-edit-toolbar";
 import { applyEditKey, describeInterval, describeNote, dragTargetMidi } from "@/components/score-cursor";
 import { ScoreHeader, HeaderSettings } from "@/components/score-header";
+import { formatCredits } from "@/components/score-header-logic";
 import { usePianoSound } from "@/hooks/use-piano-sound";
 import { useInstrument } from "@/hooks/use-instrument";
 import { useScoreEditKeys } from "@/hooks/use-score-edit-keys";
@@ -52,7 +54,8 @@ export function ScoreClient({ id }: { id: string }) {
     setCompositionUndo(null);
     persist(patch);
   }
-  const [layout, setLayout] = useState<ScoreLayout>("lead");
+  const [selectedLayout, setLayout] = useState<ScoreLayout | null>(null);
+  const layout: ScoreLayout = selectedLayout ?? (score?.accompaniment?.mode === "arpeggio" ? "piano" : "lead");
   const [showTab, setShowTab] = useState(false);
   const [chordEditingBeat, setChordEditingBeat] = useState<number | null>(null);
   const [preferredInstrument, setPreferredInstrument] = useInstrument();
@@ -63,6 +66,7 @@ export function ScoreClient({ id }: { id: string }) {
     update({ instrument: value });
   }
   const [editNotes, setEditNotes] = useState(false);
+  const [editMode, setEditMode] = useState(false);
   const [selectedRaw, setSelected] = useState<number | null>(null);
   const [toolbarOpen, setToolbarOpen] = useState(false);
   const sound = usePianoSound(instrument);
@@ -74,14 +78,21 @@ export function ScoreClient({ id }: { id: string }) {
   // '내 악보 → 음원 파일'로 들어오면(?import=audio) 음원 등록 창을 바로 연다. 적용 없이 닫으면 빈 악보는 지운다
   const fromImport = useRef(false);
   useEffect(() => {
-    if (new URLSearchParams(window.location.search).get("compose") === "1") {
-      setCompositionMode("compose"); // eslint-disable-line react-hooks/set-state-in-effect -- 작곡 진입 주소를 마운트 후 읽는다
-      window.history.replaceState(null, "", window.location.pathname);
+    const params = new URLSearchParams(window.location.search);
+    const editing = params.get("edit") === "1";
+    const composing = params.get("compose") === "1";
+    const importing = params.get("import") === "audio";
+    if (editing) {
+      setEditMode(true); // eslint-disable-line react-hooks/set-state-in-effect -- 내 악보에서 편집으로 진입한 주소를 읽는다
     }
-    if (new URLSearchParams(window.location.search).get("import") !== "audio") return;
-    fromImport.current = true;
-    window.history.replaceState(null, "", window.location.pathname);
-    setAudioOpen(true);
+    if (composing) {
+      setCompositionMode("compose");
+    }
+    if (importing) {
+      fromImport.current = true;
+      setAudioOpen(true);
+    }
+    if (editing || composing || importing) window.history.replaceState(null, "", window.location.pathname);
   }, []);
   const viewHandle = useRef<ScoreViewHandle | null>(null);
   const playback = useRef<Playback | null>(null);
@@ -107,7 +118,7 @@ export function ScoreClient({ id }: { id: string }) {
   const selected = selectedRaw !== null && selectedRaw < noteCount ? selectedRaw : null;
 
   useScoreEditKeys({
-    enabled: !isDrums && editNotes && !lyricsOpen && !audioOpen && compositionMode === null,
+    enabled: editMode && !isDrums && editNotes && !lyricsOpen && !audioOpen && compositionMode === null,
     notes: score?.notes ?? [],
     selected,
     transpose: score?.transpose ?? 0,
@@ -211,13 +222,7 @@ export function ScoreClient({ id }: { id: string }) {
     const view = viewHandle.current;
     if (!view || pdfBusy) return;
     setPdfBusy(true);
-    const credits = [
-      score.lyricist && `작사 ${score.lyricist}`,
-      score.composer && `작곡 ${score.composer}`,
-      score.arranger && `편곡 ${score.arranger}`,
-    ]
-      .filter(Boolean)
-      .join(" · ");
+    const credits = formatCredits(score);
     const t = toast.loading("PDF를 만드는 중…");
     try {
       // 음표 선택 표시는 SVG 밖(HTML)이라 PDF에 들어가지 않는다. OSMD가 제목을 이미 그렸다면 직접 머리글은 생략
@@ -236,7 +241,7 @@ export function ScoreClient({ id }: { id: string }) {
     <div className="flex flex-col gap-4">
       <div className="no-print flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
-          <InlineField
+          {editMode ? <InlineField
             label="제목"
             ariaLabel="악보 제목"
             value={score.title}
@@ -245,29 +250,7 @@ export function ScoreClient({ id }: { id: string }) {
               toast.success("제목을 저장했어요");
             }}
             className="[&_input]:text-xl [&_input]:font-medium"
-          />
-          <div className="grid gap-x-2 md:grid-cols-3">
-            {(
-              [
-                ["lyricist", "작사", score.lyricist],
-                ["composer", "작곡", score.composer],
-                ["arranger", "편곡", score.arranger],
-              ] as const
-            ).map(([field, label, val]) => (
-              <InlineField
-                key={field}
-                label={label}
-                ariaLabel={`${label}자`}
-                placeholder={`${label}자 (선택)`}
-                allowEmpty
-                value={val ?? ""}
-                onCommit={(t) => {
-                  update({ [field]: t || undefined });
-                  toast.success(`${label}자를 저장했어요`);
-                }}
-              />
-            ))}
-          </div>
+          /> : <h1 className="text-xl font-medium break-words">{score.title}</h1>}
         </div>
         <Button asChild variant="outline" className="h-11 shrink-0 rounded-full px-4 text-sm">
           <Link href={`/scores/${score.id}/perform`}>공연 모드</Link>
@@ -297,7 +280,9 @@ export function ScoreClient({ id }: { id: string }) {
           {score.bpm} BPM · <span className="text-xs">{meterLabel}</span>
         </span>
       </div>
-      <HeaderSettings score={score} onChange={(p) => update(p)} />
+      {!isDrums && <AccompanimentSettingsPanel value={score.accompaniment} onChange={(accompaniment) => {
+        clearPlayback(); setPlaying(false); setLayout("piano"); setShowTab(false); update({ accompaniment });
+      }} />}
 
       <ScoreView
         onHandle={(h) => {
@@ -306,9 +291,9 @@ export function ScoreClient({ id }: { id: string }) {
         showHeader={false}
         header={header}
         xml={xml}
-        chordEditor={!isDrums && editNotes ? { chords: score.chords, onSelect: (startBeat) => { setChordEditingBeat(startBeat); setToolbarOpen(false); } } : undefined}
+        chordEditor={editMode && !isDrums && editNotes ? { chords: score.chords, onSelect: (startBeat) => { setChordEditingBeat(startBeat); setToolbarOpen(false); } } : undefined}
         cursor={
-          !isDrums && editNotes
+          editMode && !isDrums && editNotes
             ? {
                 notes: score.notes,
                 beatsPerMeasure: score.beatsPerMeasure,
@@ -367,18 +352,37 @@ export function ScoreClient({ id }: { id: string }) {
         <Button type="button" variant="outline" disabled={isDrums} onClick={() => { clearPlayback(); setPlaying(false); setCompositionMode("compose"); }} className="h-11 rounded-full px-4 text-sm lg:h-9">
           작곡
         </Button>
-        <Button type="button" variant="outline" disabled={isDrums} onClick={() => { clearPlayback(); setPlaying(false); setCompositionMode("reharmonize"); }} className="h-11 rounded-full px-4 text-sm lg:h-9">
-          고급 리하모니제이션
+        <Button type="button" variant="outline" aria-pressed={editMode} aria-expanded={editMode} aria-controls="score-edit-mode-panel" onClick={() => {
+          clearPlayback(); setPlaying(false);
+          setEditMode((value) => !value);
+          setEditNotes(false); setSelected(null); setToolbarOpen(false); setChordEditingBeat(null);
+          setLyricsOpen(false); setAudioOpen(false);
+          if (compositionMode === "reharmonize") setCompositionMode(null);
+        }} className={`h-11 rounded-full px-4 text-sm lg:h-9 ${editMode ? "border-accent bg-accent/15 text-accent" : ""}`}>
+          편집모드
         </Button>
         {compositionUndo && <Button type="button" variant="outline" disabled={compositionSignature(score) !== compositionUndo.expected} onClick={() => {
           clearPlayback(); setPlaying(false);
           persist(compositionUndo.patch); setCompositionUndo(null); setSelected(null);
           toast.success("작곡·리하모니 적용 전으로 되돌렸어요");
         }} className="h-11 rounded-full px-4 text-sm lg:h-9">작곡·리하모니 되돌리기</Button>}
+      </div>
+      {editMode && <section id="score-edit-mode-panel" aria-label="악보 편집 옵션" className="no-print grid gap-4 rounded-xl border border-line bg-surface p-4">
+        <h2 className="text-sm font-semibold">악보 편집 옵션</h2>
+        <div className="grid min-w-0 gap-2 md:grid-cols-3">
+          {([['lyricist', '작사', score.lyricist], ['composer', '작곡', score.composer], ['arranger', '편곡', score.arranger]] as const).map(([field, label, value]) => <InlineField
+            key={field} label={label} ariaLabel={`${label}자`} placeholder={`${label}자 (선택)`} allowEmpty value={value ?? ""}
+            onCommit={(text) => { update({ [field]: text || undefined }); toast.success(`${label}자를 저장했어요`); }}
+          />)}
+        </div>
+        <p className="text-xs text-ink-soft">작사·작곡·편곡은 입력한 항목만 악보에 표시합니다.</p>
+        <HeaderSettings score={score} onChange={(patch) => update(patch)} />
+        <div className="flex flex-wrap gap-2">
+        <Button type="button" variant="outline" disabled={isDrums} onClick={() => { clearPlayback(); setPlaying(false); setCompositionMode("reharmonize"); }} className="h-11 rounded-full px-4 text-sm lg:h-9">고급 리하모니제이션</Button>
         <Button
           type="button"
           variant="outline"
-          onClick={() => setEditNotes((v) => !v)}
+          onClick={() => { setEditNotes((value) => !value); setSelected(null); setToolbarOpen(false); setChordEditingBeat(null); }}
           aria-pressed={editNotes}
           className={`h-11 rounded-full px-4 text-sm lg:h-9 ${editNotes ? "border-accent bg-accent/15 text-accent hover:bg-accent/20 hover:text-accent" : ""}`}
         >
@@ -390,7 +394,8 @@ export function ScoreClient({ id }: { id: string }) {
         <Button type="button" variant="outline" disabled={isDrums} onClick={() => setAudioOpen(true)} className="h-11 rounded-full px-4 text-sm lg:h-9">
           <AudioLines aria-hidden /> 음원 등록
         </Button>
-      </div>
+        </div>
+      </section>}
       {compositionMode !== null && <CompositionDialog
         key={compositionMode}
         score={score}
@@ -432,15 +437,15 @@ export function ScoreClient({ id }: { id: string }) {
           update(patch);
         }}
       />
-      {editNotes && !isDrums && (
+      {editMode && editNotes && !isDrums && (
         <>
           <NoteEditor score={score} onChange={(notes) => update({ notes })} selected={selected} onSelect={setSelected} sound={sound} />
           {!toolbarOpen && <NoteChordEditor score={score} selected={selected} onChange={(chords) => update({ chords })} />}
         </>
       )}
 
-      {isDrums && editNotes && <DrumEditor score={score} onChange={(notes) => update({ notes })} onPreview={(midi) => sound.playNote(midi)} />}
-      {!isDrums && <ChordEditor score={score} onChange={(chords) => update({ chords })} />}
+      {editMode && isDrums && editNotes && <DrumEditor score={score} onChange={(notes) => update({ notes })} onPreview={(midi) => sound.playNote(midi)} />}
+      {editMode && !isDrums && <ChordEditor score={score} onChange={(chords) => update({ chords })} />}
 
       {/* 내보내기 */}
       <Card className="no-print gap-3 p-4">
