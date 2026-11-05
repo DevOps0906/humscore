@@ -29,9 +29,12 @@ export { expect };
  * 주의: 같은 버튼을 직접 click 하지 말 것 — handler 가 먼저 닫아 버려 그 click 이 무한 대기한다.
  */
 /** 건반을 누른 시간이 음표 길이가 되므로, 4분음표(기본 bpm 90 기준 약 667ms)만큼 눌렀다 뗀다 */
-export async function holdNote(page: Page, key: string, ms = 600): Promise<void> {
+export async function holdNote(page: Page, key: string, ms = 667): Promise<void> {
+  // keyboard.down 은 페이지가 keydown 처리를 마칠 때까지 기다린다(첫 입력은 소리 초기화로 늦다).
+  // 앱은 이벤트 발생 시각(timeStamp)으로 길이를 재므로, 그 대기 시간을 빼고 나머지만 누르고 있는다.
+  const started = Date.now();
   await page.keyboard.down(key);
-  await page.waitForTimeout(ms);
+  await page.waitForTimeout(Math.max(0, ms - (Date.now() - started)));
   await page.keyboard.up(key);
 }
 

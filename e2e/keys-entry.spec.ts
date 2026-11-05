@@ -43,8 +43,7 @@ test("건반 입력 마치기 → 실제 마디만 유지 → 편집으로 마�
     return scores.find((score: { id: string }) => score.id === scoreId);
   }, id);
   expect(saved.notes).toHaveLength(5);
-  // 누른 시간이 길이가 되므로 첫 음이 길게 잡히면 조금 늦어질 수 있다
-  expect(saved.notes[4].startBeat).toBeGreaterThanOrEqual(4);
+  expect(saved.notes[4].startBeat).toBe(4);
 });
 
 test("입력 중 저장을 열면 남는 마디를 정리하고 편집을 다시 시작할 수 있다", async ({ page }) => {

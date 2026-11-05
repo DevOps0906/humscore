@@ -52,10 +52,26 @@ test("터치/클릭: 음표를 누르면 도구 모음이 뜨고 반음·음가�
   await expect(toolbar).toContainText("앞 음과");
 
   // 빈 곳을 누르면 도구 모음만 닫힘 (선택 유지)
-  await page.evaluate(() => window.scrollTo(0, 0));
-  const sheet = (await page.getByRole("application", { name: /악보 편집/ }).boundingBox())!;
-  if (isMobile) await page.touchscreen.tap(sheet.x + 6, sheet.y + 6);
-  else await page.mouse.click(sheet.x + 6, sheet.y + 6);
+  // 편집 바·악기 패널이 위에 쌓여 왼쪽 위 모서리가 화면 하단 고정 막대에 가려질 수 있다.
+  // 편집 영역을 화면 가운데로 옮기고, 음표가 없는 왼쪽 여백 중 가려지지 않은 점을 누른다.
+  const editor = page.getByRole("application", { name: /악보 편집/ });
+  await editor.evaluate((element) => element.scrollIntoView({ block: "center" }));
+  // 도구 모음은 스크롤 뒤 위치를 다시 잡는다(모바일에서는 화면 폭 대부분을 덮음). 자리 잡은 뒤 그 영역 밖을 고른다.
+  await page.waitForTimeout(500);
+  const blank = await editor.evaluate((element) => {
+    const box = element.getBoundingClientRect();
+    const covers = [...document.querySelectorAll('[data-testid="score-toolbar"]')].map((node) => (node.closest(".no-print.absolute") ?? node).getBoundingClientRect());
+    const covered = (x: number, y: number) => covers.some((r) => x >= r.left - 8 && x <= r.right + 8 && y >= r.top - 8 && y <= r.bottom + 8);
+    const x = box.left + 6;
+    for (let y = Math.max(box.top + 6, 80); y < Math.min(box.bottom, innerHeight - 160); y += 8) {
+      const hit = document.elementFromPoint(x, y);
+      if (hit && element.contains(hit) && !covered(x, y) && !hit.closest(".no-print.absolute")) return { x, y };
+    }
+    return null;
+  });
+  expect(blank).not.toBeNull();
+  if (isMobile) await page.touchscreen.tap(blank!.x, blank!.y);
+  else await page.mouse.click(blank!.x, blank!.y);
   await expect(toolbar).toHaveCount(0);
   await expect(live).toContainText("2번째 음표");
 

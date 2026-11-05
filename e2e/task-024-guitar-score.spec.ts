@@ -68,12 +68,17 @@ test("기타 4종은 실제 지판으로 바뀌고 피아노·TAB 보기와 6줄
   await expect(tab).toBeVisible();
   await expect(tab.getByRole("heading")).toContainText("베이스");
   await expect(tab.getByTestId("tab-note")).toHaveCount(1);
+  // 기타·베이스는 TAB만 기본으로 보이고(task-028), '악보'를 켜야 오선보가 위에 함께 나온다.
+  await expect(page.locator(".score-sheet")).toHaveCount(0);
+  const staffToggle = page.getByRole("button", { name: "악보", exact: true });
+  await staffToggle.click();
   const normal = page.locator(".score-sheet").first();
   const normalBox = await normal.boundingBox();
   const tabBox = await tab.boundingBox();
   expect(tabBox!.y).toBeGreaterThan(normalBox!.y + normalBox!.height - 1);
   await instrument.selectOption("acousticGuitar");
   await expect(tab.getByRole("heading")).toContainText("통기타");
+  await staffToggle.click();
   for (const width of [390, 900, 1440]) {
     await page.setViewportSize({ width, height: 1000 });
     await expect(tab).toBeVisible();
@@ -81,8 +86,12 @@ test("기타 4종은 실제 지판으로 바뀌고 피아노·TAB 보기와 6줄
     await expect(normal.locator("svg").first()).toBeVisible();
     if (width >= 900) {
       await expect.poll(() => normal.evaluate((element) => {
+        // task-028 페이지 맞춤: 화면 높이에 맞게 비례 축소되므로 폭을 꽉 채우지 않을 수 있다. 넘치지 않고 가운데 놓이면 된다.
         const svg = element.querySelector("svg");
-        return svg ? svg.getBoundingClientRect().width >= element.clientWidth - 40 : false;
+        if (!svg) return false;
+        const box = svg.getBoundingClientRect();
+        const outer = element.getBoundingClientRect();
+        return box.width > 200 && box.width <= outer.width + 1 && Math.abs((box.left - outer.left) - (outer.right - box.right)) < 40;
       })).toBe(true);
     }
     await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
@@ -124,7 +133,7 @@ test("건반 악보 편집에서 음표와 코드 클릭·터치로 옵션을 �
   await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem("humscore.keysDraft") ?? "null")?.chords?.find((event: { startBeat: number }) => event.startBeat === 1)?.symbol)).toBe("G7");
 });
 
-test("저장된 악보의 코드를 직접 바꾸고 TAB를 일반 악보 아래에 추가한다", async ({ page }, testInfo) => {
+test("저장된 악보의 코드를 직접 바꾸고, 피아노 악보에는 TAB 토글이 없다", async ({ page }, testInfo) => {
   const id = await createScoreViaKeys(page);
   await page.getByRole("button", { name: "편집모드", exact: true }).click();
   await page.getByRole("button", { name: "음표 편집", exact: true }).click();
@@ -135,24 +144,28 @@ test("저장된 악보의 코드를 직접 바꾸고 TAB를 일반 악보 아래
   await dialog.getByLabel("코드 종류", { exact: true }).selectOption("7");
   await dialog.getByRole("button", { name: "음표에 코드 적용", exact: true }).click();
   await page.keyboard.press("Escape");
-  await page.getByRole("group", { name: "악보 편집 적용과 저장", exact: true }).getByRole("button", { name: "적용", exact: true }).click();
-  await expect.poll(async () => (await savedScores(page)).find((score) => score.id === id)?.chords.find((event) => event.startBeat === 0)?.symbol).toBe("G7");
+  // 대화상자가 닫혀 초안에 반영된 뒤 적용해야 저장된다(닫히는 중에 누르면 이전 초안이 저장될 수 있다).
+  await expect(dialog).toHaveCount(0);
+  const applyButton = page.getByRole("group", { name: "악보 편집 적용과 저장", exact: true }).getByRole("button", { name: "적용", exact: true });
+  await expect(async () => {
+    await applyButton.click();
+    expect((await savedScores(page)).find((score) => score.id === id)?.chords.find((event) => event.startBeat === 0)?.symbol).toBe("G7");
+  }).toPass({ timeout: 10_000 });
   await activate(page.locator(".score-sheet:visible .vf-stavenote .vf-notehead").nth(1), testInfo.project.name === "mobile");
   await expect(page.getByLabel("코드 근음", { exact: true })).toBeVisible();
   await page.getByLabel("코드 근음", { exact: true }).selectOption("F");
   await page.getByLabel("코드 종류", { exact: true }).selectOption("m7");
   await page.getByRole("button", { name: "음표에 코드 적용", exact: true }).click();
-  await page.getByRole("group", { name: "악보 편집 적용과 저장", exact: true }).getByRole("button", { name: "적용", exact: true }).click();
-  await expect.poll(async () => (await savedScores(page)).find((score) => score.id === id)?.chords.find((event) => event.startBeat === 1)?.symbol).toBe("Fm7");
+  await expect(async () => {
+    await applyButton.click();
+    expect((await savedScores(page)).find((score) => score.id === id)?.chords.find((event) => event.startBeat === 1)?.symbol).toBe("Fm7");
+  }).toPass({ timeout: 10_000 });
   await page.screenshot({ path: `.nomad/task-024-note-editor-${testInfo.project.name}.png`, fullPage: false });
   await page.getByRole("button", { name: "편집 도구 닫기", exact: true }).click();
-  await page.getByRole("button", { name: "TAB", exact: true }).click();
-  const tab = page.getByRole("region", { name: "TAB 악보", exact: true });
-  await expect(tab).toBeVisible();
-  await expect(tab.getByTestId("tab-note")).toHaveCount(3);
+  // TAB 보기는 task-028부터 기타·베이스 파트에서만 제공한다.
+  await expect(page.getByRole("button", { name: "TAB", exact: true })).toHaveCount(0);
+  await expect(page.getByRole("region", { name: "TAB 악보", exact: true })).toHaveCount(0);
   await expect(page.locator(".score-sheet:visible")).toHaveCount(1);
-  await page.getByRole("button", { name: "피아노", exact: true }).click();
-  await expect(tab).toHaveCount(0);
   await page.reload();
   expect((await savedScores(page)).find((score) => score.id === id)?.chords[0]?.symbol).toBe("G7");
 });

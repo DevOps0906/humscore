@@ -323,17 +323,19 @@ function KeysPageInner() {
     return () => clearInterval(t);
   }, [holding]);
 
+  // 누른·뗀 시각은 처리 시점이 아니라 이벤트 발생 시각(timeStamp)을 쓴다. 첫 입력의 소리 초기화처럼
+  // 메인 스레드가 잠깐 막혀 keyup 처리가 늦어져도 음 길이가 늘어나지 않는다.
   // 화면 건반: 포인터 누름 시각을 직접 기록하고(터치는 PianoKeyboard 가 뗄 때만 onPress 를 부름), 뗄 때 길이를 확정
   useEffect(() => {
     const onDown = (e: PointerEvent) => {
       if (e.pointerType === "mouse" && e.button !== 0) return;
       const el = e.target instanceof Element ? e.target.closest<HTMLElement>("[data-midi]") : null;
       if (!el || !el.closest('[data-testid="piano-scroller"]')) return;
-      pointerSessions.current.set(e.pointerId, { midi: Number(el.dataset.midi), downAt: performance.now(), type: e.pointerType });
+      pointerSessions.current.set(e.pointerId, { midi: Number(el.dataset.midi), downAt: e.timeStamp, type: e.pointerType });
     };
     const onEnd = (e: PointerEvent) => {
       if (!pointerSessions.current.delete(e.pointerId)) return;
-      holdEnd.current(`ptr:${e.pointerId}`);
+      holdEnd.current(`ptr:${e.pointerId}`, e.timeStamp);
     };
     const onBlur = () => { for (const id of [...holds.current.keys()]) holdEnd.current(id); };
     document.addEventListener("pointerdown", onDown, true);
@@ -368,10 +370,10 @@ function KeysPageInner() {
       if (e.midi < 21 || e.midi > 108) return;
       if (e.type === "on") {
         setPressed((p) => new Set([...p, e.midi]));
-        holdStart.current(`midi:${e.midi}`, e.midi);
+        holdStart.current(`midi:${e.midi}`, e.midi, e.time);
       } else {
         setPressed((p) => { const n = new Set(p); n.delete(e.midi); return n; });
-        holdEnd.current(`midi:${e.midi}`);
+        holdEnd.current(`midi:${e.midi}`, e.time);
       }
     },
   });
@@ -390,14 +392,14 @@ function KeysPageInner() {
       const m = PC_MAP[e.key.toLowerCase()];
       if (m && !e.repeat) {
         setPressed((p) => new Set([...p, m]));
-        holdStart.current(`kb:${m}`, m);
+        holdStart.current(`kb:${m}`, m, e.timeStamp);
       }
     };
     const up = (e: KeyboardEvent) => {
       const m = PC_MAP[e.key.toLowerCase()];
       if (m) {
         setPressed((p) => { const n = new Set(p); n.delete(m); return n; });
-        holdEnd.current(`kb:${m}`);
+        holdEnd.current(`kb:${m}`, e.timeStamp);
       }
     };
     window.addEventListener("keydown", down);

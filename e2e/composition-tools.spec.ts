@@ -15,11 +15,18 @@ async function createScoreViaKeys(page: Page): Promise<string> {
   return page.url().split("/scores/")[1];
 }
 
-async function storedScore(page: Page, id: string): Promise<Score> {
-  // 편집모드의 수정은 초안이므로, 저장된 값을 보기 전에 '적용'으로 반영한다.
+/** 편집모드의 수정은 초안이다. 저장된 값을 읽거나 새로고침하기 전에 '적용'으로 반영한다. */
+async function applyDraft(page: Page) {
   const bar = page.getByRole("group", { name: "악보 편집 적용과 저장" });
   const apply = bar.getByRole("button", { name: "적용", exact: true });
+  // 대화상자가 열려 있으면(후보 비교 중 등) 적용하지 않는다. 닫히는 중이면 반영될 때까지 잠깐 기다린다.
+  if (await page.getByRole("dialog").count()) return;
+  await page.waitForTimeout(300);
   if (await bar.isVisible() && await apply.isEnabled()) { await apply.click(); await page.waitForTimeout(300); }
+}
+
+async function storedScore(page: Page, id: string): Promise<Score> {
+  await applyDraft(page);
   return page.evaluate((scoreId) => {
     const scores = JSON.parse(localStorage.getItem("humscore.scores.v1") ?? "[]");
     return scores.find((score: { id: string }) => score.id === scoreId);
@@ -60,6 +67,8 @@ test("절별 가사: 1·2·3절 공존, 선택한 절만 삭제, 새로고침과
   await dialog.getByLabel("가사 절", { exact: true }).selectOption("2");
   await expect(dialog.getByRole("textbox")).toHaveValue("라 마 바");
   await dialog.getByRole("button", { name: "(2절) 가사 지우기", exact: true }).click();
+  await expect(dialog).toHaveCount(0);
+  await applyDraft(page);
   await page.reload();
   await expect(sheet).toBeVisible({ timeout: 20_000 });
   await expect(sheet.locator("text").filter({ hasText: "(1절)" }).first()).toBeAttached();
@@ -127,6 +136,7 @@ test("작곡: 후보는 저장하지 않고, 2마디 추가·되돌리기·명�
   await expect(dialog.getByText(/기존 음표·가사·셈여림·진행 기호를 새 멜로디로 바꿔요/)).toBeVisible();
   await dialog.getByRole("button", { name: "멜로디 후보 만들기", exact: true }).click();
   await dialog.getByRole("button", { name: "기존 음표를 바꾸고 적용", exact: true }).click();
+  await applyDraft(page);
   await page.reload();
   await expect(page.locator(".score-sheet:not(.score-export .score-sheet) svg .vf-measure")).toHaveCount(2, { timeout: 20_000 });
   const replaced = await storedScore(page, id);
