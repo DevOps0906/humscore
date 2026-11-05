@@ -57,7 +57,7 @@ export function DrumEditor({ score, onChange, onPreview }: DrumEditorProps) {
       <p className="text-xs text-ink-soft">드럼 그림을 선택하면 악기 이름과 소리를 확인해요. 아래 박자 칸을 눌러 타격을 추가하고 같은 박에 여러 악기를 함께 놓을 수 있어요.</p>
       <DrumKitDiagram selectedMidi={selectedMidi} activeMidis={activePieces.map((piece) => piece.midi)} onSelect={selectPiece} />
       <div className="rounded-xl border border-line bg-paper p-3 text-sm" role="status" aria-live="polite">
-        <p>선택한 드럼 구성: <strong>{selectedPiece.label}</strong> · {selectedPiece.head === "x" ? "X형 음표" : "일반 음표"}</p>
+        <p>선택한 드럼 구성: <strong>{selectedPiece.label}</strong> · {selectedPiece.head === "x" ? "X형 음표" : selectedPiece.head === "diamond" ? "마름모 음표" : "일반 음표"}</p>
         <p className="mt-1 text-xs text-ink-soft">{current + 1}마디 구성: {activePieces.length ? activePieces.map((piece) => piece.label).join(" · ") : "아직 입력한 악기가 없어요"}</p>
       </div>
       <div className="min-w-0 overflow-x-auto rounded-xl border border-line">

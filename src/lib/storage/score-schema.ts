@@ -54,6 +54,8 @@ export const accompanimentSchema = z.object({
 });
 
 export const scorePartSchema = z.object({
+  partName: z.string().trim().min(1).max(80).optional(),
+  clef: z.enum(["treble", "bass"]).optional(),
   id: z.string().regex(/^[a-zA-Z0-9_-]{1,80}$/).refine((id) => id !== "main"),
   notation: z.enum(["piano", "guitarTab", "drums", "orchestra"]),
   instrument: z.custom<NonNullable<Score["instrument"]>>(isInstrumentId, "알 수 없는 악기 음색입니다"),
@@ -66,6 +68,8 @@ export const scorePartSchema = z.object({
 export const scorePartsSchema = z.array(scorePartSchema).max(32).refine((parts) => new Set(parts.map((part) => part.id)).size === parts.length, "악기 파트 ID가 중복됐어요");
 
 export const scoreSchema = z.object({
+  partName: z.string().trim().min(1).max(80).optional(),
+  clef: z.enum(["treble", "bass"]).optional(),
   measureCount: z.number().int().min(1).max(128).optional(),
   parts: scorePartsSchema.optional(),
   id: z.uuid(),
@@ -81,6 +85,7 @@ export const scoreSchema = z.object({
   arranger: z.string().max(200).optional(),
   headerFont: z.string().max(40).optional(),
   headerFontSize: z.number().int().min(10).max(48).optional(),
+  headerFontWeight: z.number().int().min(100).max(900).multipleOf(100).optional(),
   meter: z.enum(["3/4", "4/4", "6/8"]).optional(),
   bpm: z.number().finite().min(1).max(400),
   beatsPerMeasure: z.number().int().min(1).max(32),

@@ -24,7 +24,7 @@ export function ScorePartsPanel({ score, activePartId, onSelect, onAdd }: {
     </div>
     <div role="group" aria-label="편집할 악기 파트" className="flex min-w-0 flex-wrap gap-2">
       {getScoreParts(score).map((part) => <Button key={part.id} type="button" variant={activePartId === part.id ? "default" : "outline"} aria-pressed={activePartId === part.id} onClick={() => onSelect(part.id)} className="h-auto min-h-11 max-w-full whitespace-normal px-3 py-2 text-sm">
-        {INSTRUMENT_LABELS[part.instrument]} · {part.notes.length}음
+        {part.partName ?? INSTRUMENT_LABELS[part.instrument]} · {part.notes.length}음
       </Button>)}
     </div>
     <Dialog open={open} onOpenChange={setOpen}>

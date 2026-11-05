@@ -28,6 +28,7 @@ import { ScoreEditToolbar } from "@/components/score-edit-toolbar";
 import { applyEditKey, describeInterval, describeNote, dragTargetMidi } from "@/components/score-cursor";
 import { ScoreHeader, HeaderSettings } from "@/components/score-header";
 import { formatCreditLines } from "@/components/score-header-logic";
+import { scoreTypography } from "@/lib/music/header-fonts";
 import { usePianoSound } from "@/hooks/use-piano-sound";
 import { useInstrument } from "@/hooks/use-instrument";
 import { useScoreEditKeys } from "@/hooks/use-score-edit-keys";
@@ -334,9 +335,11 @@ function ScoreEditor({ id, entry }: { id: string; entry?: ScoreEntry }) {
         <Button type="button" variant="outline" disabled={saving} onClick={() => void applyEdits()} className="h-11 px-5">적용</Button>
         <Button type="button" disabled={saving} onClick={() => void applyEdits(true)} className="h-11 px-5">저장</Button>
       </div>}
+      <HeaderSettings score={score} onChange={(patch) => update(patch)} />
       <ScoreArrangementTabs score={rootScore!} view={arrangementView} onViewChange={(value) => { resetSelection(); setArrangementView(value); }}>
-      <h2 className="text-sm font-semibold">{INSTRUMENT_LABELS[instrument]} 악보</h2>
+      <h2 className="text-sm font-semibold">{score.partName ?? INSTRUMENT_LABELS[instrument]} 악보</h2>
       {(!guitarPart || showTab) && <ScoreView
+        typography={scoreTypography(score)}
         onHandle={(h) => {
           viewHandle.current = h;
         }}
@@ -425,7 +428,6 @@ function ScoreEditor({ id, entry }: { id: string; entry?: ScoreEntry }) {
           />)}
         </div>
         <p className="text-xs text-ink-soft">작사·작곡·편곡은 입력한 항목만 악보에 표시합니다.</p>
-        <HeaderSettings score={score} onChange={(patch) => update(patch)} />
         <div className="flex flex-wrap gap-2">
         <Button type="button" variant="outline" disabled={isDrums} onClick={() => { clearPlayback(); setPlaying(false); setCompositionMode("reharmonize"); }} className="h-11 rounded-full px-4 text-sm lg:h-9">고급 리하모니제이션</Button>
         <Button
@@ -590,7 +592,7 @@ function ScoreEditor({ id, entry }: { id: string; entry?: ScoreEntry }) {
       </div>
       <div className="h-44" />
       <div className="score-export" aria-hidden="true">
-        <ScoreView showHeader printLayout fitToPage={false} xml={scoreToMusicXML(rootScore!, "piano")} onHandle={(handle) => { exportHandle.current = handle; }} />
+        <ScoreView typography={scoreTypography(rootScore!)} showHeader printLayout fitToPage={false} xml={scoreToMusicXML(rootScore!, "piano")} onHandle={(handle) => { exportHandle.current = handle; }} />
       </div>
     </div>
   );

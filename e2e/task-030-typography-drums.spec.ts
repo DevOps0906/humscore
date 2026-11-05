@@ -1,0 +1,76 @@
+import { expect, openKeysInput, test } from "./fixtures";
+
+for (const width of [390, 900, 1440]) {
+  test(`${width}px 글꼴·크기·굵기가 악보와 출력에 적용되고 저장된다`, async ({ page }) => {
+    test.setTimeout(120_000);
+    await page.setViewportSize({ width, height: 1000 });
+    await openKeysInput(page);
+    for (const key of ["a", "s", "d"]) await page.keyboard.press(key);
+    await page.getByRole("button", { name: "글꼴·크기·굵기 설정", exact: true }).click();
+    await page.getByLabel("머리글 글꼴", { exact: true }).filter({ visible: true }).selectOption("classic-serif");
+    const size = page.getByLabel("머리글 글자 크기", { exact: true });
+    await size.focus();
+    await size.press("Home");
+    for (let step = 0; step < 8; step++) await size.press("ArrowRight");
+    await expect(size).toHaveValue("18");
+    await page.getByLabel("악보 글자 굵기", { exact: true }).filter({ visible: true }).selectOption("800");
+    const title = page.getByTestId("score-header").getByRole("heading");
+    await expect(title).toHaveCSS("font-weight", "800");
+    expect(await title.evaluate((element) => getComputedStyle(element).fontFamily)).toContain("Times New Roman");
+    await page.reload();
+    await page.getByRole("button", { name: "글꼴·크기·굵기 설정", exact: true }).click();
+    await expect(page.getByLabel("머리글 글꼴", { exact: true })).toHaveValue("classic-serif");
+    await expect(page.getByLabel("머리글 글자 크기", { exact: true })).toHaveValue("18");
+    await expect(page.getByLabel("악보 글자 굵기", { exact: true })).toHaveValue("800");
+    await page.getByRole("button", { name: "악보로 저장", exact: true }).click();
+    await page.getByRole("dialog").getByRole("button", { name: "저장", exact: true }).click();
+    await expect(page).toHaveURL(/\/scores\//);
+    await expect(page.getByTestId("score-header").getByRole("heading")).toHaveCSS("font-weight", "800");
+    const score = await page.evaluate(() => JSON.parse(localStorage.getItem("humscore.scores.v1")!)[0]);
+    expect(score.headerFont).toBe("classic-serif");
+    expect(score.headerFontSize).toBe(18);
+    expect(score.headerFontWeight).toBe(800);
+    const output = page.locator(".score-export");
+    await expect(output.locator("[aria-busy]")).toHaveAttribute("aria-busy", "false");
+    const outputText = output.locator("svg text");
+    expect(await outputText.count()).toBeGreaterThan(0);
+    expect(await outputText.evaluateAll((texts) => texts.every((text) => text.getAttribute("font-weight") === "800" && (text.getAttribute("font-family") ?? "").includes("Times New Roman")))).toBe(true);
+    await page.getByRole("button", { name: "편집모드", exact: true }).click();
+    await page.getByRole("button", { name: "글꼴·크기·굵기 설정", exact: true }).click();
+    await page.getByLabel("악보 글자 굵기", { exact: true }).filter({ visible: true }).selectOption("600");
+    const actions = page.getByRole("group", { name: "악보 편집 적용과 저장", exact: true });
+    await actions.getByRole("button", { name: "적용", exact: true }).click();
+    await expect(actions).toBeVisible();
+    await expect(page.getByTestId("score-header").getByRole("heading")).toHaveCSS("font-weight", "600");
+    await actions.getByRole("button", { name: "저장", exact: true }).click();
+    await page.reload();
+    await expect(page.getByTestId("score-header").getByRole("heading")).toHaveCSS("font-weight", "600");
+    await page.screenshot({ path: `.nomad/task-030/${width}-typography.png`, fullPage: true });
+  });
+
+  test(`${width}px 제공된 드럼셋 이미지와 개별 선택·베이스드럼 두 배 카드가 연결된다`, async ({ page }) => {
+    test.setTimeout(120_000);
+    await page.setViewportSize({ width, height: 1000 });
+    await openKeysInput(page);
+    await page.getByLabel("악기 선택", { exact: true }).filter({ visible: true }).selectOption("drums");
+    const cards = page.getByRole("group", { name: "드럼 악기 그림 선택", exact: true });
+    const kit = page.getByRole("group", { name: "전체 드럼셋에서 선택", exact: true });
+    const image = kit.getByRole("img", { name: "드럼셋과 구성 악기의 악보 위치 참고 그림", exact: true });
+    await expect(image).toHaveAttribute("src", "/images/drum-kit.png");
+    await expect.poll(() => image.evaluate((element) => (element as HTMLImageElement).complete && (element as HTMLImageElement).naturalWidth > 0)).toBe(true);
+    const kick = cards.locator('[data-drum-card="kick"]');
+    const snare = cards.locator('[data-drum-card="snare"]');
+    const kickHeight = (await kick.boundingBox())!.height;
+    const snareHeight = (await snare.boundingBox())!.height;
+    expect(kickHeight / snareHeight).toBeCloseTo(2, 1);
+    await cards.getByRole("button", { name: "라이드 선택", exact: true }).click();
+    await expect(kit.getByRole("button", { name: "드럼셋 라이드 선택", exact: true })).toHaveAttribute("aria-pressed", "true");
+    await expect(page.getByText("마름모 음표", { exact: false })).toBeVisible();
+    await kit.getByRole("button", { name: "드럼셋 미들팜 선택", exact: true }).click();
+    await expect(cards.getByRole("button", { name: "미들팜 선택", exact: true })).toHaveAttribute("aria-pressed", "true");
+    const highlight = kit.locator('[data-drum-piece="midTom"] ellipse');
+    await expect(highlight).toHaveAttribute("fill-opacity", "0.25");
+    await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    await page.screenshot({ path: `.nomad/task-030/${width}-drums.png`, fullPage: true });
+  });
+}

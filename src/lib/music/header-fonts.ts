@@ -48,3 +48,8 @@ export function clampHeaderFontSize(size: number | undefined): number {
   if (size === undefined || !Number.isFinite(size)) return DEFAULT_HEADER_FONT_SIZE;
   return Math.min(HEADER_FONT_SIZE_MAX, Math.max(HEADER_FONT_SIZE_MIN, Math.round(size)));
 }
+
+/** 음악 글리프와 구분하여 악보의 텍스트에만 적용하는 표시 설정. */
+export function scoreTypography(score: { headerFont?: string; headerFontSize?: number; headerFontWeight?: number }) {
+  return { fontId: score.headerFont, fontSize: score.headerFontSize, fontWeight: score.headerFontWeight };
+}

@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { scoreTypography } from "@/lib/music/header-fonts";
 import { ScoreView } from "@/components/score-view";
 import { getAudioContext, setAudioSessionType } from "@/lib/audio/context";
 import { playScore, type Playback } from "@/lib/audio/piano-synth";
@@ -162,7 +163,7 @@ export function CompositionDialog({ score, mode, instrument = "piano", onClose, 
           {!fresh && <p role="alert" className="text-sm text-tune-warn">악보가 변경됐어요. 현재 악보로 후보를 다시 만들어 주세요.</p>}
           <p role="status" className="text-sm">{scoreMeasureCount(preview.score)}마디 · {preview.score.notes.length}개 음표 · {preview.score.chords.map((c) => chordLabel(c.symbol)).join(" → ")}</p>
           {mode === "reharmonize" && <p className="text-xs text-ink-soft">기존 진행: {score.chords.length ? score.chords.map((c) => chordLabel(c.symbol)).join(" → ") : "없음"}</p>}
-          <ScoreView xml={scoreToMusicXML(preview.score, "lead", { externalHeader: true })} />
+          <ScoreView typography={scoreTypography(preview.score)} xml={scoreToMusicXML(preview.score, "lead", { externalHeader: true })} />
           {mode === "compose" && <p className="break-words text-xs text-ink-soft">추천 음정: {preview.score.notes.slice(0, 24).map((n) => n.midi === null ? "쉼표" : midiToName(n.midi + score.transpose, shownKey.fifths < 0)).join(" · ")}{preview.score.notes.length > 24 ? " …" : ""}</p>}
         </div>}
         <DialogFooter className="gap-2">

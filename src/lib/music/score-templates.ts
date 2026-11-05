@@ -2,15 +2,16 @@ import { createBlankScore } from "./edit";
 import { instrumentMode, ORCHESTRAL_DRUM_NOTES, type InstrumentId } from "./instrument-catalog";
 import { beatsPerMeasureOf } from "./meter";
 import { fifthsFor } from "./theory";
+import { hymnVoiceParts } from "./hymn-preview";
 import type { Meter, NoteEvent, Score, ScorePart } from "./types";
 
 export const SCORE_TEMPLATES = [
   { id: "ccm", title: "CCM 리드 시트", detail: "코드·선율·가사와 절 구분", instruments: ["choir", "piano", "bassGuitar", "drumKit"], bpm: 84, meter: "4/4", reference: "CCM 이미지와 제공 PDF의 코드·가사 배치" },
-  { id: "hymn", title: "찬송가", detail: "3박 선율과 피아노 분산 반주", instruments: ["choir", "piano"], bpm: 76, meter: "3/4", reference: "찬송가 이미지의 절별 가사와 피아노 이미지의 양손 보표" },
-  { id: "piano", title: "피아노 악보", detail: "높은·낮은음자리표와 붙임줄·이음줄", instruments: ["piano"], bpm: 80, meter: "3/4", reference: "피아노 이미지의 양손 구성과 프레이즈" },
+  { id: "hymn", title: "찬송가", detail: "소프라노·알토·테너·베이스 4성부와 1~4절 가사", instruments: ["choir"], bpm: 76, meter: "4/4", reference: "찬송가 이미지의 절별 가사와 전통 선율 O store Gud의 4성부 형식" },
+  { id: "piano", title: "피아노 악보", detail: "높은·낮은음자리표와 붙임줄·이음줄", instruments: ["piano"], bpm: 80, meter: "4/4", reference: "피아노 이미지의 양손 구성과 프레이즈" },
   { id: "guitar", title: "기타 악보", detail: "선율·코드와 기타 TAB", instruments: ["acousticGuitar"], bpm: 100, meter: "4/4", reference: "제공 PDF의 코드 진행과 리듬 표기" },
   { id: "drums", title: "드럼 악보", detail: "킥·스네어·하이햇과 마디 끝 필인", instruments: ["drumKit"], bpm: 110, meter: "4/4", reference: "드럼 템플릿과 드럼 악보의 X형 심벌·독립 성부" },
-  { id: "bass", title: "베이스 악보", detail: "낮은음자리표·근음 진행과 베이스 TAB", instruments: ["bassGuitar"], bpm: 96, meter: "4/4", reference: "베이스 이미지의 낮은음자리표·TAB·리듬 구성" },
+  { id: "bass", title: "베이스 악보", detail: "베이스 TAB·줄과 프렛·근음 리듬", instruments: ["bassGuitar"], bpm: 96, meter: "4/4", reference: "베이스 이미지의 TAB·리듬 구성" },
   { id: "band", title: "밴드 스코어", detail: "보컬·피아노·기타·베이스·드럼 독립 파트", instruments: ["choir", "piano", "electricGuitar", "bassGuitar", "drumKit"], bpm: 104, meter: "4/4", reference: "CCM·기타 PDF·베이스·드럼 자료의 합주 구성" },
   { id: "orchestra", title: "오케스트라 · 관현악", detail: "목관·금관·현악·타악을 악기별로 배치", instruments: ["flute", "oboe", "clarinet", "bassoon", "frenchHorn", "trumpet", "trombone", "tuba", "violin", "violinII", "viola", "cello", "doubleBass", "timpani", "orchestralCymbal"], bpm: 96, meter: "4/4", reference: "관현악 이미지의 악기 순서와 악기별 음자리표" },
 ] as const satisfies readonly { id: string; title: string; detail: string; instruments: readonly InstrumentId[]; bpm: number; meter: Meter; reference: string }[];
@@ -45,9 +46,12 @@ export function buildScoreTemplate(options: TemplateOptions): Score {
     const pc = [0, 7, 9, 5, 0, 5, 7, 0][m % 8];
     return { startBeat: m * beats, symbol: names[(pc + tonic) % 12] + (original.endsWith("m") ? "m" : original.endsWith("7") ? "7" : "") };
   });
-  const selected = [...new Set(options.instruments)].slice(0, 32);
+  let selected = [...new Set(options.instruments)].slice(0, 32);
   if (!selected.length) selected.push(preset.instruments[0]);
-  const parts: ScorePart[] = selected.map((instrument, index) => {
+  // 합창 한 음색을 네 개의 독립 성부로 확장하므로 전체 32파트 한도를 미리 남긴다.
+  if (options.template === "hymn" && selected.includes("choir")) selected = ["choir" as const, ...selected.filter((instrument) => instrument !== "choir")].slice(0, 29);
+  const parts: ScorePart[] = selected.flatMap((instrument, index): ScorePart[] => {
+    if (options.template === "hymn" && instrument === "choir") return hymnVoiceParts({ measures, beats, tonic, previewSample: options.previewSample });
     const notes: NoteEvent[] = [];
     const bass = ["bassGuitar", "bassGuitar5", "doubleBass", "cello", "bassoon", "tuba", "trombone", "bassTrombone", "synthBass"].includes(instrument);
     const percussion = instrumentMode(instrument) === "drums" || ["orchestralSnare", "orchestralBassDrum", "orchestralCymbal", "triangle"].includes(instrument);
@@ -79,9 +83,9 @@ export function buildScoreTemplate(options: TemplateOptions): Score {
       const syllables = ["새", "로", "운", "노", "래", "를", "함", "께"];
       notes.forEach((note, i) => { if (!notes[i - 1]?.tieToNext) note.lyric = syllables[i % syllables.length]; });
     }
-    return { id: `template-${index}`, instrument, notation: instrumentMode(instrument), notes, chords: !options.previewSample || percussion ? [] : chords.map((chord) => ({ ...chord })),
+    return [{ id: `template-${index}`, instrument, notation: instrumentMode(instrument), notes, chords: !options.previewSample || percussion ? [] : chords.map((chord) => ({ ...chord })),
       ...(instrumentMode(instrument) === "piano" ? { accompaniment: { mode: "arpeggio" as const, pattern: options.meter === "3/4" ? "waltz" : "alberti" } } : {}),
-    };
+    }];
   });
   const [first, ...additional] = parts;
   const credits = Object.fromEntries((["lyricist", "composer", "arranger"] as const).flatMap((field) => {

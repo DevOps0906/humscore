@@ -13,7 +13,7 @@ describe("빈 템플릿 생성", () => {
     const score = buildScoreTemplate({ template: preset.id, instruments: [...preset.instruments], title: "  새 악보  ", bpm: 97, meter: "3/4", measures: 9, tonic: 2 });
     expect(parseScore(score)).not.toBeNull();
     expect(score).toMatchObject({ title: "새 악보", bpm: 97, meter: "3/4", beatsPerMeasure: 3, key: { tonic: 2 }, measureCount: 9 });
-    expect(getScoreParts(score).map((part) => part.instrument)).toEqual(preset.instruments);
+    expect(getScoreParts(score).map((part) => part.instrument)).toEqual(preset.id === "hymn" ? ["choir", "choir", "choir", "choir"] : preset.instruments);
     for (const part of getScoreParts(score)) {
       expect(part.notes).toEqual([]);
       expect(part.chords).toEqual([]);
@@ -50,15 +50,17 @@ describe("명시한 마디 수", () => {
 });
 
 describe("드럼 하이햇 방향", () => {
-  it("세 하이햇 종류를 위로 향하게 표기하고 같은 박의 킥·스네어는 별도 성부로 보존한다", () => {
+  it("손 하이햇은 위로, 페달은 아래로 향하고 동시 타격은 손·발 두 성부에 보존한다", () => {
     const notes = [36, 38, 42, 44, 46].map((midi) => ({ midi, startBeat: 0, durationBeats: 0.5 }));
     const score = makeScore(notes, { instrument: "drumKit", notation: "drums" });
     const xml = scoreToMusicXML(score);
     const sounding = (xml.match(/<note[^>]*>.*?<\/note>/g) ?? []).filter((note) => note.includes("<unpitched>"));
     expect(sounding).toHaveLength(5);
-    for (const midi of [42, 44, 46]) expect(sounding.find((note) => note.includes(`<instrument id="D${midi}"/>`))).toContain("<stem>up</stem>");
-    expect(new Set(sounding.map((note) => note.match(/<voice>(\d+)<\/voice>/)?.[1])).size).toBe(5);
-    expect(xml.match(/<backup>/g)).toHaveLength(4);
+    for (const midi of [38, 42, 46]) expect(sounding.find((note) => note.includes(`<instrument id="D${midi}"/>`))).toContain("<stem>up</stem>");
+    for (const midi of [36, 44]) expect(sounding.find((note) => note.includes(`<instrument id="D${midi}"/>`))).toContain("<stem>down</stem>");
+    expect(new Set(sounding.map((note) => note.match(/<voice>(\d+)<\/voice>/)?.[1])).size).toBe(2);
+    expect(xml.match(/<backup>/g)).toHaveLength(1);
+    expect(xml.match(/<chord\/>/g)).toHaveLength(3);
     expect(xml).not.toContain("<harmony>");
     expect(score.notes).toEqual(notes);
   });

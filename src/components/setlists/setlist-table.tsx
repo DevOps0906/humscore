@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { ScoreHeader } from "@/components/score-header";
+import { scoreTypography } from "@/lib/music/header-fonts";
 import { ScoreView } from "@/components/score-view";
 import { Button } from "@/components/ui/button";
 import { scoreToMusicXML } from "@/lib/music/musicxml";
@@ -39,7 +40,7 @@ function ScoreDisclosure({ score, transpose, bpm }: { score: Score; transpose: n
       </Button>
       {open && (
         <div className="mt-3 rounded-xl bg-white p-3 text-black ring-1 ring-line print:break-inside-avoid">
-          <ScoreView xml={xml} header={<ScoreHeader score={shown} />} />
+          <ScoreView typography={scoreTypography(shown)} xml={xml} header={<ScoreHeader score={shown} />} />
         </div>
       )}
     </div>

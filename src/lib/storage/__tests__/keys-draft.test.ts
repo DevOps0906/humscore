@@ -4,6 +4,39 @@ import { parseKeysDraft, serializeKeysDraft, type KeysDraft } from "../keys-draf
 const note = { midi: 60, startBeat: 0, durationBeats: 1 };
 
 describe("keys-draft", () => {
+  it("악보의 글꼴·크기·굵기 설정을 음표 초안과 함께 왕복 복원한다", () => {
+    const draft: KeysDraft = {
+      notes: [note], bpm: 90, meter: "4/4", key: { tonic: 0, mode: "major", fifths: 0 }, progressionId: "auto",
+      headerFont: "classic-serif", headerFontSize: 18, headerFontWeight: 800,
+    };
+    expect(parseKeysDraft(serializeKeysDraft(draft))).toEqual(draft);
+    const legacy = parseKeysDraft(JSON.stringify({ notes: [note] }));
+    expect(legacy?.headerFont).toBeUndefined();
+    expect(legacy?.headerFontSize).toBeUndefined();
+    expect(legacy?.headerFontWeight).toBeUndefined();
+  });
+
+  it("같은 합창 음색의 빈 SATB 파트 이름과 음자리표를 독립적으로 왕복 복원한다", () => {
+    const draft: KeysDraft = {
+      notes: [], chords: [], measureCount: 8, partName: "소프라노", clef: "treble", instrument: "choir", notation: "orchestra",
+      bpm: 76, meter: "4/4", key: { tonic: 0, mode: "major", fifths: 0 }, progressionId: "auto",
+      parts: [
+        { id: "alto", partName: "알토", clef: "treble", instrument: "choir", notation: "orchestra", notes: [], chords: [] },
+        { id: "tenor", partName: "테너", clef: "bass", instrument: "choir", notation: "orchestra", notes: [], chords: [] },
+        { id: "bass", partName: "베이스", clef: "bass", instrument: "choir", notation: "orchestra", notes: [], chords: [] },
+      ],
+    };
+    expect(parseKeysDraft(serializeKeysDraft(draft))).toEqual(draft);
+  });
+
+  it("손상된 최상위 성부 이름과 음자리표를 새 성부 설정으로 사용하지 않는다", () => {
+    const result = parseKeysDraft(JSON.stringify({ notes: [], partName: " ", clef: "unknown" }));
+    expect(result?.partName).toBeUndefined();
+    expect(result?.clef).toBeUndefined();
+    expect(parseKeysDraft(JSON.stringify({ notes: [], partName: "가".repeat(81) }))?.partName).toBeUndefined();
+    expect(parseKeysDraft(JSON.stringify({ notes: [], partName: " 소프라노 ", clef: "treble" }))?.partName).toBe("소프라노");
+  });
+
   it("반주 모드와 템플릿을 복원하며 잘못된 설정은 생략한다", () => {
     const draft: KeysDraft = { notes: [note], bpm: 90, meter: "4/4", key: { tonic: 0, mode: "major", fifths: 0 }, progressionId: "auto", accompaniment: { mode: "arpeggio", pattern: "alberti" } };
     expect(parseKeysDraft(serializeKeysDraft(draft))?.accompaniment).toEqual(draft.accompaniment);

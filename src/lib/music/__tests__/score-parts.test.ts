@@ -117,7 +117,7 @@ describe("참고 자료 기반 템플릿", () => {
   for (const preset of SCORE_TEMPLATES) it(`${preset.title}은 편성·음표·마디가 있는 편집 가능한 악보다`, () => {
     const score = buildScoreTemplate({ template: preset.id, instruments: [...preset.instruments], title: preset.title, bpm: preset.bpm, meter: preset.meter, measures: 8, tonic: 2, previewSample: true });
     expect(parseScore(score)).not.toBeNull();
-    expect(getScoreParts(score).map((part) => part.instrument)).toEqual(preset.instruments);
+    expect(getScoreParts(score).map((part) => part.instrument)).toEqual(preset.id === "hymn" ? ["choir", "choir", "choir", "choir"] : preset.instruments);
     for (const part of getScoreParts(score)) {
       expect(part.notes.length).toBeGreaterThan(0);
       expect(Math.max(...part.notes.map((note) => note.startBeat + note.durationBeats))).toBeLessThanOrEqual(score.beatsPerMeasure * 8);

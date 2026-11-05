@@ -78,6 +78,9 @@ export type Meter = "3/4" | "4/4" | "6/8";
 
 /** 추가 악기 파트. 박자·조성·템포·반복 기호는 곡을 공유하고 음표·코드는 독립 보관한다. */
 export interface ScorePart {
+  /** 같은 음색의 합창 성부도 이름과 음자리표를 독립적으로 보존한다. */
+  partName?: string;
+  clef?: "treble" | "bass";
   id: string;
   notation: CreationMode;
   instrument: InstrumentId;
@@ -88,6 +91,8 @@ export interface ScorePart {
 }
 
 export interface Score {
+  partName?: string;
+  clef?: "treble" | "bass";
   /** 빈 악보의 마디 수를 보존한다. 음표가 더 길면 자동으로 늘어난다. */
   measureCount?: number;
   /** 첫 파트는 기존 최상위 notes/chords를 사용한다. 추가 파트는 별도 보관한다. */
@@ -110,6 +115,8 @@ export interface Score {
   headerFont?: string;
   /** 악보 머리글 글자 크기(px, 10~48). 생략하면 기본 크기 */
   headerFontSize?: number;
+  /** 제목·가사·코드·제작자 글자 굵기. 생략하면 제목700/본문400을 사용한다. */
+  headerFontWeight?: number;
   /** 박자표. 생략하면 beatsPerMeasure/4 (3→3/4, 4→4/4). 6/8 만 beatsPerMeasure=3 과 함께 명시한다 */
   meter?: Meter;
   bpm: number;

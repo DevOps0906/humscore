@@ -4,12 +4,20 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNo
 import type { OpenSheetMusicDisplay } from "opensheetmusicdisplay";
 import { ChevronDown } from "lucide-react";
 import { LoadingSpinner } from "@/components/loading-spinner";
-import { formatCreditLines } from "@/components/score-header-logic";
+import { ensureFontStylesheet, fontLinkId, formatCreditLines } from "@/components/score-header-logic";
+import { clampHeaderFontSize, headerFontById } from "@/lib/music/header-fonts";
 import { beatKey, dragSteps, hitTestMarks, noteIndexByStart, type MarkRect } from "@/components/score-cursor";
 import type { ChordEvent, NoteEvent } from "@/lib/music/types";
 
 const DEBOUNCE_MS = 200;
 const MEASURES_PER_LINE = 4;
+const PAGE_SIDE_MARGIN_RATIO = 15 / 210;
+
+export interface ScoreTypography {
+  fontId?: string;
+  fontSize?: number;
+  fontWeight?: number;
+}
 
 /** SVG의 원본 좌표는 그대로 두고 화면에 놓이는 종이만 비례 축소한다. */
 function fitPages(container: HTMLElement, enabled: boolean) {
@@ -42,14 +50,43 @@ function creditLines(xml: string) {
   return formatCreditLines({ lyricist: creator("lyricist"), composer: creator("composer"), arranger: creator("arranger") });
 }
 
+function styleScoreText(container: HTMLElement, xml: string, typography: ScoreTypography) {
+  const title = new DOMParser().parseFromString(xml, "application/xml").querySelector("work-title")?.textContent?.trim();
+  const font = headerFontById(typography.fontId);
+  const family = font.stack.includes("var(") ? getComputedStyle(document.body).fontFamily : font.stack;
+  for (const svg of container.querySelectorAll("svg")) svg.dataset.scoreFontId = typography.fontId ?? "default";
+  for (const text of container.querySelectorAll("svg text")) {
+    text.setAttribute("font-family", family);
+    text.setAttribute("font-weight", String(typography.fontWeight ?? (text.textContent?.trim() === title ? 700 : 400)));
+  }
+}
+
+function configureTypography(osmd: OpenSheetMusicDisplay, typography: ScoreTypography) {
+  const rules = osmd.EngravingRules;
+  const font = headerFontById(typography.fontId);
+  ensureFontStylesheet(font);
+  const scale = clampHeaderFontSize(typography.fontSize) / 14;
+  rules.DefaultFontFamily = font.stack.includes("var(") ? getComputedStyle(document.body).fontFamily : font.stack;
+  rules.DefaultFontStyle = (typography.fontWeight ?? 400) >= 600 ? 1 : 0;
+  rules.LyricsHeight = 2 * scale;
+  rules.ChordSymbolTextHeight = 2 * scale;
+  rules.InstrumentLabelTextHeight = 2 * scale;
+  rules.MeasureNumberLabelHeight = 1.5 * scale;
+  rules.SheetTitleHeight = 2 * scale;
+  rules.InstantaneousTempoTextHeight = 2.3 * scale;
+  rules.ContinuousTempoTextHeight = 2.3 * scale;
+  rules.UnknownTextHeight = 2 * scale;
+}
+
 /** OSMD의 합쳐진 저작자 행 대신 역할별로 독립된 텍스트 행을 그린다. */
-function drawCreditLines(osmd: OpenSheetMusicDisplay, container: HTMLElement, lines: string[]) {
+function drawCreditLines(osmd: OpenSheetMusicDisplay, container: HTMLElement, lines: string[], typography: ScoreTypography) {
   const svg = container.querySelector("svg");
   if (!svg || !lines.length) return;
   const firstSystem = osmd.GraphicSheet?.MusicPages[0]?.MusicSystems[0];
   const k = 10 * osmd.zoom;
   const top = (firstSystem?.PositionAndShape.AbsolutePosition.y ?? 12) * k;
-  const lineHeight = 1.6 * k;
+  const textScale = clampHeaderFontSize(typography.fontSize) / 14;
+  const lineHeight = 1.6 * k * textScale;
   const x = svg.viewBox.baseVal.width - osmd.EngravingRules.PageRightMargin * k;
   const group = document.createElementNS("http://www.w3.org/2000/svg", "g");
   group.dataset.scoreCredits = "true";
@@ -58,7 +95,7 @@ function drawCreditLines(osmd: OpenSheetMusicDisplay, container: HTMLElement, li
     text.setAttribute("x", String(x));
     text.setAttribute("y", String(top - (lines.length - index) * lineHeight));
     text.setAttribute("text-anchor", "end");
-    text.setAttribute("font-size", String(1.2 * k));
+    text.setAttribute("font-size", String(1.2 * k * textScale));
     text.setAttribute("fill", "#111");
     text.textContent = line;
     group.appendChild(text);
@@ -71,40 +108,49 @@ function renderFourMeasureLines(osmd: OpenSheetMusicDisplay, container: HTMLElem
   container.style.minWidth = "";
   const rules = osmd.EngravingRules;
   rules.FixedMeasureWidth = false;
+  rules.FixedMeasureWidthFixedValue = 0;
   rules.LastSystemMaxScalingFactor = 1;
   for (const staves of osmd.GraphicSheet?.MeasureList ?? []) {
     if (staves[0]) staves[0].parentSourceMeasure.WidthFactor = 1;
   }
   osmd.render();
   const measures = osmd.GraphicSheet?.MeasureList ?? [];
+  rules.StretchLastSystemLine = measures.length % MEASURES_PER_LINE === 0;
+  rules.LastSystemMaxScalingFactor = rules.StretchLastSystemLine ? 100 : 1;
+  const pageWidth = osmd.GraphicSheet?.MusicPages[0]?.PositionAndShape.Size.width ?? container.clientWidth / (10 * osmd.zoom);
   let widestMeasure = 0;
   for (const staves of measures) {
       widestMeasure = Math.max(widestMeasure, ...staves.map((measure) =>
         measure.minimumStaffEntriesWidth + measure.beginInstructionsWidth + measure.endInstructionsWidth,
       ));
   }
-  // 줄 시작의 음자리표·조표와 페이지 여백을 포함한다.
-  const margin = rules.PageLeftMargin + rules.PageRightMargin + rules.SystemLeftMargin + rules.SystemRightMargin;
-  const minimumWidth = Math.ceil((widestMeasure * MEASURES_PER_LINE * 1.2 + margin) * 10 * osmd.zoom);
+  // A4 좌우 각각 15mm 비율의 여백은 음표 밀도 때문에 종이가 넓어져도 유지한다.
+  const labels = Math.max(0, ...(osmd.GraphicSheet?.MusicPages ?? []).flatMap((page) => page.MusicSystems.map((system) => system.MaxLabelLength > 0 ? system.MaxLabelLength + rules.SystemLabelsRightMargin : 0)));
+  const contentWidth = Math.max(pageWidth * (1 - 2 * PAGE_SIDE_MARGIN_RATIO), widestMeasure * MEASURES_PER_LINE * 1.2 + labels + rules.SystemLeftMargin + rules.SystemRightMargin);
+  const paperWidth = contentWidth / (1 - 2 * PAGE_SIDE_MARGIN_RATIO);
+  rules.PageLeftMargin = paperWidth * PAGE_SIDE_MARGIN_RATIO;
+  rules.PageRightMargin = paperWidth * PAGE_SIDE_MARGIN_RATIO;
+  const minimumWidth = Math.ceil(paperWidth * 10 * osmd.zoom);
   if (minimumWidth > 0) {
     container.style.minWidth = `${minimumWidth}px`;
     osmd.render();
-    // 음자리표·박자표까지 포함한 전체 마디 폭을 맞춘다. 음표 글리프는 늘이지 않는다.
-    // 첫 계산에서 줄바꿈이 달라질 수 있어 지시 기호 폭을 다시 읽어 수렴시킨다.
-    for (let pass = 0; pass < 3; pass++) {
-      const current = osmd.GraphicSheet?.MeasureList ?? [];
-      const labelWidth = Math.max(0, ...(osmd.GraphicSheet?.MusicPages ?? []).flatMap((page) => page.MusicSystems.map((system) => system.MaxLabelLength > 0 ? system.MaxLabelLength + rules.SystemLabelsRightMargin : 0)));
-      const pageWidth = Math.min(container.clientWidth / (10 * osmd.zoom), osmd.GraphicSheet?.MusicPages[0]?.PositionAndShape.Size.width ?? Infinity);
-      // 빈 총보도 줄 끝 세로선과 보표 내부 여백을 포함해 네 마디가 들어가게 한다.
-      const slot = (pageWidth - margin - labelWidth - rules.MeasureLeftMargin - 0.02) / MEASURES_PER_LINE * 0.9;
-      for (const staves of current) {
-        const source = staves[0]?.parentSourceMeasure;
-        if (!source) continue;
-        const factor = source.WidthFactor || 1;
-        const natural = Math.max(0.1, ...staves.map((measure) => measure.minimumStaffEntriesWidth / factor));
-        const instructions = Math.max(0, ...staves.map((measure) => measure.beginInstructionsWidth + measure.endInstructionsWidth));
-        source.WidthFactor = Math.max(1, (slot - instructions) / natural);
+    // FixedMeasureWidth는 선율 영역만 고정해 첫 줄 박자표와 마지막 줄을 보정하지 못한다.
+    // 실제 외곽 폭을 공통 기준으로 삼아 음표 글리프를 늘이지 않고 간격만 수렴시킨다.
+    const firstLine = (osmd.GraphicSheet?.MeasureList ?? []).slice(0, MEASURES_PER_LINE);
+    const slot = firstLine.reduce((width, staves) => width + (staves[0]?.PositionAndShape.Size.width ?? 0), 0) / Math.min(MEASURES_PER_LINE, firstLine.length);
+    for (let pass = 0; pass < 30; pass++) {
+      let maxError = 0;
+      for (const staves of osmd.GraphicSheet?.MeasureList ?? []) {
+        const measure = staves[0];
+        if (!measure) continue;
+        const source = measure.parentSourceMeasure;
+        const actual = measure.PositionAndShape.Size.width;
+        const instructions = Math.max(...staves.map((entry) => entry.beginInstructionsWidth + entry.endInstructionsWidth));
+        maxError = Math.max(maxError, Math.abs(slot - actual));
+        source.WidthFactor *= Math.sqrt(Math.max(0.1, (slot - instructions) / Math.max(0.1, actual - instructions)));
       }
+      if (maxError < 0.005) break;
+      osmd.updateGraphic();
       osmd.render();
     }
   }
@@ -255,6 +301,7 @@ export function ScoreView({
   showHeader = false,
   printLayout = true,
   fitToPage = true,
+  typography,
   header,
   onHandle,
 }: {
@@ -269,11 +316,34 @@ export function ScoreView({
   printLayout?: boolean;
   /** 화면의 한 페이지를 가로·세로에 맞춘다. 인쇄/PDF 원본은 false를 사용한다. */
   fitToPage?: boolean;
+  /** 악보의 문자만 설정한다. 음표·음자리표 글리프는 바꾸지 않는다. */
+  typography?: ScoreTypography;
   /** 악보(종이) 맨 위, OSMD 그림 앞에 놓는 HTML 머리글 (인쇄에 포함됨) */
   header?: ReactNode;
   /** PDF 내보내기용 핸들을 받는다 (언마운트 때 null) */
   onHandle?: (h: ScoreViewHandle | null) => void;
 }) {
+  const fontId = typography?.fontId;
+  const fontSize = typography?.fontSize;
+  const fontWeight = typography?.fontWeight;
+  const [fontRevision, setFontRevision] = useState(0);
+  useEffect(() => {
+    const font = headerFontById(fontId);
+    if (!font.google || !document.fonts) return;
+    ensureFontStylesheet(font);
+    let cancelled = false;
+    const redraw = () => { if (!cancelled) setFontRevision((value) => value + 1); };
+    const load = () => {
+      const primaryFamily = font.stack.split(",")[0];
+      void document.fonts.load(`${fontWeight ?? 400} ${clampHeaderFontSize(fontSize)}px ${primaryFamily}`, "가나다 ABC")
+        .then(redraw, () => undefined);
+    };
+    const link = document.getElementById(fontLinkId(font)) as HTMLLinkElement | null;
+    if (link?.sheet) load();
+    else link?.addEventListener("load", load, { once: true });
+    document.fonts.addEventListener("loadingdone", redraw);
+    return () => { cancelled = true; link?.removeEventListener("load", load); document.fonts.removeEventListener("loadingdone", redraw); };
+  }, [fontId, fontSize, fontWeight]);
   const ref = useRef<HTMLDivElement>(null);
   const onHandleRef = useRef(onHandle);
   useLayoutEffect(() => {
@@ -326,6 +396,7 @@ export function ScoreView({
 
   const osmdRef = useRef<OpenSheetMusicDisplay | null>(null);
   const loadedXml = useRef<string | null>(null);
+  const loadedTypography = useRef("");
   const generation = useRef(0);
   const [error, setError] = useState<string | null>(null);
   const [doneKey, setDoneKey] = useState<{ xml: string; zoom: number } | null>(null);
@@ -359,25 +430,29 @@ export function ScoreView({
             osmdRef.current.EngravingRules.NewPartAndSystemAfterFinalBarline = false;
           }
           const osmd = osmdRef.current;
+          const textStyle = { fontId, fontSize, fontWeight };
+          const textKey = JSON.stringify([fontId, fontSize, fontWeight, fontRevision]);
+          configureTypography(osmd, textStyle);
           const multipleInstruments = xml.includes('id="M1-');
           osmd.setOptions({ drawTitle: showHeader, drawComposer: false, drawLyricist: false, drawPartNames: multipleInstruments, drawPartAbbreviations: multipleInstruments });
           if (showHeader) {
             // 기본값은 제목이 너무 커서 긴 제목이 잘림 → 작게
-            osmd.EngravingRules.SheetTitleHeight = 2;
             osmd.EngravingRules.SheetComposerHeight = 1.2;
             osmd.EngravingRules.TitleTopDistance = 1.5;
-            osmd.EngravingRules.TitleBottomDistance = 2 + creditLines(xml).length * 1.6;
+            osmd.EngravingRules.TitleBottomDistance = 2 + creditLines(xml).length * 1.6 * clampHeaderFontSize(fontSize) / 14;
           }
-          if (loadedXml.current !== xml) {
+          if (loadedXml.current !== xml || loadedTypography.current !== textKey) {
             loadedXml.current = null; // load 도중 상태 불명 → 완료 전까지 null
             await osmd.load(xml);
             loadedXml.current = xml; // 취소돼도 OSMD 내부에는 이 xml이 load됨
+            loadedTypography.current = textKey;
             if (!isLatest()) return;
           }
           osmd.zoom = zoom;
           if (fitToPage) ref.current.style.width = `${Math.max(720, sheetRef.current?.clientWidth ?? 720)}px`;
           renderFourMeasureLines(osmd, ref.current);
-          if (showHeader) drawCreditLines(osmd, ref.current, creditLines(xml));
+          if (showHeader) drawCreditLines(osmd, ref.current, creditLines(xml), textStyle);
+          styleScoreText(ref.current, xml, textStyle);
           fitPages(ref.current, fitToPage);
           setError(null);
           if (isLatest()) updateMarks();
@@ -393,7 +468,7 @@ export function ScoreView({
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [xml, zoom, updateMarks, showHeader, printLayout, fitToPage]);
+  }, [xml, zoom, updateMarks, showHeader, printLayout, fitToPage, fontId, fontSize, fontWeight, fontRevision]);
 
   useEffect(() => {
     const sheet = sheetRef.current;
@@ -411,7 +486,9 @@ export function ScoreView({
         if (osmdRef.current && ref.current && loadedXml.current) {
           if (fitToPage) ref.current.style.width = `${Math.max(720, sheet.clientWidth)}px`;
           renderFourMeasureLines(osmdRef.current, ref.current);
-          if (showHeader) drawCreditLines(osmdRef.current, ref.current, creditLines(loadedXml.current));
+          const textStyle = { fontId, fontSize, fontWeight };
+          if (showHeader) drawCreditLines(osmdRef.current, ref.current, creditLines(loadedXml.current), textStyle);
+          styleScoreText(ref.current, loadedXml.current, textStyle);
           fitPages(ref.current, fitToPage);
           updateMarks();
         }
@@ -421,7 +498,7 @@ export function ScoreView({
     observer.observe(sheet);
     window.addEventListener("resize", resize);
     return () => { observer.disconnect(); window.removeEventListener("resize", resize); clearTimeout(timer); };
-  }, [updateMarks, fitToPage, showHeader]);
+  }, [updateMarks, fitToPage, showHeader, fontId, fontSize, fontWeight]);
 
   // 커서 모드: OSMD 가 자체적으로 다시 그릴 때(창 크기 변경 등)도 위치 재계산
   useEffect(() => {

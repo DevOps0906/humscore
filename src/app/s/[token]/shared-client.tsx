@@ -3,6 +3,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Play, Square } from "lucide-react";
 import { ScoreHeader } from "@/components/score-header";
+import { scoreTypography } from "@/lib/music/header-fonts";
 import { ScoreView } from "@/components/score-view";
 import { Button } from "@/components/ui/button";
 import { getAudioContext, setAudioSessionType } from "@/lib/audio/context";
@@ -69,7 +70,7 @@ export function SharedClient({ score }: { score: Score }) {
 
   return (
     <main className="safe-top mx-auto flex w-full max-w-5xl flex-1 flex-col gap-4 px-4 pb-28 pt-4 md:px-8 md:pt-6 lg:px-10 lg:pt-8">
-      <ScoreView xml={xml} showHeader={false} header={<ScoreHeader score={score} />} />
+      <ScoreView typography={scoreTypography(score)} xml={xml} showHeader={false} header={<ScoreHeader score={score} />} />
       <p className="text-center text-xs text-ink-soft">
         읽기 전용 공유 악보예요.{" "}
         <Link href="/" rel="noreferrer" className="text-accent underline underline-offset-4">

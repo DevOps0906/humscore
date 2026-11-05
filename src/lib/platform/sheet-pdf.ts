@@ -1,5 +1,6 @@
 import { A4_H, A4_W, PDF_MARGIN, buildImagePdf, type PdfJpegPage } from "./pdf";
 import { cutsBetween, planSlices, type Span } from "./pdf-slices";
+import { embedSvgFont } from "./svg-font";
 
 /**
  * 악보(OSMD가 그린 SVG)를 이미지 PDF 바이트로 만든다 (브라우저 전용).
@@ -16,11 +17,12 @@ interface Piece {
   h: number;
 }
 
-function loadSvg(svg: SVGSVGElement): Promise<Piece> {
+async function loadSvg(svg: SVGSVGElement): Promise<Piece> {
   const r = svg.getBoundingClientRect();
   const w = Math.ceil(r.width);
   const h = Math.ceil(r.height);
   const clone = svg.cloneNode(true) as SVGSVGElement;
+  await embedSvgFont(clone);
   clone.setAttribute("xmlns", "http://www.w3.org/2000/svg");
   clone.setAttribute("width", String(w));
   clone.setAttribute("height", String(h));

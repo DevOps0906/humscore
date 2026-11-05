@@ -5,6 +5,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ScoreView } from "@/components/score-view";
 import { scoreToMusicXML } from "@/lib/music/musicxml";
 import type { Score } from "@/lib/music/types";
+import { scoreTypography } from "@/lib/music/header-fonts";
 
 export function ScoreArrangementTabs({ score, view, onViewChange, children }: {
   score: Score;
@@ -19,7 +20,7 @@ export function ScoreArrangementTabs({ score, view, onViewChange, children }: {
       <TabsTrigger value="full">전체 악보</TabsTrigger>
       <TabsTrigger value="individual">개별 악보</TabsTrigger>
     </TabsList>
-    <TabsContent value="full"><ScoreView showHeader xml={scoreToMusicXML(score, "piano")} /></TabsContent>
+    <TabsContent value="full"><ScoreView typography={scoreTypography(score)} showHeader xml={scoreToMusicXML(score, "piano")} /></TabsContent>
     <TabsContent value="individual">{children}</TabsContent>
   </Tabs>;
 }

@@ -5,7 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ScoreView } from "./score-view";
-import { ScoreHeader } from "./score-header";
+import { ScoreHeader, HeaderSettings } from "./score-header";
+import { scoreTypography } from "@/lib/music/header-fonts";
 import { TabScoreView } from "./tab-score-view";
 import { buildScoreTemplate, SCORE_TEMPLATES, type ScoreTemplateId } from "@/lib/music/score-templates";
 import { INSTRUMENT_LABELS, ACOUSTIC_PIANOS, ELECTRIC_PIANOS, SYNTH_INSTRUMENTS, GUITAR_INSTRUMENTS, ORCHESTRA_GROUPS, type InstrumentId } from "@/lib/music/instrument-catalog";
@@ -33,14 +34,15 @@ export function ScoreTemplateDialog({ onClose, onCreate, replacing }: { onClose:
   const [lyricist, setLyricist] = useState("");
   const [composer, setComposer] = useState("");
   const [arranger, setArranger] = useState("");
+  const [textStyle, setTextStyle] = useState<Pick<Score, "headerFont" | "headerFontSize" | "headerFontWeight">>({});
   const preview = useMemo(() => buildScoreTemplate({ template, instruments, title, bpm, meter, measures, tonic, lyricist, composer, arranger }), [template, instruments, title, bpm, meter, measures, tonic, lyricist, composer, arranger]);
-  const sample = useMemo(() => buildScoreTemplate({ template, instruments, title, bpm, meter, measures: 4, tonic, lyricist, composer, arranger, previewSample: true }), [template, instruments, title, bpm, meter, tonic, lyricist, composer, arranger]);
-  const visibleScore = step === 1 ? sample : preview;
+  const sample = useMemo(() => buildScoreTemplate({ template, instruments, title: template === "hymn" ? "주 하나님 지으신 모든 세계" : title, bpm, meter: "4/4", measures: template === "orchestra" ? 4 : 8, tonic, lyricist, composer, arranger, previewSample: true }), [template, instruments, title, bpm, tonic, lyricist, composer, arranger]);
+  const visibleScore = useMemo(() => ({ ...(step === 1 ? sample : preview), ...textStyle }), [step, sample, preview, textStyle]);
   const tabInstrument = instruments.length === 1 && isGuitarInstrument(instruments[0]) ? instruments[0] : null;
   const xml = useMemo(() => scoreToMusicXML(visibleScore, "piano", { measuresPerSystem: 4 }), [visibleScore]);
-  const scorePreview = <div className="min-w-0 overflow-hidden rounded-xl border border-line bg-score-paper p-2">
+  const scorePreview = <div data-testid="template-score-preview" className="mx-auto w-full min-w-0 overflow-hidden rounded-xl border border-line bg-score-paper p-2">
     <ScoreHeader score={visibleScore} />
-    {tabInstrument ? <TabScoreView score={visibleScore} instrument={tabInstrument} /> : <ScoreView xml={xml} />}
+    {tabInstrument ? <TabScoreView score={visibleScore} instrument={tabInstrument} /> : <ScoreView typography={scoreTypography(visibleScore)} xml={xml} />}
   </div>;
   return <Dialog open onOpenChange={(open) => { if (!open) onClose(); }}>
     <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-6xl">
@@ -49,15 +51,16 @@ export function ScoreTemplateDialog({ onClose, onCreate, replacing }: { onClose:
       {step === 1 && <div className="grid min-w-0 grid-cols-[minmax(0,2fr)_minmax(0,3fr)] items-start gap-2 md:grid-cols-[minmax(0,1fr)_minmax(0,2fr)] md:gap-4">
         <section aria-label="악보 형식 선택" className="grid min-w-0 gap-2">
         {SCORE_TEMPLATES.map((entry) => <Button key={entry.id} type="button" variant="outline" aria-pressed={entry.id === template} onClick={() => {
-          setTemplate(entry.id); setInstruments([...entry.instruments]); setTitle(entry.title); setBpm(entry.bpm); setMeter(entry.meter);
+          setTemplate(entry.id); setInstruments([...entry.instruments]); setTitle(entry.id === "hymn" ? "주 하나님 지으신 모든 세계" : entry.title); setBpm(entry.bpm); setMeter(entry.meter); setMeasures(8);
         }} className={`h-auto min-h-11 min-w-0 flex-col items-start gap-2 whitespace-normal p-2 text-left md:p-4 ${entry.id === template ? "border-accent bg-accent/15 text-accent" : ""}`}>
           <span className="text-xs font-semibold md:text-sm">{entry.title}</span><span className="hidden text-xs text-ink-soft md:block">{entry.detail}</span>
         </Button>)}
         </section>
-        <section aria-label="템플릿 미리보기" className="sticky top-0 grid min-w-0 gap-2">
-          <h2 className="text-sm font-semibold">{preset.title} · 예시 미리보기</h2>
-          <p className="text-xs text-ink-soft">{preset.detail} 예시 음표는 생성되는 악보에 포함되지 않습니다.</p>
-          <div className="max-h-[60dvh] min-w-0 overflow-auto">{scorePreview}</div>
+        <section aria-label="템플릿 미리보기" className="sticky top-0 grid min-w-0 justify-items-center gap-2 text-center">
+          <h2 className="text-sm font-bold">{preset.title} · 예시 미리보기</h2>
+          <p className="text-xs text-ink-soft">{preset.detail} · 4/4 · {template === "orchestra" ? 4 : 8}마디. 예시 음표는 생성되는 악보에 포함되지 않습니다.</p>
+          {template === "hymn" && <p className="text-xs text-ink-soft">전통 선율을 재구성한 소프라노·알토·테너·베이스 4성부와 1~4절 예시 가사입니다.</p>}
+          <div className="flex max-h-[60dvh] w-full min-w-0 items-start justify-center overflow-auto">{scorePreview}</div>
         </section>
       </div>}
       {step === 2 && <div className="grid min-w-0 gap-3">
@@ -82,13 +85,14 @@ export function ScoreTemplateDialog({ onClose, onCreate, replacing }: { onClose:
           <label className="grid gap-1 text-sm">편곡자<Input aria-label="템플릿 편곡자" value={arranger} maxLength={100} onChange={(event) => setArranger(event.target.value)} className="h-11" /></label>
         </fieldset>
         <p className="text-xs text-ink-soft">참고한 구성: {preset.reference}</p>
+        <HeaderSettings score={visibleScore} onChange={setTextStyle} />
         <p role="status" className="text-sm text-ink-soft">선택한 악기 편성과 마디 수를 갖춘 빈 악보로 생성합니다. 아래에서 시작할 악보를 확인하세요.</p>
         {scorePreview}
         {replacing && <p role="status" className="text-sm text-ink-soft">생성하면 현재 입력 중인 초안이 이 템플릿으로 바뀝니다. 내 악보에 저장한 곡은 유지됩니다.</p>}
       </div>}
       <div className="flex flex-wrap justify-between gap-2">
         <Button type="button" variant="outline" onClick={() => step === 1 ? onClose() : setStep(step - 1)} className="h-11 px-5">{step === 1 ? "취소" : "이전"}</Button>
-        {step < 3 ? <Button type="button" disabled={!instruments.length} onClick={() => setStep(step + 1)} className="h-11 px-5">다음</Button> : <Button type="button" disabled={!instruments.length || !title.trim()} onClick={() => onCreate(preview)} className="h-11 px-5">{replacing ? "현재 초안을 템플릿으로 교체" : "이 템플릿으로 악보 생성"}</Button>}
+        {step < 3 ? <Button type="button" disabled={!instruments.length} onClick={() => setStep(step + 1)} className="h-11 px-5">다음</Button> : <Button type="button" disabled={!instruments.length || !title.trim()} onClick={() => onCreate({ ...preview, ...textStyle })} className="h-11 px-5">{replacing ? "현재 초안을 템플릿으로 교체" : "이 템플릿으로 악보 생성"}</Button>}
       </div>
     </DialogContent>
   </Dialog>;

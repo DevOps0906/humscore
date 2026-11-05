@@ -3,7 +3,8 @@ import { Suspense } from "react";
 import { ScorePartsPanel } from "@/components/score-parts-panel";
 import { ScoreTemplateDialog } from "@/components/score-template-dialog";
 import { ScoreArrangementTabs } from "@/components/score-arrangement-tabs";
-import { ScoreHeader } from "@/components/score-header";
+import { ScoreHeader, HeaderSettings } from "@/components/score-header";
+import { scoreTypography } from "@/lib/music/header-fonts";
 import { MAIN_PART_ID, getScoreParts, scoreForPart, updateScorePart, addScorePart } from "@/lib/music/parts";
 
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -261,6 +262,8 @@ function KeysPageInner() {
         chords: rootDraft.chords, scoreId: rootDraft.id, notation: rootDraft.notation, instrument: rootDraft.instrument,
         accompaniment: rootDraft.accompaniment, parts: rootDraft.parts, activePartId, title: rootDraft.title,
         measureCount: rootDraft.measureCount, lyricist: rootDraft.lyricist, composer: rootDraft.composer, arranger: rootDraft.arranger,
+        partName: rootDraft.partName, clef: rootDraft.clef,
+        headerFont: rootDraft.headerFont, headerFontSize: rootDraft.headerFontSize, headerFontWeight: rootDraft.headerFontWeight,
       }));
     } catch { /* storage unavailable */ }
   }, [loaded, hasContent, rootDraft, bpm, meter, progressionId, activePartId]);
@@ -597,6 +600,7 @@ function KeysPageInner() {
         : <PianoKeyboard active={active} pressed={pressed} onPress={(m) => handler.current(m)} />)}
 
       {/* 악보 미리보기 (건반 바로 아래) */}
+      {showScore && <HeaderSettings score={rootDraft} onChange={(patch) => setBase((current) => ({ ...current, ...patch }))} />}
       {showScore && <ScoreArrangementTabs score={rootDraft} view={arrangementView} onViewChange={setArrangementView}>
         <section className="grid min-w-0 gap-3" aria-label="선택한 악기 악보">
         <div className="rounded-xl bg-score-paper p-2"><ScoreHeader score={draftScore} /></div>
@@ -604,7 +608,7 @@ function KeysPageInner() {
           <Button type="button" variant="outline" aria-pressed={!showGuitarStaff} onClick={() => setShowGuitarStaff(false)} className={btn}>TAB</Button>
           <Button type="button" variant="outline" aria-pressed={showGuitarStaff} onClick={() => setShowGuitarStaff(true)} className={btn}>악보</Button>
         </div>}
-        {(!guitar || showGuitarStaff) && <ScoreView xml={xml} chordEditor={phase === "edit" && !drums ? {
+        {(!guitar || showGuitarStaff) && <ScoreView typography={scoreTypography(draftScore)} xml={xml} chordEditor={phase === "edit" && !drums ? {
           chords: draftScore.chords,
           onSelect: (startBeat) => {
             setSelectedChordBeat(startBeat);

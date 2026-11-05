@@ -6,6 +6,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { ScoreHeader } from "@/components/score-header";
 import { FollowPanel } from "@/components/follow-panel";
 import { PracticeBar } from "@/components/practice-bar";
+import { scoreTypography } from "@/lib/music/header-fonts";
 import { ScoreView, type ScoreCursorProps } from "@/components/score-view";
 import { TransposeBar } from "@/components/transpose-bar";
 import { useFollowAlong } from "@/hooks/use-follow-along";
@@ -93,7 +94,7 @@ export function PerformClient({ id }: { id: string }) {
           scroller.current?.scrollBy({ top: (right ? 1 : -1) * window.innerHeight * 0.8, behavior: "smooth" });
         }}
       >
-        <ScoreView showHeader={false} fitToPage={false} printLayout={false} header={<ScoreHeader score={score} />} xml={xml} zoom={zoom} cursor={cursor} />
+        <ScoreView typography={scoreTypography(score)} showHeader={false} fitToPage={false} printLayout={false} header={<ScoreHeader score={score} />} xml={xml} zoom={zoom} cursor={cursor} />
       </div>
       {/* 모바일·태블릿: 하단 패널(연습 바 또는 따라 치기 + 전조) / 데스크톱 1200~: 따라 치기는 악보 우측 패널, 연습 바·전조는 악보 아래 행 */}
       <div className="safe-bottom border-t border-line px-4 pt-2 lg:contents">

@@ -9,6 +9,11 @@ import { isArpeggioPatternId, type AccompanimentSettings } from "../music/accomp
 
 /** 건반 입력 화면 초안 (음표 숫자와 설정만, 오디오 아님) */
 export interface KeysDraft {
+  headerFont?: string;
+  headerFontSize?: number;
+  headerFontWeight?: number;
+  partName?: string;
+  clef?: "treble" | "bass";
   measureCount?: number;
   lyricist?: string;
   composer?: string;
@@ -57,6 +62,11 @@ export function parseKeysDraft(raw: string | null): KeysDraft | null {
   if (parsedParts && !parsedParts.success) return null;
   const parts = parsedParts?.success ? parsedParts.data : undefined;
   const settings = {
+    ...(typeof o.headerFont === "string" && o.headerFont.length <= 40 ? { headerFont: o.headerFont } : {}),
+    ...(typeof o.headerFontSize === "number" && Number.isInteger(o.headerFontSize) && o.headerFontSize >= 10 && o.headerFontSize <= 48 ? { headerFontSize: o.headerFontSize } : {}),
+    ...(typeof o.headerFontWeight === "number" && o.headerFontWeight >= 100 && o.headerFontWeight <= 900 && o.headerFontWeight % 100 === 0 ? { headerFontWeight: o.headerFontWeight } : {}),
+    ...(typeof o.partName === "string" && o.partName.trim() && o.partName.length <= 80 ? { partName: o.partName.trim() } : {}),
+    ...(o.clef === "treble" || o.clef === "bass" ? { clef: o.clef as "treble" | "bass" } : {}),
     ...(typeof o.measureCount === "number" && Number.isInteger(o.measureCount) && o.measureCount >= 1 && o.measureCount <= 128 ? { measureCount: o.measureCount } : {}),
     ...Object.fromEntries((["lyricist", "composer", "arranger"] as const).flatMap((field) => typeof o[field] === "string" && o[field].length <= 200 ? [[field, o[field]]] : [])),
     ...(typeof o.title === "string" && o.title.length <= 200 ? { title: o.title } : {}),
