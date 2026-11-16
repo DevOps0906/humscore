@@ -28,7 +28,7 @@ export async function listScores(): Promise<ActionResult<{ userId: string; score
     const a = await authed();
     if (!a.ok) return { ok: false, error: a.error };
     const { data, error } = await a.sb
-      .from("scores")
+      .schema("nomad_humscore").from("scores")
       .select("id, data, updated_at, deleted_at")
       .order("updated_at", { ascending: false })
       .limit(5000);
@@ -61,7 +61,7 @@ export async function saveScore(input: unknown, expectedUserId: string): Promise
     const a = await authed();
     if (!a.ok) return { ok: false, error: a.error };
     if (a.userId !== expectedUserId) return { ok: false, error: "mismatch" };
-    const { data: rows, error } = await a.sb.from("scores").upsert({
+    const { data: rows, error } = await a.sb.schema("nomad_humscore").from("scores").upsert({
       id: score.id,
       user_id: a.userId,
       title: score.title,
@@ -86,12 +86,12 @@ export async function deleteScore(id: unknown, expectedUserId: string): Promise<
     const a = await authed();
     if (!a.ok) return { ok: false, error: a.error };
     if (a.userId !== expectedUserId) return { ok: false, error: "mismatch" };
-    const { data: row, error: readErr } = await a.sb.from("scores").select("updated_at").eq("id", parsed.data).maybeSingle();
+    const { data: row, error: readErr } = await a.sb.schema("nomad_humscore").from("scores").select("updated_at").eq("id", parsed.data).maybeSingle();
     if (readErr) return { ok: false, error: "failed" };
     if (!row) return { ok: true, data: { id: parsed.data } }; // 클라우드에 없음 — 할 일 없음
     const at = new Date(Math.max(Date.now(), Date.parse(row.updated_at as string) + 1)).toISOString();
     const { error } = await a.sb
-      .from("scores")
+      .schema("nomad_humscore").from("scores")
       .update({ deleted_at: at, updated_at: at })
       .eq("id", parsed.data)
       .eq("user_id", a.userId);

@@ -7,6 +7,7 @@ const updateSpy = vi.fn();
 vi.mock("@/lib/storage/supabase/server", () => ({
   createSupabaseServer: async () => ({
     auth: { getUser: async () => ({ data: { user: { id: cookieUser } }, error: null }) },
+    schema(name: string) { expect(name).toBe("nomad_humscore"); return this; },
     from: () => ({
       upsert: () => ({ select: async () => ({ data: upsertRows, error: null }) }),
       select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: { updated_at: "2026-01-01T00:00:00.000Z" }, error: null }) }) }),

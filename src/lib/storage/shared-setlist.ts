@@ -69,7 +69,7 @@ export async function fetchSharedSetlist(token: string): Promise<SharedSetlist |
     const env = getSupabaseEnv();
     if (!env) return null;
     const sb = createClient(env.url, env.key, { auth: { persistSession: false, autoRefreshToken: false } });
-    const { data, error } = await sb.rpc("get_shared_setlist", { p_token: token });
+    const { data, error } = await sb.schema("nomad_humscore").rpc("get_shared_setlist", { p_token: token });
     if (error || !Array.isArray(data) || data.length === 0) return null;
     return parseSharedSetlist(data[0]);
   } catch {

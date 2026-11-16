@@ -483,7 +483,8 @@ src/
     ├── audio/                # Web Audio: 피치 추적(pitchy), 배음 합성 피아노, 메트로놈
     ├── platform/             # 웹/앱 차이 흡수 (파일 저장·공유 시트)
     └── storage/              # localStorage 기본 저장 + Supabase 동기화(병합·삭제 기록)
-supabase/migrations/          # scores·share_links·setlists(RLS·제약·트리거), transcription_jobs
+supabase/migrations/          # nomad DB 코어 + nomad_humscore(scores·share_links·setlists·transcription_jobs) — install-db.sh 설치본
+supabase/legacy-migrations/   # 옛 public 스키마 마이그레이션(보관, 적용 안 함)
 e2e/                          # Playwright E2E
 native-shell/                 # 앱 오프라인 안내 페이지
 ```

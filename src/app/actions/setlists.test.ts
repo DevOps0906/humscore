@@ -10,6 +10,7 @@ const insertSpy = vi.fn();
 vi.mock("@/lib/storage/supabase/server", () => ({
   createSupabaseServer: async () => ({
     auth: { getUser: async () => ({ data: { user }, error: null }) },
+    schema(name: string) { expect(name).toBe("nomad_humscore"); return this; },
     from: () => {
       const upd = {
         eq: (c: string, v: unknown) => (eqSpy(c, v), upd),

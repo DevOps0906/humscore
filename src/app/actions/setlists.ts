@@ -57,7 +57,7 @@ export async function listSetlists(): Promise<SetlistResult<SetlistSummary[]>> {
     const a = await authed();
     if (!a.ok) return { ok: false, error: a.error };
     const { data, error } = await a.sb
-      .from("setlists")
+      .schema("nomad_humscore").from("setlists")
       .select("id, title, service_date, item_count, updated_at")
       .eq("user_id", a.userId)
       .is("deleted_at", null)
@@ -94,7 +94,7 @@ export async function getSetlist(id: unknown): Promise<SetlistResult<Setlist>> {
     const a = await authed();
     if (!a.ok) return { ok: false, error: a.error };
     const { data, error } = await a.sb
-      .from("setlists")
+      .schema("nomad_humscore").from("setlists")
       .select("id, title, service_date, memo, share_notes, items, updated_at")
       .eq("id", sid.data)
       .eq("user_id", a.userId)
@@ -129,7 +129,7 @@ export async function createSetlist(input: unknown): Promise<SetlistResult<{ id:
     const a = await authed();
     if (!a.ok) return { ok: false, error: a.error };
     const { data, error } = await a.sb
-      .from("setlists")
+      .schema("nomad_humscore").from("setlists")
       .insert({ ...toRow(p.data), user_id: a.userId })
       .select("id, updated_at")
       .single();
@@ -153,7 +153,7 @@ export async function saveSetlist(id: unknown, input: unknown, baseUpdatedAt: un
     const a = await authed();
     if (!a.ok) return { ok: false, error: a.error };
     const { data, error } = await a.sb
-      .from("setlists")
+      .schema("nomad_humscore").from("setlists")
       .update(toRow(p.data))
       .eq("id", sid.data)
       .eq("user_id", a.userId)
@@ -176,7 +176,7 @@ export async function deleteSetlist(id: unknown): Promise<SetlistResult<null>> {
     const a = await authed();
     if (!a.ok) return { ok: false, error: a.error };
     const { error } = await a.sb
-      .from("setlists")
+      .schema("nomad_humscore").from("setlists")
       .update({ deleted_at: new Date().toISOString() })
       .eq("id", sid.data)
       .eq("user_id", a.userId)
@@ -211,7 +211,7 @@ async function queryScorePreviews(ids?: string[]): Promise<SetlistResult<Setlist
   if (!a.ok) return { ok: false, error: a.error };
   if (ids && ids.length === 0) return { ok: true, data: [] };
   let query = a.sb
-    .from("scores")
+    .schema("nomad_humscore").from("scores")
     .select("id, title, deleted_at, transpose:data->>transpose, bpm:data->>bpm, key:data->key")
     .eq("user_id", a.userId);
   if (ids) query = query.in("id", ids);
