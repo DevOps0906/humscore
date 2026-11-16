@@ -44,7 +44,7 @@ async function prepare(a: Authed, target: unknown, updatedAt: unknown, expiresAt
     if (!expires) return { ok: false as const, error: "invalid" as const };
   }
   const { data: row, error } = await a.sb
-    .from(TARGET[id.data.kind].table)
+    .schema("nomad_humscore").from(TARGET[id.data.kind].table)
     .select("updated_at, deleted_at")
     .eq("id", id.data.id)
     .eq("user_id", a.userId)
@@ -75,13 +75,13 @@ export async function createShareLink(target: unknown, updatedAt: unknown, expir
     const column = TARGET[p.target.kind].column;
     // 만료됐지만 아직 회수되지 않은 링크는 부분 유니크 인덱스를 막으므로 먼저 정리
     await a.sb
-      .from("share_links")
+      .schema("nomad_humscore").from("share_links")
       .update({ revoked_at: new Date().toISOString() })
       .eq(column, p.target.id)
       .is("revoked_at", null)
       .lte("expires_at", new Date().toISOString());
     const { error } = await a.sb
-      .from("share_links")
+      .schema("nomad_humscore").from("share_links")
       .insert({ [column]: p.target.id, owner_id: a.userId, token_hash: p.hash, expires_at: p.expires });
     if (error) {
       if (error.code === "23505") return { ok: true, data: { state: "already" } }; // 동시 클릭 — 오류가 아님
@@ -101,7 +101,7 @@ export async function reissueShareLink(scoreId: unknown, updatedAt: unknown, exp
     if (!a.ok) return { ok: false, error: a.error };
     const p = await prepare(a, scoreId, updatedAt, expiresAt);
     if (!p.ok) return { ok: false, error: p.error };
-    const { error } = await a.sb.rpc("reissue_share_link", {
+    const { error } = await a.sb.schema("nomad_humscore").rpc("reissue_share_link", {
       p_score_id: p.target.id,
       p_token_hash: p.hash,
       p_expires_at: p.expires,
@@ -121,7 +121,7 @@ export async function revokeShareLink(target: unknown): Promise<ShareResult<null
     const a = await authed();
     if (!a.ok) return { ok: false, error: a.error };
     const { error } = await a.sb
-      .from("share_links")
+      .schema("nomad_humscore").from("share_links")
       .update({ revoked_at: new Date().toISOString() })
       .eq(TARGET[id.data.kind].column, id.data.id)
       .eq("owner_id", a.userId)
@@ -141,7 +141,7 @@ export async function getShareStatus(target: unknown): Promise<ShareResult<{ act
     const a = await authed();
     if (!a.ok) return { ok: false, error: a.error };
     const { data, error } = await a.sb
-      .from("share_links")
+      .schema("nomad_humscore").from("share_links")
       .select("expires_at")
       .eq(TARGET[id.data.kind].column, id.data.id)
       .eq("owner_id", a.userId)
@@ -174,7 +174,7 @@ export async function listShareLinks(): Promise<ShareResult<ShareLinkItem[]>> {
     const a = await authed();
     if (!a.ok) return { ok: false, error: a.error };
     const { data, error } = await a.sb
-      .from("share_links")
+      .schema("nomad_humscore").from("share_links")
       .select("score_id, setlist_id, expires_at, created_at, scores(title, deleted_at), setlists(title, deleted_at)")
       .eq("owner_id", a.userId)
       .is("revoked_at", null)

@@ -12,6 +12,7 @@ let statusRow: { expires_at: string | null } | null = null;
 vi.mock("@/lib/storage/supabase/server", () => ({
   createSupabaseServer: async () => ({
     auth: { getUser: async () => ({ data: { user }, error: null }) },
+    schema(name: string) { expect(name).toBe("nomad_humscore"); return this; },
     rpc: async () => ({ error: null }),
     from: (table: string) => {
       fromSpy(table);
